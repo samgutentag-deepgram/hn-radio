@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build your own edition &middot; HN Radio</title>
+<link rel="stylesheet" href="brand.css">
+</head>
+<body>
+<!-- Masthead: same sticky bar as every other page. This page had NO #theme-toggle at all while
+     still loading theme.js, so a reader who arrived in the wrong mode had no way out of it. It
+     also used .wrap, .brand-eyebrow and .lede, and brand.css defined none of the three, so the
+     whole page rendered as unstyled prose. .wrap is gone (body is already the column) and the
+     eyebrow is the shared one. -->
+<header class="masthead">
+  <p class="eyebrow"><span class="dg">deepgram</span> &middot; <a href="index.html">HN Radio</a></p>
+  <div class="masthead-chrome">
+    <button id="theme-toggle" type="button" aria-label="Toggle dark mode"></button>
+  </div>
+</header>
+
+<h1>Build your own edition</h1>
+<!-- "Pick the desks you care about ... The anchor always opens and signs off" until 2026-08-20.
+     The topics below ARE still real seats on this page (hn_radio/custom.py genuinely casts one
+     voice per topic and uses the same choice as the story filter), so the feature is described
+     accurately. What changed is the vocabulary: the daily show has no desks and no anchor, it has
+     a host and a rotating co-host, and this page should not be the last place still saying
+     otherwise. -->
+<p class="lede">Pick the topics you care about and cast the voice you want on each one. The host
+  always opens and signs off. Stories come from the last few days on Hacker News.</p>
+<p><a href="index.html">&larr; back to episodes</a></p>
+
+<h2>The cast</h2>
+<!-- One preset, because voices.json publishes one family. The Aura-2 button was removed with
+     `presets.aura` on 2026-08-20: back then `applyPreset` bailed on a preset that was not in the
+     document, so it had become a button that looked live and did nothing.
+     It does not read `presets` at all now (2026-08-21) -- it resets to DEFAULT_VOICE, the map this
+     page already seeds its rows from -- so `data-fam` only picks which button lights up. A second
+     family would need the seeding site widened, not this button. -->
+<p class="build-presets">
+  <span class="preset-label">Preset</span>
+  <button type="button" class="preset-btn active" data-fam="flux">Today's Flux cast</button>
+  <span class="status" id="preset-status"></span>
+</p>
+<table class="build-table">
+  <thead><tr><th>Topic</th><th>Include</th><th>Voice</th><th></th><th>Beat</th></tr></thead>
+  <tbody id="desks"></tbody>
+</table>
+<audio id="preview" preload="none"></audio>
+
+<h2>How far back</h2>
+<p class="build-days">
+  <label for="days">Draw stories from the last</label>
+  <select id="days">
+    <option value="1">1 day</option>
+    <option value="2">2 days</option>
+    <option value="3" selected>3 days</option>
+    <option value="5">5 days</option>
+    <option value="7">7 days</option>
+  </select>
+</p>
+
+<h2>What you would get</h2>
+<div id="pool-status" class="sb-meta"></div>
+<div id="pool"></div>
+
+<div class="build-actions">
+  <button id="build" class="btn primary" type="button">Build this episode</button>
+  <span id="build-status" class="sb-meta"></span>
+</div>
+
+<div id="confirm" class="modal" hidden>
+  <div class="modal-card">
+    <h3>Build this episode?</h3>
+    <div id="confirm-body"></div>
+    <div class="build-actions">
+      <button id="confirm-go" class="btn primary" type="button">Build it</button>
+      <button id="confirm-cancel" class="btn" type="button">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="theme.js"></script>
+<!-- Classic script, before the module below: it publishes window.HNOrb, and a module is
+     deferred so it always runs after this. Same orb object the cast page and the hero use. -->
+<script src="orb.js"></script>
+<script type="module">
+  import { esc } from './format.js';
+
+// The desk picker. Selecting a desk does double duty: it casts that desk's voice AND acts as the
+// topic filter, because a desk absent from the config contributes no stories.
+(function () {
+  var DESKS = [
+    // `role` is a wire value read by hn_radio/custom.py; only `label` is copy. The seat is still
+    // called `anchor` in the config it builds, and it is called "Host" on screen, because that is
+    // the word the show uses now.
+    { role: 'anchor', label: 'Host', beat: 'Opens, hands off, signs off.', always: true },
+    // Labels are copy, not wire values. They dropped the word "desk" on 2026-08-20 so this page
+    // matches the column header and the lede: what a listener picks here is a TOPIC, and the seat
+    // it casts is an implementation detail of hn_radio/custom.py.
+    { role: 'ai', label: 'AI', beat: 'Models, research, ML tooling and drama.' },
+    { role: 'maker', label: 'Maker', beat: 'Personal blogs, repos, Show HN, "I built" posts.' },
+    { role: 'security', label: 'Security', beat: 'Breaches, CVEs, cryptography, systems.' },
+    { role: 'drama', label: 'Comment theater', beat: 'Performs the spiciest comments from a thread.' }
+  ];
+  // Filled from voices.json presets, never hardcoded. This used to be a literal map of
+  // production voice ids, which broke the moment the active catalog changed: assigning a
+  // select.value that is not one of its options fails SILENTLY and leaves the first option
+  // selected, so the page looked fine and cast the wrong voices.
+  var DEFAULT_VOICE = {};
+
+  var desksEl = document.getElementById('desks');
+  var poolEl = document.getElementById('pool');
+  var poolStatus = document.getElementById('pool-status');
+  var daysEl = document.getElementById('days');
+  var preview = document.getElementById('preview');
+  var buildBtn = document.getElementById('build');
+  var buildStatus = document.getElementById('build-status');
+  var modal = document.getElementById('confirm');
+  var confirmBody = document.getElementById('confirm-body');
+  var rows = {};
+  var pool = [];
+  var maxStories = 6;
+  var planTimer = null;
+
+  // --- cast table ---------------------------------------------------------------------------
+
+  /** Every voice a custom edition may cast, name and character words included.
+   *
+   * `doc.buildable` (added 2026-08-21) is the GA catalog this show can seat: 34 voices, the same
+   * list whatever host the process is pointed at, and a strict subset of what POST /api/build
+   * accepts. It replaced `doc.voices`, which is `recast.selectable_voices()` and therefore
+   * FOLLOWS the configured host, so against a mismatched endpoint this picker offered options
+   * that 400 on render. `doc.catalog` supplies the names.
+   *
+   * Retired voices are dropped rather than shown greyed: the cast page exists to show the whole
+   * catalog and label them, but this is a picker, and an option that the endpoint refuses is not
+   * a choice. Falls back to `doc.voices` so an older published voices.json still fills the selects.
+   */
+  function buildableVoices(doc) {
+    var meta = {};
+    (doc.catalog || doc.voices || []).forEach(function (v) { meta[v.id] = v; });
+    var ids = (doc.buildable && doc.buildable.length)
+      ? doc.buildable
+      : (doc.voices || []).map(function (v) { return v.id; });
+    return ids
+      .map(function (id) { return meta[id] || { id: id, name: id, note: '', family: 'flux' }; })
+      .filter(function (v) { return !v.retired; })
+      .sort(function (a, b) { return a.name.localeCompare(b.name); });
+  }
+
+  function voiceOptions(doc) {
+    var byFam = {};
+    buildableVoices(doc).forEach(function (v) {
+      var fam = v.family || 'flux';
+      (byFam[fam] = byFam[fam] || []).push(v);
+    });
+    return (doc.families || [{ id: 'flux', label: 'Flux' }]).map(function (f) {
+      var opts = (byFam[f.id] || []).map(function (v) {
+        // Some Flux voices have no published one-line description, so skip the dash rather
+        // than render "Bree &mdash; " with nothing after it.
+        var label = v.note ? esc(v.name) + ' &mdash; ' + esc(v.note) : esc(v.name);
+        return '<option value="' + esc(v.id) + '">' + label + '</option>';
+      }).join('');
+      return opts ? '<optgroup label="' + esc(f.label) + '">' + opts + '</optgroup>' : '';
+    }).join('');
+  }
+
+  /** Assign a <select> value, but only if it is a real option.
+   *
+   * Plain `sel.value = id` on a missing id is a silent no-op that leaves option 0 selected,
+   * which is how the hardcoded defaults shipped the wrong cast without any visible error.
+   * Returns whether it took, so callers can report a preset that does not fit the catalog. */
+  function setVoice(sel, id) {
+    if (!id) return false;
+    var found = Array.prototype.some.call(sel.options, function (o) { return o.value === id; });
+    if (found) sel.value = id;
+    return found;
+  }
+
+  /** Reset every row to the page's own starting cast.
+   *
+   * TWO BUGS FIXED HERE 2026-08-21, and they compounded.
+   *
+   * 1. IT READ THE KEY THIS PAGE ABANDONED. The seeding path moved to `doc.build_preset`, which is
+   *    gated on the same `buildable` list the selects are filled from, but this function still read
+   *    `doc.presets[famId]` -- the RECAST picker's preset, which follows the configured host and
+   *    could hold ids absent from `buildable` with no ai/maker/security keys at all, so
+   *    on a fresh page 0 of 5 rows changed, and after the user had moved rows only `drama` came
+   *    back while four kept the wrong voice. The one visible preset button could not restore the
+   *    page's own starting cast. It now re-applies the already-resolved DEFAULT_VOICE map that
+   *    `buildTable` seeds from, so there is ONE resolution site and `missing` is empty by
+   *    construction. `presets.flux` is deliberately not touched: test_cast.py pins it to the
+   *    recast seating.
+   *
+   * 2. MOVING A SELECT IN CODE DOES NOT FIRE `change`. `setVoice` is a plain `sel.value = id`, and
+   *    `change` is the only thing that calls `tint()` or `onChange()`. So after pressing the preset
+   *    the row's data-voice, its ink and the orb's aria-label all still described the PREVIOUS
+   *    voice, which breaks the one invariant the tint comment states outright, and the cost line
+   *    kept pricing the old cast. Dispatched below, and only when the value actually moved, so a
+   *    no-op press does not churn. `refreshPlan` is debounced through `planTimer`, so five row
+   *    events collapse to one request.
+   */
+  function applyPreset(famId, statusEl) {
+    var missing = [];
+    document.querySelectorAll('#desks select[data-role]').forEach(function (sel) {
+      var role = sel.getAttribute('data-role');
+      // No drama/guest alias needed here any more: DEFAULT_VOICE is built at the seeding site,
+      // which already resolved `drama: flux.drama || flux.guest`. One resolution site was the
+      // whole point of the change, so re-aliasing would reintroduce the second one.
+      var want = DEFAULT_VOICE[role];
+      var before = sel.value;
+      if (!setVoice(sel, want)) {
+        if (want) missing.push(want);
+      } else if (sel.value !== before) {
+        sel.dispatchEvent(new Event('change'));
+      }
+    });
+    document.querySelectorAll('.preset-btn').forEach(function (b) {
+      b.classList.toggle('active', b.getAttribute('data-fam') === famId);
+    });
+    if (statusEl) {
+      statusEl.textContent = missing.length
+        ? 'Not available on this endpoint: ' + missing.join(', ')
+        : '';
+    }
+  }
+
+  function buildTable(doc) {
+    var opts = voiceOptions(doc);
+    DESKS.forEach(function (d) {
+      var tr = document.createElement('tr');
+
+      var tdName = document.createElement('td');
+      tdName.innerHTML = '<strong>' + esc(d.label) + '</strong>';
+
+      var tdInc = document.createElement('td');
+      var box = null;
+      if (d.always) {
+        tdInc.innerHTML = '<span class="sb-meta">always</span>';
+      } else {
+        box = document.createElement('input');
+        box.type = 'checkbox';
+        box.checked = d.role === 'ai' || d.role === 'maker';   // a sensible default episode
+        box.setAttribute('aria-label', 'Include the ' + d.label);
+        tdInc.appendChild(box);
+      }
+
+      var tdVoice = document.createElement('td');
+      var sel = document.createElement('select');
+      sel.innerHTML = opts;
+      sel.setAttribute('data-role', d.role);
+      setVoice(sel, DEFAULT_VOICE[d.role]);
+      tdVoice.appendChild(sel);
+
+      // The sample cell is a real molten orb in the SELECTED voice's shades, not a glyph button.
+      // Two reasons it is worth the code. The cast page and the hero already depict a voice this
+      // way, so a picker that used a bare triangle was the one place in the app where choosing a
+      // voice showed you nothing about it. And the orb re-tints on `change`, so the palette is
+      // feedback on the selection itself, before anything is rendered.
+      //
+      // No AnalyserNode. These are one-line samples off a plain <audio>, and a
+      // MediaElementSource graph per row to drive an envelope costs more than the motion is
+      // worth, so the orb churns without the vertical stretch the episode pages get.
+      var tdSample = document.createElement('td');
+      var play = document.createElement('button');
+      play.className = 'build-orb orb orb-glyph';
+      play.type = 'button';
+      play.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>';
+      tdSample.appendChild(play);
+
+      var tdBeat = document.createElement('td');
+      tdBeat.className = 'sb-meta';
+      tdBeat.textContent = d.beat;
+
+      tr.appendChild(tdName); tr.appendChild(tdInc); tr.appendChild(tdVoice);
+      tr.appendChild(tdSample); tr.appendChild(tdBeat);
+      desksEl.appendChild(tr);
+      rows[d.role] = { box: box, sel: sel, tr: tr, orb: play };
+
+      // The ROW carries data-voice, not just the orb, so brand.css block 1 resolves --v-on for
+      // everything in it: the row's ink and the orb's shades come from one declaration and cannot
+      // disagree. tint() is what keeps it honest when the select changes.
+      function tint() {
+        tr.setAttribute('data-voice', sel.value);
+        play.setAttribute('aria-label', 'Hear ' + voiceName(doc, sel.value)
+          + ' as the ' + d.label);
+        // setSpeaker reads the shades off the stylesheet through orb.js's probe, so there is no
+        // second copy of the palette here. Before the orb is molten this is a no-op and the CSS
+        // fallback shows through, which is why it is also called after attachAll below.
+        if (play._hnOrb) play._hnOrb.setSpeaker(sel.value, d.role, true);
+      }
+      tint();
+
+      play.addEventListener('click', function () {
+        if (currentPreview === sel.value && !preview.paused) { preview.pause(); return; }
+        preview.src = '/episodes/samples/' + sel.value + '.wav';
+        currentPreview = sel.value;
+        var started = preview.play();
+        // A missing sample must not leave an orb looking stuck mid-press.
+        if (started && started.catch) started.catch(function () {
+          buildStatus.textContent = 'No sample rendered for ' + sel.value
+            + '. Run scripts/make_cast_samples.py.';
+        });
+      });
+
+      sel.addEventListener('change', function () { tint(); onChange(); });
+      if (box) box.addEventListener('change', onChange);
+    });
+
+    // One pass, after every row exists, same as the cast page. Then re-tint, because an orb that
+    // was not molten when tint() first ran could not take a palette.
+    if (window.HNOrb) window.HNOrb.attachAll('.build-table .build-orb');
+    DESKS.forEach(function (d) {
+      var r = rows[d.role];
+      if (r && r.orb && r.orb._hnOrb) r.orb._hnOrb.setSpeaker(r.sel.value, d.role, true);
+    });
+  }
+
+  /** A voice's display name, for the orb's accessible label. Falls back to the id. */
+  function voiceName(doc, id) {
+    var hit = (doc.catalog || doc.voices || []).filter(function (v) { return v.id === id; })[0];
+    return hit ? hit.name : id;
+  }
+
+  // Which sample the shared <audio> is playing, so pressing the same orb twice pauses it rather
+  // than restarting. One element for the whole table, so two rows can never talk over each other.
+  var currentPreview = null;
+
+  // The orb that is sounding gets the ticker; the rest keep the CSS idle swirl. Five orbs is a
+  // small budget compared to the cast page's 36, but the rule is the same one and it is cheaper
+  // to keep than to special-case.
+  ['play', 'pause', 'ended'].forEach(function (e) {
+    preview.addEventListener(e, function () {
+      Object.keys(rows).forEach(function (role) {
+        var r = rows[role];
+        if (!r || !r.orb || !r.orb._hnOrb) return;
+        var on = currentPreview === r.sel.value && !preview.paused;
+        r.orb._hnOrb.setLive(!!on);
+      });
+    });
+  });
+
+  // --- the config we would submit -----------------------------------------------------------
+  function currentConfig() {
+    var cfg = { anchor: rows.anchor.sel.value, desks: {}, drama: null, days: Number(daysEl.value) };
+    ['ai', 'maker', 'security'].forEach(function (role) {
+      if (rows[role].box.checked) cfg.desks[role] = rows[role].sel.value;
+    });
+    if (rows.drama.box.checked) cfg.drama = rows.drama.sel.value;
+    return cfg;
+  }
+
+  function pickedDesks() { return Object.keys(currentConfig().desks); }
+
+  // --- story preview ------------------------------------------------------------------------
+  // Rendered from the PLAN response, never from a client-side re-selection. The server balances
+  // the cap between cached and live stories, and an independent sort here showed a different six
+  // than the build would actually use, which made the preview lie.
+  function renderPool(included) {
+    var picked = pickedDesks();
+    if (!picked.length) {
+      poolEl.innerHTML = '<p class="sb-meta">Pick at least one desk to see what you would get.</p>';
+      return;
+    }
+    included = included || [];
+    var matched = pool.filter(function (s) { return picked.indexOf(s.desk) !== -1; }).length;
+    var cut = Math.max(0, matched - included.length);
+
+    if (!included.length) {
+      poolEl.innerHTML = '<p class="sb-meta">No stories from those desks in this window. '
+        + 'Try another desk, or widen the day range.</p>';
+      return;
+    }
+    var byDay = {}, days = [];
+    included.forEach(function (s) {
+      if (!byDay[s.day]) { byDay[s.day] = []; days.push(s.day); }
+      byDay[s.day].push(s);
+    });
+    days.sort().reverse();
+
+    var html = days.map(function (day) {
+      var items = byDay[day].map(function (s) {
+        var tag = s.source === 'live'
+          ? '<span class="tag tag-new" title="No audio yet, this one gets rendered">new</span>'
+          : '<span class="tag" title="Already rendered, so it is reused">cached</span>';
+        return '<li><span class="sb-pts">' + esc(s.points) + '</span> '
+          + '<span class="tag tag-desk">' + esc(s.desk) + '</span> '
+          + esc(s.title) + ' ' + tag + '</li>';
+      }).join('');
+      return '<h3 class="pool-day">' + esc(day) + '</h3><ul class="pool-list">' + items + '</ul>';
+    }).join('');
+    if (cut > 0) {
+      html += '<p class="sb-meta">' + cut + ' more matched but were cut by the '
+        + maxStories + '-story cap, so the episode stays a reasonable length.</p>';
+    }
+    poolEl.innerHTML = html;
+  }
+
+  function loadPool() {
+    poolStatus.textContent = 'Loading candidate stories…';
+    fetch('/api/build/pool?days=' + encodeURIComponent(daysEl.value))
+      .then(function (r) { return r.json(); })
+      .then(function (body) {
+        pool = body.stories || [];
+        maxStories = body.max_stories || 6;
+        poolStatus.textContent = body.live_available
+          ? pool.length + ' candidates, including today’s live front page.'
+          : pool.length + ' candidates from rendered episodes. Hacker News is not reachable '
+            + 'right now, so today is not included.';
+        refreshPlan();   // the plan response is what fills the preview
+      })
+      .catch(function () {
+        poolStatus.textContent = 'Could not load candidates. Is the backend running?';
+      });
+  }
+
+  // --- cost, from the server so it matches what a build would actually do -------------------
+  function refreshPlan() {
+    clearTimeout(planTimer);
+    var cfg = currentConfig();
+    if (!Object.keys(cfg.desks).length) {
+      buildStatus.textContent = 'Pick at least one desk.';
+      return;
+    }
+    buildStatus.textContent = 'Pricing…';
+    planTimer = setTimeout(function () {
+      fetch('/api/build/plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cfg)
+      }).then(function (r) {
+        return r.json().then(function (b) { return { ok: r.ok, body: b }; });
+      }).then(function (res) {
+        if (!res.ok) {
+          buildStatus.textContent = res.body.detail || 'Could not price that.';
+          renderPool([]);
+          return;
+        }
+        var p = res.body;
+        buildStatus.textContent = p.reuse + ' reused, ' + p.rerender + ' re-voiced, '
+          + p.new + ' newly rendered.';
+        renderPool(p.stories);
+      }).catch(function () { buildStatus.textContent = ''; });
+    }, 250);
+  }
+
+  function onChange() { refreshPlan(); }   // refreshPlan repaints the preview from its response
+
+  // --- confirm + build ----------------------------------------------------------------------
+  buildBtn.addEventListener('click', function () {
+    var cfg = currentConfig();
+    if (!Object.keys(cfg.desks).length) { buildStatus.textContent = 'Pick at least one desk.'; return; }
+    fetch('/api/build/plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg)
+    }).then(function (r) {
+      return r.json().then(function (b) { return { ok: r.ok, body: b }; });
+    }).then(function (res) {
+      if (!res.ok) { buildStatus.textContent = res.body.detail || 'Could not price that.'; return; }
+      var p = res.body;
+      var toRender = p.rerender + p.new;
+      confirmBody.innerHTML =
+        '<ul class="pool-list">'
+        + '<li><strong>' + p.stories.length + '</strong> stories from '
+        + esc(Object.keys(cfg.desks).join(', ')) + '</li>'
+        + '<li><strong>' + p.reuse + '</strong> segments reused from episodes already rendered '
+        + '(free)</li>'
+        + '<li><strong>' + p.rerender + '</strong> re-voiced, <strong>' + p.new
+        + '</strong> newly written and rendered</li>'
+        + '</ul>'
+        + '<p class="sb-meta">' + (toRender > 0
+          ? toRender + ' segments hit Deepgram, so expect roughly '
+            + Math.max(10, toRender * 4) + ' seconds.'
+          : 'Nothing needs rendering, so this should be quick.') + '</p>';
+      modal.hidden = false;
+    }).catch(function () { buildStatus.textContent = 'Could not reach the backend.'; });
+  });
+
+  document.getElementById('confirm-cancel').addEventListener('click', function () {
+    modal.hidden = true;
+  });
+
+  document.getElementById('confirm-go').addEventListener('click', function () {
+    modal.hidden = true;
+    buildBtn.disabled = true;
+    buildStatus.textContent = 'Building with Deepgram… this can take a minute.';
+    fetch('/api/build', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(currentConfig())
+    }).then(function (r) {
+      return r.json().then(function (b) { return { ok: r.ok, body: b }; });
+    }).then(function (res) {
+      if (!res.ok) {
+        buildBtn.disabled = false;
+        buildStatus.textContent = res.body.detail || 'Build failed.';
+        return;
+      }
+      buildStatus.textContent = 'Done. Opening it…';
+      location.href = res.body.url;
+    }).catch(function () {
+      buildBtn.disabled = false;
+      buildStatus.textContent = 'Build failed. Check the server log.';
+    });
+  });
+
+  daysEl.addEventListener('change', loadPool);
+
+  fetch('/episodes/voices.json')
+    .then(function (r) { return r.json(); })
+    .then(function (doc) {
+      // Seed from `build_preset` (2026-08-21), which is gated on the same `buildable` list these
+      // selects are filled from, so every id in it is a real option. `presets.flux` is the RECAST
+      // picker's preset and follows the configured host: seeding from it meant setVoice silently
+      // no-opped on ids this page does not offer and four of five rows kept option 0, i.e. one
+      // voice in four seats. `presets.flux` stays as the fallback for an older voices.json.
+      var flux = doc.build_preset || (doc.presets || {}).flux || {};
+      DEFAULT_VOICE = {
+        anchor: flux.anchor, ai: flux.ai, maker: flux.maker,
+        security: flux.security, drama: flux.drama || flux.guest
+      };
+      buildTable(doc);
+      var status = document.getElementById('preset-status');
+      document.querySelectorAll('.preset-btn').forEach(function (b) {
+        b.addEventListener('click', function () {
+          applyPreset(b.getAttribute('data-fam'), status);
+        });
+      });
+      loadPool();
+    })
+    .catch(function () {
+      desksEl.innerHTML = '<tr><td colspan="5">Could not load the voice catalog.</td></tr>';
+    });
+})();
+</script>
+</body>
+</html>

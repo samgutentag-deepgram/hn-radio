@@ -1,0 +1,43 @@
+# Fly.io config for HN Radio (FastAPI app serving the static site + one-click recast).
+# `app` must be globally unique; `fly launch` will offer to set/rename it.
+app = "dg-devrel-hn-radio"
+primary_region = "sjc"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  # Absolute base for the RSS feed URLs. Episodes are served under /episodes, so the base
+  # INCLUDES /episodes. The app regenerates feed.xml on startup using this, so it must be set
+  # here (not just at build time) or the feed falls back to the placeholder host.
+  HN_RADIO_BASE_URL = "https://dg-devrel-hn-radio.fly.dev/episodes"
+  # The episodes live on a persistent volume (see [mounts]), so nightly episodes survive restarts.
+  HN_RADIO_EPISODES_DIR = "/data/episodes"
+  # Music is on unless something says otherwise. This switch exists so the code can ship before
+  # the beds and intro beats are settled, instead of holding every unrelated change behind them.
+  #
+  # Prefer `fly secrets set HN_RADIO_MUSIC=0` over setting it here. Both work and the config
+  # reader cannot tell them apart, but a secret is changed with one command and a machine
+  # restart, while a value in this block needs a full `fly deploy` to change. The whole point is
+  # to be able to turn music on the night the beds are approved without redeploying the app.
+  #
+  # `music_enabled()` is read per render, so the next nightly run picks up the new value.
+
+# Persistent storage for the growing episode catalog (audio stays here, not in git).
+[mounts]
+  source = "hn_radio_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8000          # uvicorn
+  force_https = true
+  auto_stop_machines = "off"    # never stop: the in-container cron must be awake at 3am Pacific
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1024mb"              # headroom for the nightly Flux render + ffmpeg transcode
+
+# Set the Deepgram key as a secret, not in this file:
+#   fly secrets set DEEPGRAM_API_KEY=...

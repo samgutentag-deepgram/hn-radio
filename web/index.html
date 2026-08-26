@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HN Radio</title>
+<!-- No font <link> here on purpose. This repo ships no font files and hosts none, so the
+     three families brand.css names all resolve to system-ui for most readers. There used to be
+     a Google Fonts stylesheet for Inter at this spot; it was a third-party request on every page
+     load and it is the one thing the "no CDN, no external font hosting" rule names outright. -->
+<link rel="stylesheet" href="brand.css">
+</head>
+<body>
+<!--
+  Masthead. The brand lockup, the subscribe row and the theme toggle in ONE sticky bar that is in
+  the document flow.
+
+  It used to be three separate things: an in-flow eyebrow, plus a `position: fixed` #theme-toggle
+  and a `position: fixed` .subscribe pinned to the top-right corner. The two fixed elements floated
+  over the document, so at 500px wide the six app icons landed directly on top of the first row's
+  headline the moment you scrolled. Reserving vertical space for fixed chrome only moves that bug to
+  the next viewport width; putting the chrome in the flow removes it.
+-->
+<header class="masthead">
+  <p class="eyebrow"><span class="dg">deepgram</span> &middot; Flux TTS demo</p>
+  <div class="masthead-chrome">
+    <!--
+      ONE subscribe button, not a row of six logos. The row was six 1.3rem icons with `gap: 0` at
+      narrow widths: about 21 CSS px, adjacent, which is under even the relaxed 24px target-size
+      minimum and exactly the layout that produces mis-taps. It also hid its "Subscribe" label on
+      mobile, so the only thing distinguishing one target from the next was logo shape and brand
+      hue, which is the wrong thing to lean on for a colourblind reader.
+
+      The list now lives in a modal where each app is a full-width row with its name in text.
+    -->
+    <button id="subscribe-open" type="button" aria-haspopup="dialog">
+      <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="currentColor">
+        <path d="M19.199 24C19.199 13.467 10.533 4.8 0 4.8V0c13.165 0 24 10.835 24 24h-4.801zM3.291 17.415c1.814 0 3.293 1.479 3.293 3.295 0 1.813-1.485 3.29-3.301 3.29C1.47 24 0 22.526 0 20.71s1.475-3.294 3.291-3.295zM15.909 24h-4.665c0-6.169-5.075-11.245-11.244-11.245V8.09c8.727 0 15.909 7.184 15.909 15.91z"/>
+      </svg>
+      <span>Subscribe</span>
+    </button>
+    <button id="theme-toggle" type="button" aria-label="Toggle dark mode"></button>
+  </div>
+</header>
+
+<dialog id="subscribe-dialog" aria-labelledby="subscribe-dialog-title">
+  <div class="sd-head">
+    <h2 id="subscribe-dialog-title">Subscribe in your podcast player</h2>
+    <button class="sd-close" type="button" aria-label="Close">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M6 6l12 12M18 6L6 18"/>
+      </svg>
+    </button>
+  </div>
+  <p class="sd-note">Opens the app if it is installed. Nothing here leaves your device.</p>
+  <ul id="sd-list" class="sd-list"></ul>
+  <div class="sd-copy">
+    <label for="sd-url">Or paste this feed URL into any player</label>
+    <div class="sd-copy-row">
+      <input id="sd-url" type="text" readonly spellcheck="false">
+      <button id="sd-copy" type="button">Copy</button>
+    </div>
+  </div>
+</dialog>
+
+<h1>HN Radio</h1>
+<p class="lede">The Hacker News front page, read to you every morning. Built with Deepgram Flux TTS,
+from plain text with no markup or tuning.</p>
+<p class="muted" id="subscribe-note"></p>
+
+<!--
+  Immediate-listen hero, per Natalie's ask (NPR's homepage as the reference). One obvious
+  target: press it and the newest episode starts, no navigation, no second click.
+
+  It sits FIRST, above the front-page ticker, because it is the point of the page: what the
+  show sounds like today. The ticker is the input that produced it, so it reads second.
+
+  Deliberately NOT autoplay-on-load. Every browser blocks audio that no gesture asked for, so
+  a page that tried it would silently do nothing and look broken. The press IS the gesture.
+
+  The <audio> element below is the page's only one, and the hero is its only caller. It used to
+  be shared with the episode rows, which is why the comment here used to justify the sharing;
+  on 2026-08-20 the rows became links to their own episode pages, so there is nothing left to
+  share it with. Only the latest episode plays from this page.
+-->
+<section id="hero" class="hero" hidden aria-labelledby="hero-title">
+  <!-- orb + orb-glyph: the play target IS a molten orb (see brand.css block 5), which is how the
+       talk site represents a voice. No --v-* run is in scope on the hero, so at rest the orb falls
+       back to the brand accent, which is right: at rest this is the show, not a speaker. Once it is
+       playing, the block at the bottom of this page hands it the current speaker's palette and the
+       real signal, so it stops being the show and becomes whoever is talking.
+
+       That colour is decoration, and only decoration. It is never the answer to "who is speaking".
+       As of 2026-08-21 the answer is #hero-speaker below, in words, and this is a fix rather than
+       an addition. The orb was crossfading correctly the whole time -- verified in the browser,
+       the palette lands on every speaker change -- but the newest episode alternates the host's
+       amber with a co-host for minutes at a stretch, and orange against green is the single worst
+       pair for red-green colour blindness. So "the orb does not change colour" was a true report
+       of a page that was working: the change was real and it was invisible.
+
+       Which is exactly what the rule at the top of brand.css block 1 forbids, and the hero was
+       the one place in the app breaking it. Every transcript row names its speaker; the hero named
+       only the episode. It names the speaker now. -->
+  <button id="hero-play" class="hero-play orb orb-glyph" type="button" aria-label="Play the latest episode">
+    <svg class="ico-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>
+    <svg class="ico-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.2v14H7zm6.8 0H17v14h-3.2z"/></svg>
+  </button>
+  <div class="hero-meta">
+    <p class="hero-kicker">Latest episode</p>
+    <h2 id="hero-title" class="hero-title">&nbsp;</h2>
+    <p class="hero-sub"><span id="hero-date"></span><span id="hero-dur"></span></p>
+    <!-- Empty and aria-hidden until playback names someone, so a paused hero does not claim a
+         speaker. role="status" so a screen reader hears the handoffs it cannot see either. -->
+    <p class="hero-speaker" id="hero-speaker" role="status" hidden></p>
+    <p id="hero-summary" class="hero-summary"></p>
+    <!--
+      Scrub bar doubles as a seek target and a chapter map. Ticks are positioned by
+      startTime/duration, so they only appear once metadata has loaded.
+
+      There is no waveform canvas beside it any more. The ORB above is the signal: it reads the
+      same AnalyserNode the bars did, through an amplitude envelope, and it takes on the palette
+      of whoever is speaking. Position in the episode and level of the signal are still two
+      different questions; the scrubber keeps the first one and the orb answers the second.
+    -->
+    <div class="hero-scrub" id="hero-scrub" role="slider" tabindex="0"
+         aria-label="Seek" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div id="hero-bar" class="hero-bar"></div>
+      <div id="hero-ticks" class="hero-ticks"></div>
+    </div>
+    <p class="hero-links">
+      <a id="hero-full" href="#">Full script, chapters and transcript</a>
+    </p>
+  </div>
+</section>
+<audio id="hero-audio" preload="none" crossorigin="anonymous"></audio>
+
+<div id="status-board" class="status-board"></div>
+
+<h2 class="section-h" id="more-h" hidden>More episodes</h2>
+<ul class="ep-list" id="episodes"><li class="muted">Loading episodes…</li></ul>
+
+<script src="theme.js"></script>
+<!-- Classic script, before the page scripts: it publishes window.HNOrb, which the hero block
+     below and web/app.js both use. See the header of web/orb.js. -->
+<script src="orb.js"></script>
+<script>
+// The subscribe modal. One button in the masthead opens a <dialog> listing every app.
+//
+// Native <dialog> + showModal(), not a hand-rolled overlay: it gives the focus trap, Escape, the
+// backdrop and inertness of the rest of the page for free, and every one of those is a thing a
+// hand-rolled modal in a demo repo gets subtly wrong.
+//
+// Real brand logos, inlined. See the APPS block below for the source and the licensing note.
+//
+// The deep links are the documented custom schemes each app registers. Most take the feed URL with
+// its scheme stripped; Overcast takes a fully encoded URL. These can only be exercised on a device
+// with the app installed, so they are unverified from a dev machine. That is exactly why the feed
+// URL is also in the modal as copyable text: it is the one route that cannot fail.
+(function () {
+  var openBtn = document.getElementById('subscribe-open');
+  var dlg = document.getElementById('subscribe-dialog');
+  var list = document.getElementById('sd-list');
+  if (!openBtn || !dlg || !list) return;
+  var feed = location.origin + '/episodes/feed.xml';
+  var bare = feed.replace(/^https?:\/\//, '');
+
+  // Official brand marks, from Simple Icons (https://simpleicons.org), which publishes each
+  // logo as a single 24x24 path plus the brand's hex. Inlined rather than fetched so the page
+  // stays self-contained and loads no third-party assets.
+  //
+  // Licensing, honestly: the Simple Icons files are CC0, but the logos themselves remain
+  // trademarks of their owners. Using them to link to those services is ordinary identification
+  // use, which is what every podcast page does. If brand review wants something stricter, Apple
+  // publishes an official "Listen on Apple Podcasts" badge with its own usage rules.
+  //
+  // Spotify and YouTube Music are deliberately absent: they only accept shows submitted to their
+  // directories, so a deep link to an arbitrary feed does nothing. A dead button is worse than no
+  // button. Every app below accepts a raw feed URL.
+  var APPS = [
+    { key: 'applepodcasts', label: 'Apple Podcasts', color: '#9933CC',
+      href: 'podcast://' + bare,
+      path: 'M5.34 0A5.328 5.328 0 000 5.34v13.32A5.328 5.328 0 005.34 24h13.32A5.328 5.328 0 0024 18.66V5.34A5.328 5.328 0 0018.66 0zm6.525 2.568c2.336 0 4.448.902 6.056 2.587 1.224 1.272 1.912 2.619 2.264 4.392.12.59.12 2.2.007 2.864a8.506 8.506 0 01-3.24 5.296c-.608.46-2.096 1.261-2.336 1.261-.088 0-.096-.091-.056-.46.072-.592.144-.715.48-.856.536-.224 1.448-.874 2.008-1.435a7.644 7.644 0 002.008-3.536c.208-.824.184-2.656-.048-3.504-.728-2.696-2.928-4.792-5.624-5.352-.784-.16-2.208-.16-3 0-2.728.56-4.984 2.76-5.672 5.528-.184.752-.184 2.584 0 3.336.456 1.832 1.64 3.512 3.192 4.512.304.2.672.408.824.472.336.144.408.264.472.856.04.36.03.464-.056.464-.056 0-.464-.176-.896-.384l-.04-.03c-2.472-1.216-4.056-3.274-4.632-6.012-.144-.706-.168-2.392-.03-3.04.36-1.74 1.048-3.1 2.192-4.304 1.648-1.737 3.768-2.656 6.128-2.656zm.134 2.81c.409.004.803.04 1.106.106 2.784.62 4.76 3.408 4.376 6.174-.152 1.114-.536 2.03-1.216 2.88-.336.43-1.152 1.15-1.296 1.15-.023 0-.048-.272-.048-.603v-.605l.416-.496c1.568-1.878 1.456-4.502-.256-6.224-.664-.67-1.432-1.064-2.424-1.246-.64-.118-.776-.118-1.448-.008-1.02.167-1.81.562-2.512 1.256-1.72 1.704-1.832 4.342-.264 6.222l.413.496v.608c0 .336-.027.608-.06.608-.03 0-.264-.16-.512-.36l-.034-.011c-.832-.664-1.568-1.842-1.872-2.997-.184-.698-.184-2.024.008-2.72.504-1.878 1.888-3.335 3.808-4.019.41-.145 1.133-.22 1.814-.211zm-.13 2.99c.31 0 .62.06.844.178.488.253.888.745 1.04 1.259.464 1.578-1.208 2.96-2.72 2.254h-.015c-.712-.331-1.096-.956-1.104-1.77 0-.733.408-1.371 1.112-1.745.224-.117.534-.176.844-.176zm-.011 4.728c.988-.004 1.706.349 1.97.97.198.464.124 1.932-.218 4.302-.232 1.656-.36 2.074-.68 2.356-.44.39-1.064.498-1.656.288h-.003c-.716-.257-.87-.605-1.164-2.644-.341-2.37-.416-3.838-.218-4.302.262-.616.974-.966 1.97-.97z' },
+    { key: 'overcast', label: 'Overcast', color: '#FC7E0F',
+      href: 'overcast://x-callback-url/add?url=' + encodeURIComponent(feed),
+      path: 'M12 24C5.389 24.018.017 18.671 0 12.061V12C0 5.35 5.351 0 12 0s12 5.35 12 12c0 6.649-5.351 12-12 12zm0-4.751l.9-.899-.9-3.45-.9 3.45.9.899zm-1.15-.05L10.4 20.9l1.05-1.052-.6-.649zm2.3 0l-.6.601 1.05 1.051-.45-1.652zm.85 3.102L12 20.3l-2 2.001c.65.1 1.3.199 2 .199s1.35-.05 2-.199zM12 1.5C6.201 1.5 1.5 6.201 1.5 12c-.008 4.468 2.825 8.446 7.051 9.899l2.25-8.35c-.511-.372-.809-.968-.801-1.6 0-1.101.9-2.001 2-2.001s2 .9 2 2.001c0 .649-.301 1.2-.801 1.6l2.25 8.35c4.227-1.453 7.06-5.432 7.051-9.899 0-5.799-4.701-10.5-10.5-10.5zm6.85 15.7c-.255.319-.714.385-1.049.15-.313-.207-.4-.628-.194-.941.014-.021.028-.04.044-.06 0 0 1.35-1.799 1.35-4.35s-1.35-4.35-1.35-4.35c-.239-.289-.198-.719.091-.957.02-.016.039-.031.06-.044.335-.235.794-.169 1.049.15.1.101 1.65 2.15 1.65 5.2S18.949 17.1 18.85 17.2zm-3.651-1.95c-.3-.3-.249-.85.051-1.15 0 0 .75-.799.75-2.1s-.75-2.051-.75-2.1c-.3-.301-.3-.801-.051-1.15.232-.303.666-.357.969-.125.029.022.056.047.082.074C16.301 8.75 17.5 10 17.5 12s-1.199 3.25-1.25 3.301c-.301.299-.75.25-1.051-.051zm-6.398 0c-.301.301-.75.35-1.051.051C7.699 15.199 6.5 14 6.5 12s1.199-3.199 1.25-3.301c.301-.299.801-.299 1.051.051.3.3.249.85-.051 1.15 0 .049-.75.799-.75 2.1s.75 2.1.75 2.1c.3.3.351.799.051 1.15zm-2.602 2.101c-.335.234-.794.169-1.05-.15C5.051 17.1 3.5 15.05 3.5 12s1.551-5.1 1.649-5.2c.256-.319.715-.386 1.05-.15.313.206.4.628.194.941-.013.02-.028.04-.043.059C6.35 7.65 5 9.449 5 12s1.35 4.35 1.35 4.35c.25.3.15.75-.151 1.001z' },
+    { key: 'pocketcasts', label: 'Pocket Casts', color: '#F43E37',
+      href: 'pktc://subscribe/' + bare,
+      path: 'M12,0C5.372,0,0,5.372,0,12c0,6.628,5.372,12,12,12c6.628,0,12-5.372,12-12 C24,5.372,18.628,0,12,0z M15.564,12c0-1.968-1.596-3.564-3.564-3.564c-1.968,0-3.564,1.595-3.564,3.564 c0,1.968,1.595,3.564,3.564,3.564V17.6c-3.093,0-5.6-2.507-5.6-5.6c0-3.093,2.507-5.6,5.6-5.6c3.093,0,5.6,2.507,5.6,5.6H15.564z M19,12c0-3.866-3.134-7-7-7c-3.866,0-7,3.134-7,7c0,3.866,3.134,7,7,7v2.333c-5.155,0-9.333-4.179-9.333-9.333 c0-5.155,4.179-9.333,9.333-9.333c5.155,0,9.333,4.179,9.333,9.333H19z' },
+    { key: 'castro', label: 'Castro', color: '#00B265',
+      href: 'castro://subscribe/' + bare,
+      path: 'M12 0C5.372 0 0 5.373 0 12s5.372 12 12 12c6.627 0 12-5.373 12-12S18.627 0 12 0zm-.002 13.991a2.052 2.052 0 1 1 0-4.105 2.052 2.052 0 0 1 0 4.105zm4.995 4.853l-2.012-2.791a5.084 5.084 0 1 0-5.982.012l-2.014 2.793A8.526 8.526 0 0 1 11.979 3.42a8.526 8.526 0 0 1 8.526 8.526 8.511 8.511 0 0 1-3.512 6.898z' },
+    { key: 'antennapod', label: 'AntennaPod', color: '#364FF3',
+      href: 'antennapod-subscribe://' + bare,
+      path: 'M12 0A12 12 0 0 0 0 12a12 12 0 0 0 7.188 10.98l3.339-9.459a2.118 2.118 0 1 1 2.946 0l3.339 9.46A12 12 0 0 0 24 12 12 12 0 0 0 12 0m0 2.824a9.177 9.177 0 0 1 4.969 16.892l-.486-1.376a7.765 7.765 0 1 0-8.967 0l-.485 1.376A9.177 9.177 0 0 1 12 2.824m0 3.529a5.647 5.647 0 0 1 3.739 9.879l-.521-1.478a4.235 4.235 0 1 0-6.436 0l-.522 1.478A5.647 5.647 0 0 1 12 6.353m0 8.298-1.618 4.584a7.4 7.4 0 0 0 3.236 0zm-2.21 6.258-.937 2.656A12 12 0 0 0 12 24a12 12 0 0 0 3.146-.435l-.937-2.656a9.2 9.2 0 0 1-2.209.267 9.2 9.2 0 0 1-2.21-.267' },
+    { key: 'rss', label: 'Raw RSS feed', color: '#FFA500',
+      href: '/episodes/feed.xml',
+      path: 'M19.199 24C19.199 13.467 10.533 4.8 0 4.8V0c13.165 0 24 10.835 24 24h-4.801zM3.291 17.415c1.814 0 3.293 1.479 3.293 3.295 0 1.813-1.485 3.29-3.301 3.29C1.47 24 0 22.526 0 20.71s1.475-3.294 3.291-3.295zM15.909 24h-4.665c0-6.169-5.075-11.245-11.244-11.245V8.09c8.727 0 15.909 7.184 15.909 15.91z' }
+  ];
+
+  // Each row is a full-width target with the app's NAME in text next to its mark. The brand hue
+  // is decoration here, never the thing that tells two rows apart.
+  list.innerHTML = APPS.map(function (a) {
+    return '<li><a class="sd-app" href="' + a.href + '"'
+      + (a.key === 'rss' ? '' : ' rel="noopener"') + '>'
+      + '<span class="sd-mark"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"'
+      + ' fill="' + a.color + '"><path d="' + a.path + '"/></svg></span>'
+      + '<span class="sd-name">' + a.label + '</span>'
+      + '<span class="sd-go" aria-hidden="true">&rsaquo;</span></a></li>';
+  }).join('');
+
+  var urlField = document.getElementById('sd-url');
+  var copyBtn = document.getElementById('sd-copy');
+  urlField.value = feed;
+
+  openBtn.addEventListener('click', function () {
+    dlg.showModal();
+    history.replaceState(null, '', '#subscribe');
+  });
+
+  // #subscribe opens it on load, so the subscribe list is a linkable thing: paste
+  // hn-radio.fly.dev/#subscribe anywhere and the reader lands on the picker rather than on the
+  // homepage having to find a button. Closing puts the URL back.
+  function syncFromHash() {
+    if (location.hash === '#subscribe' && !dlg.open) dlg.showModal();
+  }
+  syncFromHash();
+  window.addEventListener('hashchange', syncFromHash);
+  dlg.addEventListener('close', function () {
+    if (location.hash === '#subscribe') history.replaceState(null, '', location.pathname);
+  });
+
+  dlg.querySelector('.sd-close').addEventListener('click', function () { dlg.close(); });
+
+  // Click on the backdrop closes. <dialog> fires the click on the dialog element itself for
+  // backdrop hits, so compare against the target rather than tracking coordinates.
+  dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });
+
+  // Tapping an app leaves the page, so do not leave a modal open behind the handoff. If the app
+  // is not installed the scheme silently does nothing, and a stuck-open modal would read as the
+  // page being broken rather than the app being absent.
+  list.addEventListener('click', function () { dlg.close(); });
+
+  copyBtn.addEventListener('click', function () {
+    var done = function (ok) {
+      copyBtn.textContent = ok ? 'Copied' : 'Press Cmd C';
+      setTimeout(function () { copyBtn.textContent = 'Copy'; }, 1600);
+    };
+    // navigator.clipboard needs a secure context, which localhost and https both are, but a
+    // plain-http preview on a LAN address is neither. Select the text so the manual route works.
+    urlField.select();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(feed).then(function () { done(true); },
+                                               function () { done(false); });
+    } else {
+      done(false);
+    }
+  });
+})();
+</script>
+<script type="module">
+  import { esc, ago, until } from './format.js';
+
+// Status board. Two regions, deliberately: #sb-live is rewritten on every poll, while the ticker
+// is built exactly once. Rewriting the ticker would destroy and recreate its CSS animation, which
+// snaps the scroll back to the top on every poll.
+(function () {
+  var board = document.getElementById('status-board');
+  if (!board) return;
+  var ACTIVE = { starting: 1, fetching: 1, sourcing: 1, writing: 1, rendering: 1, publishing: 1 };
+  var FAST_MS = 4000;    // while a generation is in flight, progress genuinely moves
+  var IDLE_MS = 60000;   // nothing on the idle path changes faster than this
+  // The server caches the front page for an hour, so polling the ticker faster than that returns
+  // the identical snapshot. 15 minutes bounds how long a long-lived tab can show stale headlines
+  // without hammering an endpoint that would just hand back its cache.
+  var TICKER_MS = 15 * 60 * 1000;
+  // Poll fast in the run-up to a scheduled render, so the transition into "generating" is seen in
+  // seconds rather than up to a minute late.
+  var NEAR_RUN_MS = 5 * 60 * 1000;
+  var STICKY_NEAR_MS = 12 * 60 * 1000;
+  var timer = null, mode = null, tickerLoaded = false, lastStatus = null;
+  var tickerFetchedAt = null, tickerTimer = null, nearRunUntil = 0;
+
+  board.innerHTML =
+    '<div id="sb-live"></div><div id="sb-ticker-host"></div><div class="sb-meta" id="sb-meta"></div>';
+  var live = document.getElementById('sb-live');
+  var tickerHost = document.getElementById('sb-ticker-host');
+  var meta = document.getElementById('sb-meta');
+
+  function buildTicker(force) {
+    if (tickerLoaded && !force) return;
+    tickerLoaded = true;
+    fetch('/api/trending').then(function (r) { return r.json(); }).then(function (t) {
+      var rows = (t && t.stories) || [];
+      // Only touch the DOM when the snapshot actually changed. Rebuilding restarts the CSS
+      // animation (display and innerHTML both kill a running one), so a periodic refresh that
+      // rebuilt unconditionally would visibly reset the scroll every 15 minutes for no reason.
+      // `fetched_at` is exactly the signal for this and was previously returned and ignored.
+      var stamp = (t && t.fetched_at) || null;
+      if (force && stamp && stamp === tickerFetchedAt) return;
+      tickerFetchedAt = stamp;
+      function set() {
+        return rows.map(function (s) {
+          // The submitter goes in the accessible name and the tooltip, NOT in a third span.
+          // This is a nowrap marquee whose titles already ellipsis-truncate, so visible byline
+          // text would eat the headline it is annotating. `/api/trending` carries `author` as of
+          // 2026-08-22; older cached snapshots do not, hence the guard.
+          var label = s.title + (s.author ? ' by ' + s.author : '')
+                    + ', ' + s.points + ' points on Hacker News';
+          return '<a class="sb-item" href="' + esc(s.url) + '" target="_blank" rel="noopener"'
+               + ' title="' + esc(label) + '" aria-label="' + esc(label) + '">'
+               + '<span class="sb-pts">' + esc(s.points) + '</span>'
+               + '<span class="sb-title">' + esc(s.title) + '</span></a>';
+        }).join('');
+      }
+      if (rows.length === 0) {
+        // Nothing to show. Leave the host empty; render() reads data-count "0" to switch the
+        // live label to the honest "Idle" copy instead of claiming it is reading a front page.
+        tickerHost.innerHTML = '';
+      } else if (rows.length < 5) {
+        // Too few rows to scroll: render them as a static list, no duplicate set, no animation.
+        tickerHost.innerHTML =
+          '<div class="sb-ticker" aria-label="Hacker News front page right now">'
+          + '<div class="sb-track sb-track--static">' + set() + '</div></div>';
+      } else {
+        // Second copy is aria-hidden so a screen reader reads each headline once.
+        tickerHost.innerHTML =
+          '<div class="sb-ticker" aria-label="Hacker News front page right now">'
+          + '<div class="sb-track" style="animation-duration:' + (rows.length * 3) + 's">'
+          + set() + '<div aria-hidden="true">' + set() + '</div></div></div>';
+      }
+      tickerHost.setAttribute('data-count', rows.length);
+      // Re-render now so the meta line's "top N" clause and the idle label don't wait for the
+      // next scheduled poll. Safe from recursion: tickerLoaded was set true before this fetch
+      // started, so the nested render() call's own buildTicker() call sees tickerLoaded already
+      // true and returns immediately.
+      if (lastStatus) render(lastStatus);
+    }).catch(function () { tickerLoaded = false; });   // allow a retry on the next idle render
+  }
+
+  function render(st) {
+    lastStatus = st;
+    // A stalled run still REPORTS a working state, so this has to be tested before ACTIVE or the
+    // board keeps showing a progress bar for a run that stopped existing. `stalled` is derived by
+    // the server from how long the record has been silent; see hn_radio/status.is_stalled.
+    var stalled = st.stalled === true;
+    var idle = !stalled && !ACTIVE[st.state] && st.state !== 'error';
+
+    if (stalled) {
+      // The wording says what is known and not more. We know it went quiet; we do not know whether
+      // the machine died, the network went, or ffmpeg wedged, and guessing on the page would send
+      // someone looking in the wrong place.
+      var quiet = st.silent_seconds;
+      live.innerHTML = '<div class="sb-row"><span class="sb-dot stalled"></span>'
+        + '<strong>Run stalled</strong> &middot; no progress for '
+        + (quiet != null ? Math.round(quiet / 60) + ' minutes' : 'an unknown length of time')
+        + (st.episode ? ' on ' + esc(st.episode) : '')
+        + ' &middot; stopped at: ' + esc(st.note || st.state) + '</div>';
+    } else if (ACTIVE[st.state]) {
+      var pct = st.total ? Math.round(st.step / st.total * 100) : null;
+      live.innerHTML = '<div class="sb-row"><span class="sb-dot live"></span><strong>Generating</strong> '
+        + (st.episode || '') + ' &middot; ' + (st.note || st.state) + '</div>'
+        + (pct != null ? '<div class="sb-bar"><div class="sb-fill" style="width:' + pct + '%"></div></div>' : '');
+    } else if (st.state === 'error') {
+      live.innerHTML = '<div class="sb-row"><span class="sb-dot err"></span><strong>Last run failed</strong> &middot; '
+        + esc(st.last_error || '') + '</div>';
+    } else if (tickerHost.getAttribute('data-count') === '0') {
+      // Confirmed zero headlines (fetch resolved, HN gave us nothing): say so honestly rather
+      // than claiming to be reading a front page that has no rows on it. The "last episode X
+      // ago" text lives in the meta line below, unconditionally, so it is not lost here.
+      live.innerHTML = '<div class="sb-row"><span class="sb-dot idle-live"></span><strong>Idle</strong></div>';
+    } else {
+      live.innerHTML = '<div class="sb-row"><span class="sb-dot idle-live"></span>'
+        + '<strong>Reading the front page</strong> &middot; '
+        + '<a href="https://news.ycombinator.com/" target="_blank" rel="noopener">Hacker News</a></div>';
+    }
+
+    // Hide rather than remove: this keeps the built DOM around (so returning to idle does not
+    // trigger a refetch), but per CSS Animations, display:none terminates a running animation
+    // outright, so the scroll does restart from the top on reappearance. That is acceptable here
+    // because the idle <-> generating transition happens once a day, not on every poll.
+    tickerHost.style.display = idle ? '' : 'none';
+    if (idle) buildTicker();
+
+    var n = tickerHost.getAttribute('data-count');
+    var bits = [];
+    if (idle && n && n !== '0') bits.push('top ' + n + ' on the front page');
+    bits.push('daily run 3am Pacific' + (st.next_run ? ', next ' + until(st.next_run) : ''));
+    if (st.last_completed) bits.push('last episode ' + st.last_completed.episode + ' ' + ago(st.last_completed.at));
+    meta.innerHTML = bits.join(' &middot; ');
+
+    var want = cadence(st);
+    if (want !== mode) { mode = want; clearInterval(timer); timer = setInterval(poll, want); }
+  }
+
+  function cadence(st) {
+    // Stalled first, and before ACTIVE: a hung run reports a working state, and polling a corpse
+    // every four seconds is the one thing less useful than not noticing it.
+    if (st.stalled === true) return IDLE_MS;
+    if (ACTIVE[st.state]) return FAST_MS;
+    if (st.next_run) {
+      var untilRun = new Date(st.next_run).getTime() - Date.now();
+      // Sticky, and this is the subtle part: the server reports next_run as the NEXT 3am, so the
+      // moment 3am passes it jumps to roughly +24h. A plain "is next_run close" test would
+      // therefore drop back to slow polling at exactly the instant the run begins. Latching a
+      // deadline when we first see the window keeps us fast across that flip.
+      if (untilRun < NEAR_RUN_MS) nearRunUntil = Date.now() + STICKY_NEAR_MS;
+    }
+    return Date.now() < nearRunUntil ? FAST_MS : IDLE_MS;
+  }
+
+  function poll() {
+    fetch('/api/status').then(function (r) { return r.json(); }).then(render).catch(function () {});
+  }
+  poll();
+
+  // Refresh the headlines on their own clock, independent of the status poll, so a tab left open
+  // overnight stops showing yesterday's front page under a live-looking dot.
+  tickerTimer = setInterval(function () {
+    if (tickerHost.style.display !== 'none') buildTicker(true);
+  }, TICKER_MS);
+})();
+</script>
+<script type="module">
+  import { mmss } from './format.js';
+
+(function () {
+  var ul = document.getElementById('episodes');
+
+  // Static, and set before the fetch on purpose: it describes the show, not the catalogue, and
+  // it used to be written at the END of the success path, so the no-episodes case lost it.
+  // "...from the desks you care about" until 2026-08-20. The daily show has no desks: it is a
+  // permanent host plus a co-host who changes every episode. The build page does still seat topic
+  // desks (see hn_radio/custom.py, which is why the page itself still says so), but describing the
+  // SHOW that way was wrong, and this line sits under the show's own headline.
+  document.getElementById('subscribe-note').innerHTML =
+    '<a href="cast.html">Meet the cast</a> &middot; '
+    + '<a href="build.html">Build your own edition</a> and cast every voice yourself.';
+
+  fetch('/episodes/index.json').then(function (r) { return r.json(); }).then(function (d) {
+    ul.innerHTML = '';
+    if (!d.episodes || !d.episodes.length) { ul.innerHTML = '<li class="muted">No episodes yet.</li>'; return; }
+    // The page's only <audio> element, and the hero below is its only caller. Rows link out to
+    // their own episode page rather than playing here, so nothing competes for it.
+    var audio = document.getElementById('hero-audio');
+
+    function longDate(id) {
+      // id is YYYY-MM-DD. Parse as local, not UTC: new Date('2026-08-07') is midnight UTC,
+      // which renders as the previous day for anyone west of Greenwich.
+      var p = String(id).split('-');
+      if (p.length !== 3) return id;
+      var dt = new Date(+p[0], +p[1] - 1, +p[2]);
+      return dt.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })
+                .toUpperCase();
+    }
+
+    // "A very quick description", so the row does not carry a paragraph. The only per-episode
+    // prose index.json publishes is `summary`, the writer's show-notes blurb (see
+    // hn_radio/manifest.build_manifest), and some run past 290 characters. Trim at the last word
+    // boundary inside 140 characters and mark the cut, rather than adding a field to the
+    // generator or letting one row run four lines deep.
+    var BLURB_MAX = 140;
+    function quickDescription(text) {
+      var s = String(text == null ? '' : text).trim();
+      if (s.length <= BLURB_MAX) return s;
+      var cut = s.slice(0, BLURB_MAX);
+      var sp = cut.lastIndexOf(' ');
+      // Only honor the word boundary if it is not so early that the blurb becomes a fragment.
+      return (sp > 60 ? cut.slice(0, sp) : cut).replace(/[\s,;:.\u2014-]+$/, '') + '\u2026';
+    }
+
+    // The hero already presents episodes[0]; repeating it directly underneath read as a bug.
+    var more = d.episodes.slice(1);
+
+    // A basic list: date, title, one-line description, and a link OUT to the episode page.
+    // NO playback down here, on purpose. There used to be a "Listen" BUTTON per row, and it
+    // retargeted the single player pinned at the top of the page instead of taking you to the
+    // episode. The affordance said "go here" and the behavior said "the thing at the top
+    // changed". A real <a href> is the honest version: keyboard reachable, middle-clickable,
+    // and it lands on the page that has the transcript, chapters and download.
+    more.forEach(function (e) {
+      var href = 'episode.html?id=' + encodeURIComponent(e.id);
+      var li = document.createElement('li');
+
+      var kick = document.createElement('p'); kick.className = 'ep-date';
+      kick.textContent = longDate(e.id);
+
+      var h = document.createElement('h3'); h.className = 'ep-title';
+      var link = document.createElement('a');
+      link.href = href;
+      link.textContent = e.title;
+      h.appendChild(link);
+
+      li.appendChild(kick);
+      li.appendChild(h);
+
+      // Episodes written before the show had show notes carry an empty summary. No line beats a
+      // blank one holding open the space where a line would be.
+      var blurb = quickDescription(e.summary);
+      if (blurb) {
+        var sum = document.createElement('p'); sum.className = 'ep-summary';
+        sum.textContent = blurb;
+        li.appendChild(sum);
+      }
+
+      var listen = document.createElement('a');
+      listen.className = 'ep-listen-link';
+      listen.href = href;
+      // The arrow says "this navigates" in a shape, not a color, and the accessible name says
+      // it in words. Nothing here is distinguished by hue alone.
+      //
+      // The word is wrapped so the UNDERLINE can live on it alone. Underlining the whole anchor
+      // and opting the arrow out (the previous shape) also un-underlined the space between them,
+      // so the rule stopped a few pixels short of the arrow and left a visible gap.
+      listen.innerHTML = '<span class="ep-listen-label">Listen</span>'
+        + '<span class="ep-listen-arrow" aria-hidden="true">&rarr;</span>';
+      listen.setAttribute('aria-label', 'Listen to ' + e.title + ' on its episode page');
+      li.appendChild(listen);
+
+      ul.appendChild(li);
+    });
+
+    if (more.length) {
+      document.getElementById('more-h').hidden = false;
+    } else {
+      // Exactly one episode: the hero IS the catalogue. The heading stays hidden (its default),
+      // and the empty <ul> is hidden too, because it still carries the list's top margin and
+      // would leave an unexplained gap under the hero.
+      ul.hidden = true;
+    }
+
+    // Hero: the newest episode, and the only thing this page can play. index.json is newest-first.
+    var latest = d.episodes[0];
+    if (latest) {
+      var hero = document.getElementById('hero');
+      var btn = document.getElementById('hero-play');
+      var hsecs = Math.round(latest.duration_seconds || 0);
+      document.getElementById('hero-title').textContent = latest.title;
+      document.getElementById('hero-date').textContent = latest.id;
+      document.getElementById('hero-dur').textContent =
+        ' · ' + mmss(hsecs);
+      document.getElementById('hero-full').href = 'episode.html?id=' + encodeURIComponent(latest.id);
+      hero.hidden = false;
+
+      // Lazily attach the source. preload="none" plus no src means the page costs nothing until
+      // someone presses the button, and "has it been loaded yet" is now the whole state the
+      // player needs: there is no other episode it could be pointing at.
+      var loaded = false;
+      function load() {
+        if (loaded) return;
+        audio.src = '/episodes/' + encodeURIComponent(latest.id) + '/episode.mp3';
+        loaded = true;
+      }
+
+      btn.addEventListener('click', function () {
+        load();
+        if (!audio.paused) { audio.pause(); return; }
+        var started = audio.play();
+        // play() rejects when the browser declines the source: a 404, or a codec it will not
+        // decode. Unhandled, that is a console-only rejection and a button that looks stuck.
+        if (started && started.catch) started.catch(function (err) {
+          hero.classList.remove('is-playing');
+          btn.setAttribute('aria-label', 'Play the latest episode');
+          console.error('HN Radio: the latest episode would not play', err);
+        });
+      });
+
+      // Icon and accessible name both follow the element's own state. Play and pause are
+      // distinct SHAPES, not two colors of the same shape.
+      function paint() {
+        var on = !audio.paused;
+        hero.classList.toggle('is-playing', on);
+        btn.setAttribute('aria-label', on ? 'Pause the latest episode' : 'Play the latest episode');
+      }
+      ['play', 'pause', 'ended'].forEach(function (ev) { audio.addEventListener(ev, paint); });
+
+      var bar = document.getElementById('hero-bar');
+      audio.addEventListener('timeupdate', function () {
+        if (!audio.duration) { bar.style.width = '0%'; return; }
+        bar.style.width = (audio.currentTime / audio.duration * 100) + '%';
+      });
+      document.getElementById('hero-summary').textContent = latest.summary || '';
+
+      // --- seek + chapter markers -------------------------------------------------
+      (function () {
+        var scrubEl = document.getElementById('hero-scrub');
+        var ticksEl = document.getElementById('hero-ticks');
+        if (!scrubEl) return;
+
+        function seekTo(clientX) {
+          var r = scrubEl.getBoundingClientRect();
+          // No duration means nothing is loaded yet, and the source is only attached by the play
+          // button, so the bar is deliberately inert until the first press.
+          if (!audio.duration || !r.width) return;
+          var frac = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+          audio.currentTime = frac * audio.duration;
+          scrubEl.setAttribute('aria-valuenow', Math.round(frac * 100));
+        }
+        scrubEl.addEventListener('click', function (ev) { seekTo(ev.clientX); });
+        scrubEl.addEventListener('keydown', function (ev) {
+          if (!audio.duration) return;
+          var step = ev.shiftKey ? 30 : 10;
+          if (ev.key === 'ArrowRight') { audio.currentTime = Math.min(audio.duration, audio.currentTime + step); ev.preventDefault(); }
+          if (ev.key === 'ArrowLeft')  { audio.currentTime = Math.max(0, audio.currentTime - step); ev.preventDefault(); }
+        });
+
+        function drawTicks() {
+          if (!ticksEl || !audio.duration) return;
+          fetch('/episodes/' + encodeURIComponent(latest.id) + '/chapters.json')
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (doc) {
+              if (!doc) return;
+              var chapters = doc.chapters || [];
+              ticksEl.innerHTML = '';
+              chapters.forEach(function (c, i) {
+                // Skip the 0:00 chapter: a tick flush against the left edge reads as
+                // a rendering artifact rather than a marker.
+                if (!c.startTime) return;
+                var t = document.createElement('span');
+                t.className = 'hero-tick';
+                t.style.left = (c.startTime / audio.duration * 100) + '%';
+                t.title = (c.title || ('Chapter ' + (i + 1)));
+                ticksEl.appendChild(t);
+              });
+            }).catch(function () {});
+        }
+        audio.addEventListener('loadedmetadata', drawTicks);
+        if (audio.duration) drawTicks();
+      })();
+
+      // The hero orb, live off the real signal. There used to be a bar canvas under the scrub bar
+      // doing this job; the orb does it now, and there is no canvas.
+      //
+      // WHY THE HERO ORB AND NOT JUST THE EPISODE PAGE'S. Consistency is the small reason: the
+      // same object should behave the same way on both pages, or the one that does nothing reads
+      // as broken. The real reason is that the hero orb is already the largest, most obvious thing
+      // on this page and the only control on it, so it is where a listener is looking when the
+      // audio starts. A second widget below it showing the same signal was the redundancy worth
+      // removing, not the orb.
+      //
+      // The AudioContext is still created lazily inside the play handler: browsers start one
+      // suspended otherwise, and a suspended context routed through MediaElementSource is silent
+      // audio, not merely a still orb.
+      (function () {
+        var btnEl = document.getElementById('hero-play');
+        if (!btnEl || !window.HNOrb) return;
+        // observe:false -- there is exactly one orb on this page and it is above the fold, so an
+        // IntersectionObserver could only ever tell it something it already knows.
+        var orb = window.HNOrb.attach(btnEl, { observe: false });
+        if (!orb) return;                        // attach failed: plain CSS orb, audio unaffected
+
+        var ac = null, analyser = null;
+        function connect() {
+          if (analyser || !window.AudioContext) return;
+          try {
+            ac = new AudioContext();
+            // A MediaElementSource can only ever be created once per element. Creating a second
+            // one throws and silences playback entirely, so it is cached on the element.
+            var src = audio._srcNode || (audio._srcNode = ac.createMediaElementSource(audio));
+            analyser = ac.createAnalyser();
+            // Time-domain window for the envelope, not a bar count. See orb.js.
+            analyser.fftSize = 1024;
+            src.connect(analyser); analyser.connect(ac.destination);
+            orb.setEnvSource(window.HNOrb.envelope(analyser));
+          } catch (e) {
+            analyser = null;                     // never let visualisation break playback
+          }
+        }
+
+        // WHICH SPEAKER, from the episode's own segment list. This page has no transcript rows to
+        // read the answer off, so it fetches the times once. What it does NOT do is carry a copy of
+        // the palette: orb.js resolves a (voice, seat) pair through brand.css block 1 with an
+        // offscreen probe. This block used to hold a `DESK_COLOR` object literal -- a third copy of
+        // the palette, keyed by seat, which had already drifted out of sync with the stylesheet and
+        // knew nothing about which voice actually read the line. That is the mistake the probe
+        // exists to prevent, so the probe moved into orb.js where both pages share one of it.
+        // id -> display name, fetched once. The hero needs it to NAME the speaker, which is the
+        // signal a reader who cannot separate two hues actually reads. Failure is non-fatal: an
+        // empty map hides the label and the orb still recolours, which is the pre-2026-08-21
+        // behaviour rather than a broken page.
+        var voiceNames = {};
+        fetch('/episodes/voices.json')
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            // `catalog` is the whole published set; `voices` is whatever the configured host can
+            // offer. Prefer the former so an archive episode's speaker still resolves to a name.
+            (d.catalog || []).concat(d.voices || []).forEach(function (v) {
+              if (v && v.id && !voiceNames[v.id]) voiceNames[v.id] = v.name;
+            });
+            // BACKFILL, and without it the label is blank for the first speaker every time the
+            // fetch loses the race with playback. followSpeaker only calls nameSpeaker when the
+            // segment INDEX changes, so a miss on segment 0 is not retried until segment 1 --
+            // measured at ~8s on the 2026-08-20 episode and 40.2s worst case. On the one feature
+            // that exists because the colour change is invisible to this reader, that is the whole
+            // bug. `lastIdx >= 0` keeps it correct after `ended` and after a seek, both of which
+            // reset the cursor to -1.
+            if (segs && segs.length && lastIdx >= 0) nameSpeaker(segs[lastIdx]);
+          })
+          .catch(function () {});
+
+        var segs = null, segsFor = null;
+        function loadSegments(id) {
+          if (segsFor === id) return;
+          segsFor = id; segs = null;
+          fetch('/episodes/' + encodeURIComponent(id) + '/episode.json')
+            .then(function (r) { return r.json(); })
+            .then(function (ep) {
+              segs = (ep.segments || [])
+                .filter(function (x) { return x.start_seconds != null; })
+                .map(function (x) {
+                  // Voice first, seat as the fallback: an archive episode may name a seat this
+                  // build has never heard of, and a current one may name a voice with no seat.
+                  return { t: x.start_seconds,
+                           voice: x.voice_id || '',
+                           desk: x.desk || (x.role === 'commenter' ? 'guest' : 'anchor') };
+                })
+                .sort(function (a, b) { return a.t - b.t; });
+            })
+            .catch(function () { segs = []; });
+        }
+
+        // Playback is monotonic, so walk forward from the last hit instead of scanning from 0.
+        // A backward seek rewinds the cursor, which is why the reset check comes first. While the
+        // fetch is still in flight there is no speaker to name, so the orb keeps the brand accent
+        // it starts on -- the visual never waits on a network round trip.
+        //
+        // NAMING the speaker is the load-bearing half of this function, not the palette. See the
+        // note on the hero markup above: the palette change is invisible to a reader who cannot
+        // separate the two hues in play, and this page has no transcript to fall back on.
+        var lastIdx = -1, snapNext = false;
+        function followSpeaker() {
+          if (!segs || !segs.length) return;
+          var t = audio.currentTime, i = lastIdx < 0 ? 0 : lastIdx;
+          if (segs[i] && segs[i].t > t) i = 0;
+          while (i + 1 < segs.length && segs[i + 1].t <= t) i++;
+          if (i === lastIdx) return;
+          lastIdx = i;
+          orb.setSpeaker(segs[i].voice, segs[i].desk, snapNext);
+          nameSpeaker(segs[i]);
+          snapNext = false;
+        }
+
+        // The speaker's name, in that speaker's own ink, with the seat spelled out when it is one
+        // the show still uses. `voiceName` comes from voices.json rather than a literal map here,
+        // for the same reason the palette comes off the stylesheet: a second copy of the cast in
+        // this file is a second thing to drift.
+        var SPEAKING_LABEL = 'Now speaking: ';
+        var speakerEl = document.getElementById('hero-speaker');
+        function nameSpeaker(seg) {
+          if (!speakerEl) return;
+          var name = voiceNames[seg.voice] || '';
+          if (!name) { speakerEl.hidden = true; return; }
+          speakerEl.hidden = false;
+          // data-voice on the element, so block 1 inks the name to match the orb. Both signals,
+          // never one: if the colour is lost the sentence still says who is talking.
+          speakerEl.setAttribute('data-voice', seg.voice);
+          speakerEl.textContent = SPEAKING_LABEL + name;
+        }
+
+        // After a seek the new speaker is unrelated to the old one, so crossfading between them
+        // would be inventing a transition that no audio made.
+        audio.addEventListener('seeking', function () { snapNext = true; lastIdx = -1; });
+
+        audio.addEventListener('play', function () {
+          connect();
+          loadSegments(latest.id);
+          if (ac && ac.state === 'suspended') ac.resume();
+          orb.setLive(true);
+          followSpeaker();
+        });
+        audio.addEventListener('timeupdate', followSpeaker);
+        ['pause', 'ended'].forEach(function (e) {
+          audio.addEventListener(e, function () { orb.setLive(false); });
+        });
+        // A finished episode has no current speaker, so the label goes rather than lying about
+        // the last one. Pause KEEPS it: paused-on-a-speaker is still that speaker's line.
+        audio.addEventListener('ended', function () {
+          if (speakerEl) { speakerEl.hidden = true; speakerEl.removeAttribute('data-voice'); }
+          lastIdx = -1;
+        });
+      })();
+
+      paint();
+    }
+  }).catch(function () {
+    ul.innerHTML = '<li class="muted">Could not load episodes. Is the server running? (see the runbook)</li>';
+  });
+})();
+</script>
+</body>
+</html>

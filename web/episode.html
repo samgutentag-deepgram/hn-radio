@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HN Radio: Episode</title>
+<!-- No font <link> here on purpose. This repo ships no font files and hosts none, so the
+     three families brand.css names all resolve to system-ui for most readers. There used to be
+     a Google Fonts stylesheet for Inter at this spot; it was a third-party request on every page
+     load and it is the one thing the "no CDN, no external font hosting" rule names outright. -->
+<link rel="stylesheet" href="brand.css">
+</head>
+<body>
+<!-- Masthead: brand lockup left, theme toggle right, sticky and in the flow. Same bar on every
+     page. See the longer note in index.html for why the toggle stopped being `position: fixed`. -->
+<header class="masthead">
+  <p class="eyebrow"><span class="dg">deepgram</span> &middot; <a href="/">HN Radio</a></p>
+  <div class="masthead-chrome">
+    <button id="theme-toggle" type="button" aria-label="Toggle dark mode"></button>
+  </div>
+</header>
+<h1 id="title">Loading&hellip;</h1>
+<p class="muted" id="meta"></p>
+
+<!-- Sticky console: the two controls you reach for while reading, plus the transport. It has to be
+     one contiguous block to stick as a unit, which is why the disclaimer and summary sit below it
+     rather than between the player and the chapters. -->
+<div class="console">
+  <div class="console-player">
+    <!-- The transport IS the playback visual. It used to be a play button beside a bar canvas
+         reading an AnalyserNode; the canvas is gone and the orb reads that same analyser through
+         an amplitude envelope instead (brand.css block 5, web/orb.js). One object, one signal.
+
+         The glyph lives in its own span because app.js swaps it between the play and pause
+         CHARACTERS, and it used to do that by writing the BUTTON's innerHTML -- which would now
+         delete the orb's lava layers along with the old glyph. -->
+    <button class="transport orb orb-glyph" id="transport" type="button" aria-label="Play"
+            ><span id="transport-mark">&#9654;</span></button>
+    <span class="transport-time" id="transport-time">0:00 / 0:00</span>
+  </div>
+  <div id="chapters"></div>
+  <div class="console-actions">
+    <!-- Both carry class="tab": the panel switcher binds on that selector, so dropping it here
+         would leave a button that looks live and does nothing. The play tab is hidden because the
+         console's own transport is the way back, but it still has to exist for the switcher. -->
+    <button class="tab active" data-tab="play" role="tab" type="button" hidden>Play</button>
+    <button class="tab btn recast-cta" id="recast-cta" data-tab="recast" role="tab" type="button">
+      &#9835; Recast this episode
+    </button>
+    <button class="tab btn" id="back-to-play" data-tab="play" role="tab" type="button" hidden>
+      &#8592; Back to the script
+    </button>
+    <span class="console-hint">Hear it in different voices</span>
+  </div>
+</div>
+
+<section id="panel-play">
+  <audio id="player" preload="metadata"></audio>
+  <p class="note">Every word below is read by Deepgram Flux TTS from plain text, with no markup,
+  no phonetic hints, and no voice tuning. Voices are arbitrary AI assignments, not depictions of the commenters.</p>
+  <div id="notes"></div>
+  <div id="script"></div>
+</section>
+
+<section id="panel-recast" hidden>
+  <p class="muted">Two seats, every voice in the Deepgram Flux catalog. Pick a
+  <strong>Showrunner</strong> and a <strong>Guest host</strong>, sample them, then recast. They
+  cannot be the same person, so a voice taken by one seat is marked <em>taken</em> and cannot be
+  chosen for the other.</p>
+  <div class="recast-actions">
+    <button class="btn" id="recast-reset" type="button">Reset to this episode's cast</button>
+  </div>
+  <table class="recast-table">
+    <thead><tr><th>Role</th><th>Currently</th><th>Recast as</th><th>Sample</th><th>Status</th></tr></thead>
+    <tbody id="slots"></tbody>
+  </table>
+  <!-- Where a change to the episode's SHAPE gets stated out loud. Episodes written before the
+       two-person format carry themed desks and a separate voice on the quoted comments, and the
+       Guest host absorbs all of them, so an old episode comes back as two voices. That is a
+       complete recast, but it is not what the listener heard, so the page says it before the
+       click rather than letting it be a surprise. -->
+  <p class="note" id="recast-coverage" hidden></p>
+  <div class="recast-actions">
+    <button class="btn primary" id="recast-run" type="button">Recast changed</button>
+    <button class="btn" id="recast-stop" type="button" title="Stop preview + playback">Stop</button>
+    <span class="status" id="recast-status" role="status"></span>
+  </div>
+  <p class="muted" style="margin-top:1rem;">No backend running? Run this in a shell instead:</p>
+  <pre id="recast-cmd" class="note"></pre>
+  <audio id="preview" preload="none"></audio>
+</section>
+
+<script src="theme.js"></script>
+<!-- Classic script, before app.js, because three callers need it and one of them is a module:
+     app.js here, and the inline scripts in index.html and cast.html. It publishes window.HNOrb. -->
+<script src="orb.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

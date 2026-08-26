@@ -1,0 +1,29 @@
+# Keep the build context lean. The image needs the six directories the Dockerfile COPYs
+# (hn_radio/, backend/, web/, scripts/, episodes/, assets/) plus pyproject.toml, uv.lock and
+# .python-version for `uv sync`. The Dockerfile's COPY lines are the authority on that list; this
+# file only says what must never enter the context.
+.git
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.env
+.env.example
+sample.env
+tests
+docs
+deploy
+*.md
+fly.toml
+
+# Tooling directories. None of these are COPYd, and left in they dominate the context: the
+# 2026-08-18 deploy uploaded 486 MB across 680 files, and .claude alone was 270 MB of it, more
+# than episodes/. These are local build-time directories; none of them exist in a fresh clone.
+.claude
+.render-cache
+.superpowers
+.hub
+.github
+
+# ship the chaptered MP3 + per-segment PCM cache; the source WAV is not needed at runtime
+episodes/**/episode.wav

@@ -1,0 +1,320 @@
+{
+  "voices": [
+    {
+      "id": "flux-alexis-en",
+      "name": "Alexis",
+      "note": "American F, clear and fast",
+      "family": "flux"
+    },
+    {
+      "id": "flux-cole-en",
+      "name": "Cole",
+      "note": "American M, easy confidence",
+      "family": "flux"
+    }
+  ],
+  "catalog": [
+    {
+      "id": "flux-alexis-en",
+      "name": "Alexis",
+      "note": "American F Adult, Clear, professional, calm",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-bree-en",
+      "name": "Bree",
+      "note": "American F Mature, Friendly, sweet, kind",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-brittany-en",
+      "name": "Brittany",
+      "note": "American F Mature, Confident, kind, soft",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-brooke-en",
+      "name": "Brooke",
+      "note": "American F Young, Friendly, intelligent, fast",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-bruce-en",
+      "name": "Bruce",
+      "note": "American M Adult, Friendly, kind, natural",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-cliff-en",
+      "name": "Cliff",
+      "note": "American M Mature, Deep, confident, calm",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-cole-en",
+      "name": "Cole",
+      "note": "American M Young, Friendly, clear, interesting",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-colin-en",
+      "name": "Colin",
+      "note": "British M Adult, Warm, friendly, trustworthy",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-conor-en",
+      "name": "Conor",
+      "note": "British M Mature, Confident, deep, friendly",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-donovan-en",
+      "name": "Donovan",
+      "note": "American M Adult, Professional, calm, thoughtful",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-drew-en",
+      "name": "Drew",
+      "note": "American M Adult, Confident, relaxed, soft",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-elise-en",
+      "name": "Elise",
+      "note": "American F Adult, Clear, professional, calm",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-gemma-en",
+      "name": "Gemma",
+      "note": "British F Young, Friendly, kind, approachable",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-haley-en",
+      "name": "Haley",
+      "note": "American F Young Adult, Clear, professional, caring",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-hannah-en",
+      "name": "Hannah",
+      "note": "American F Young, Clear, confident, thoughtful",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-heather-en",
+      "name": "Heather",
+      "note": "American F Young, Clear, engaging, energetic",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-jack-en",
+      "name": "Jack",
+      "note": "British M Adult, Confident, thoughtful, friendly",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-kai-en",
+      "name": "Kai",
+      "note": "Singaporean M Young Adult, Clear, calm, professional",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-kelsey-en",
+      "name": "Kelsey",
+      "note": "American F Young Adult, Clear, professional, caring",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-kit-en",
+      "name": "Kit",
+      "note": "British M Young Adult, Friendly, energetic, thoughtful",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-maeve-en",
+      "name": "Maeve",
+      "note": "Irish F Adult, Friendly, energetic, confident",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-marcelo-en",
+      "name": "Marcelo",
+      "note": "Filipino M Young Adult, Clear, calm, professional",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-marcus-en",
+      "name": "Marcus",
+      "note": "American M Adult, Friendly, helpful, smooth",
+      "family": "flux",
+      "retired": true
+    },
+    {
+      "id": "flux-meena-en",
+      "name": "Meena",
+      "note": "Indian F Adult, Empathetic, professional, calm",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-meghan-en",
+      "name": "Meghan",
+      "note": "American F Adult, Friendly, nice, energetic",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-miles-en",
+      "name": "Miles",
+      "note": "American M Adult, Clear, calm, professional",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-naveen-en",
+      "name": "Naveen",
+      "note": "Indian M Adult, Clear, professional, knowledgeable",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-paige-en",
+      "name": "Paige",
+      "note": "American F Young Adult, Clear, professional, calm",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-priya-en",
+      "name": "Priya",
+      "note": "Indian F Adult, Confident, empathetic, professional",
+      "family": "flux",
+      "retired": true
+    },
+    {
+      "id": "flux-rufus-en",
+      "name": "Rufus",
+      "note": "British M Adult, Friendly, confident, intelligent",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-sean-en",
+      "name": "Sean",
+      "note": "British M Mature, Friendly, kind, caring",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-sharon-en",
+      "name": "Sharon",
+      "note": "Australian F Young, Formal, calm, relaxed",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-sienna-en",
+      "name": "Sienna",
+      "note": "American F Young Adult, Clear, professional, calm",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-tanner-en",
+      "name": "Tanner",
+      "note": "British M Adult, Professional, calm, confident",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-wade-en",
+      "name": "Wade",
+      "note": "American M Adult, Warm, confident, clear",
+      "family": "flux",
+      "retired": false
+    },
+    {
+      "id": "flux-wes-en",
+      "name": "Wes",
+      "note": "American M Adult, Thoughtful, friendly, warm",
+      "family": "flux",
+      "retired": false
+    }
+  ],
+  "buildable": [
+    "flux-alexis-en",
+    "flux-cole-en"
+  ],
+  "host_voice": "flux-alexis-en",
+  "build_preset": {
+    "anchor": "flux-alexis-en",
+    "drama": "flux-cole-en"
+  },
+  "seating": [
+    {
+      "role": "anchor",
+      "name": "Alexis",
+      "voice": "flux-alexis-en",
+      "beat": "Hosts. Opens the show, names the day's headlines, signs off.",
+      "persona": "Warm, quick, lightly wry. Keeps the show moving."
+    },
+    {
+      "role": "cohost",
+      "name": "Cole",
+      "voice": "flux-cole-en",
+      "beat": "Second chair. Takes every story with the host and reads the thread with her.",
+      "persona": "Curious and specific. Says the interesting part, not the whole page."
+    }
+  ],
+  "host": "api.deepgram.com",
+  "families": [
+    {
+      "id": "flux",
+      "label": "Flux"
+    }
+  ],
+  "roles": [
+    {
+      "id": "anchor",
+      "label": "Showrunner"
+    },
+    {
+      "id": "cohost",
+      "label": "Guest host"
+    }
+  ],
+  "presets": {
+    "flux": {
+      "anchor": "flux-alexis-en",
+      "cohost": "flux-cole-en",
+      "guest": "flux-cole-en",
+      "drama": "flux-cole-en"
+    }
+  }
+}

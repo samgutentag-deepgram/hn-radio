@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Cast &middot; HN Radio</title>
+<!-- No font <link> here on purpose. This repo ships no font files and hosts none, so the
+     three families brand.css names all resolve to system-ui for most readers. There used to be
+     a Google Fonts stylesheet for Inter at this spot; it was a third-party request on every page
+     load and it is the one thing the "no CDN, no external font hosting" rule names outright. -->
+<link rel="stylesheet" href="brand.css">
+</head>
+<body>
+<!-- Masthead: brand lockup left, theme toggle right, sticky and in the flow. Same bar on every
+     page. See the longer note in index.html for why the toggle stopped being `position: fixed`. -->
+<header class="masthead">
+  <p class="eyebrow"><span class="dg">deepgram</span> &middot; <a href="index.html">HN Radio</a></p>
+  <div class="masthead-chrome">
+    <button id="theme-toggle" type="button" aria-label="Toggle dark mode"></button>
+  </div>
+</header>
+<h1>The Cast</h1>
+<p class="lede">Every voice in the published Flux TTS catalog, on one grid. HN Radio is two people
+each morning: the same host, and a co-host drawn from this page. Press any card to hear that voice
+open the show. Each carries its own palette, and it is the same palette you see beside that
+speaker in an episode script.</p>
+
+<!--
+  ONE GRID, NO SECTIONS, as of 2026-08-21.
+
+  This page used to be four blocks: "Your host", "Today's co-host", "Comment theater", and a set of
+  themed desks. That shape was inherited from the three-desk show and it outlived it. Once the
+  co-host became a rotation over the WHOLE catalog, "today's co-host" was one card out of 36 shown
+  as if it were a category, and "comment theater" listed voices that the two regulars now read
+  themselves. So the sections were describing a show that no longer exists.
+
+  The grid is also honest about size in a way the sections were not. It is the catalog, all of it,
+  36 cards, which is the actual answer to "what can this thing sound like".
+
+  WHERE THE 36 COMES FROM. `voices.json.catalog`, which is `config.PUBLISHED_VOICES`: the 34 voices
+  this show can seat plus the two it retired by ear. It is host-independent on purpose. The older
+  `voices.json.voices` key follows the configured host, so against a mismatched endpoint it can be
+  a handful of ids this show cannot seat, and this page rendering a few mostly-dead cards is
+  exactly the bug that moved the catalog into its own key.
+
+  ROLE IS TEXT, NEVER COLOUR. The host badge and the retired badge are words in a pill. Every card
+  already prints a name and a voice id. The orb's palette is decoration that narrows the field; it
+  is never the answer to who or what a card is, which is the rule at the top of brand.css block 1.
+-->
+
+<p class="note" id="host-note"></p>
+
+<div class="cast-toolbar">
+  <label class="cast-search-label" for="cast-search">Filter</label>
+  <input id="cast-search" type="search" class="cast-search" autocomplete="off"
+         placeholder="name, accent, or character (try: british, energetic)"
+         aria-describedby="cast-count">
+  <p class="cast-count" id="cast-count" role="status"></p>
+</div>
+
+<div class="cast-grid" id="grid"></div>
+
+<audio id="sample" preload="none"></audio>
+
+<script src="theme.js"></script>
+<!-- Classic script, before the page script: it publishes window.HNOrb. This page is the reason
+     orb.js has one shared animation loop and an IntersectionObserver -- it puts 36 orbs on one
+     page, and 36 rAF loops driving 108 blurred layers is not a thing to ship. -->
+<script src="orb.js"></script>
+<script>
+(function () {
+  // One shared <audio> so two samples can never talk over each other, same rule as the
+  // homepage hero. `playing` tracks which card owns it.
+  var audio = document.getElementById('sample');
+  var playing = null;
+
+  var grid = document.getElementById('grid');
+  var search = document.getElementById('cast-search');
+  var count = document.getElementById('cast-count');
+
+  // The card's searchable text, built once at creation. Filtering re-reads this rather than the
+  // DOM, so a keystroke never triggers layout just to decide what to hide.
+  var cards = [];
+
+  function card(v, hostVoice) {
+    var el = document.createElement('button');
+    el.className = 'cast-card';
+    el.type = 'button';
+    // The voice's own palette from brand.css block 1, so a card and that speaker's rows in an
+    // episode script are visibly the same character.
+    el.setAttribute('data-voice', v.id);
+    el.setAttribute('data-id', v.id);
+    el.setAttribute('aria-label', 'Play ' + v.name + ' reading the show open');
+
+    var top = document.createElement('div'); top.className = 'cast-top';
+    // A real molten orb in this voice's shades, which is how talk.deepgram.com depicts a voice.
+    // The play triangle rides on top; the button's aria-label is what names the action.
+    var ico = document.createElement('span'); ico.className = 'cast-play orb orb-glyph';
+    ico.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>';
+
+    var nm = document.createElement('div');
+    var n = document.createElement('div'); n.className = 'cast-name'; n.textContent = v.name;
+    var r = document.createElement('div'); r.className = 'cast-role';
+    // Words, not hues: the one distinction this page draws is the permanent host, and it is drawn
+    // in text plus a thicker left rule.
+    //
+    // RETIREMENT IS NOT SHOWN HERE, by Sam's call on 2026-08-21. Marcus and Priya carry
+    // `retired: true` in voices.json and `config.is_retired()` still answers for them, so nothing
+    // downstream is misled; this page just does not surface it. They had a `Retired, not cast`
+    // label and a dashed rule, and the instruction was to stop displaying them that way.
+    //
+    // The cost, stated rather than hidden: those two cards now read `Co-host rotation` like the
+    // other 33, and they are not in that rotation. `cohost_candidates` excludes them. The page is
+    // a catalog of what Flux sounds like rather than a casting sheet, and that is the reading it
+    // now commits to. If it ever needs to be a casting sheet again, the flag is still in the data.
+    if (v.id === hostVoice) { r.textContent = 'Host, every episode'; el.classList.add('is-host'); }
+    else { r.textContent = 'Co-host rotation'; }
+    nm.appendChild(n); nm.appendChild(r);
+    top.appendChild(ico); top.appendChild(nm);
+
+    var note = document.createElement('p'); note.className = 'cast-note';
+    note.textContent = v.note || '';
+    var id = document.createElement('code'); id.className = 'cast-id'; id.textContent = v.id;
+
+    // Body wrapper so a wide card variant can lay out as [play+name | text] in a row. Without it,
+    // flex-direction:row would give every paragraph its own column.
+    var body = document.createElement('div'); body.className = 'cast-body';
+    body.appendChild(note);
+    body.appendChild(id);
+
+    el.appendChild(top);
+    el.appendChild(body);
+
+    // The failure message gets its OWN node. Writing it into .cast-role, which the first version
+    // of this did, overwrites the page's only host indicator and nothing puts it back: press the
+    // Alexis card once with a bad src and the grid stops identifying the host for the rest of the
+    // session. build.html:270 is the in-repo precedent for a separate status line.
+    var err = document.createElement('p'); err.className = 'cast-err'; err.hidden = true;
+    body.appendChild(err);
+
+    el.addEventListener('click', function () {
+      if (playing === v.id && !audio.paused) { audio.pause(); return; }
+      if (playing !== v.id) { audio.src = '/episodes/samples/' + v.id + '.wav'; playing = v.id; }
+      var started = audio.play();
+      if (started && started.catch) started.catch(function (e) {
+        // ABORTERROR IS NOT A MISSING FILE, and treating it as one is why this needed fixing.
+        // Pressing one card and then another immediately rejects the first promise with
+        // "The play() request was interrupted by a new load request" -- a normal, healthy
+        // interaction on a 36-card grid whose whole purpose is comparing voices back to back. The
+        // bare catch struck through a voice id whose file was verified 200.
+        if (e && e.name === 'AbortError') return;
+        el.classList.add('is-silent');
+        err.hidden = false;
+        err.textContent = 'No sample rendered. Run scripts/make_cast_samples.py.';
+        // Release the src so the next press actually retries. Leaving `playing` set meant every
+        // later press re-played the same dead src and re-failed, so one 404 was permanent.
+        playing = null;
+      });
+    });
+
+    // A later success clears the mark. Without this the strike-through survives a working replay,
+    // which is how a transient failure became indistinguishable from a missing file.
+    audio.addEventListener('playing', function () {
+      if (playing !== v.id) return;
+      el.classList.remove('is-silent');
+      err.hidden = true;
+      err.textContent = '';
+    });
+
+    cards.push({el: el, hay: (v.name + ' ' + v.id + ' ' + (v.note || '')).toLowerCase()});
+    return el;
+  }
+
+  function paint() {
+    cards.forEach(function (c) {
+      var on = playing && !audio.paused && c.el.getAttribute('data-id') === playing;
+      c.el.classList.toggle('is-playing', !!on);
+      // The card that is sounding gets a ticker-driven orb; the rest keep the CSS idle swirl.
+      // This page has 36 orbs and three blurred layers each, so "the ticker, on all of them, all
+      // the time" is 108 layers restyled and repainted per frame for no reason -- traced at 2.3ms
+      // of main thread and 8.5ms of GPU per frame against 0.25ms and 0.78ms for the swirl. One
+      // ticker-driven orb at a time, plus whichever one the pointer is over (orb.js wakes that
+      // itself), is the whole rAF budget this page spends.
+      var o = c.el.querySelector('.orb') && c.el.querySelector('.orb')._hnOrb;
+      if (o) o.setLive(!!on);
+    });
+  }
+  ['play', 'pause', 'ended'].forEach(function (e) { audio.addEventListener(e, paint); });
+
+  // Substring over name, id and the character words. Deliberately not fuzzy: a reader typing
+  // "british" wants the British voices, and a near-miss ranking would bury them under partials.
+  function filter() {
+    var q = search.value.trim().toLowerCase();
+    var shown = 0;
+    cards.forEach(function (c) {
+      var hit = !q || c.hay.indexOf(q) !== -1;
+      c.el.hidden = !hit;
+      if (hit) shown++;
+    });
+    count.textContent = q ? shown + ' of ' + cards.length + ' voices' : cards.length + ' voices';
+  }
+  search.addEventListener('input', filter);
+
+  fetch('/episodes/voices.json').then(function (r) { return r.json(); }).then(function (d) {
+    // `catalog` is the whole published set and is host-independent. Fall back to `voices` so an
+    // older published voices.json still renders something rather than an empty page.
+    var list = (d.catalog && d.catalog.length) ? d.catalog : (d.voices || []);
+    // `host_voice` is the show's permanent host and is host-independent, which matters here:
+    // `seating` answers "who would be cast on THIS endpoint right now", which can resolve to an
+    // id this grid does not contain. Keyed off seating the badge matched no card at all and the
+    // host went unlabelled. Seating is the fallback for an older published voices.json.
+    var anchorSeat = (d.seating || []).filter(function (s) { return s.role === 'anchor'; })[0];
+    var hostVoice = d.host_voice || (anchorSeat ? anchorSeat.voice : '');
+
+    list.forEach(function (v) { grid.appendChild(card(v, hostVoice)); });
+    filter();
+
+    // Say plainly what these samples are. The line every card reads is dated on purpose;
+    // see scripts/make_cast_samples.py.
+    var note = document.getElementById('host-note');
+    note.textContent = 'Every card reads the same line, so the grid is a fair comparison rather '
+      + 'than ' + list.length + ' different scripts. '
+      + 'Rendered against the Flux TTS catalog.';
+
+    // Upgrade every card's orb to the real molten object, once the cards exist. No analyser here:
+    // these are one-line samples off a plain <audio>, and building a MediaElementSource graph per
+    // card to drive an envelope would cost more than the motion is worth. env stays 0, so the
+    // playing orb churns without the vertical stretch the episode pages get.
+    if (window.HNOrb) window.HNOrb.attachAll('.cast-card .orb');
+  }).catch(function () {
+    document.getElementById('host-note').textContent = 'Could not load the voice catalog.';
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+[meta]
+title = "HN Radio"
+description = "Turn the Hacker News front page into a daily multi-voice podcast with Deepgram Flux TTS"
+author = "Sam Gutentag <sam.gutentag@deepgram.com>"
+useCase = "flux"
+language = "python"
+framework = "fastapi"
+tags = ["flux", "text-to-speech", "tts", "batch", "fastapi", "python", "podcast"]
+
+[check]
+# The interpreter is pinned in .python-version and must match the Dockerfile's base image, or a
+# green local test run says nothing about production. `make check` enforces it.
+command = ["make check"]
+message = "Prerequisites installed and the venv is on the pinned Python"
+
+[install]
+# `uv sync` provisions the exact pinned interpreter and installs precisely what uv.lock pins, so
+# this does not depend on the system python3 (Xcode ships 3.9 on macOS) or on brew/pyenv happening
+# to have the right version. Needs uv on PATH: brew install uv.
+command = ["make install"]
+message = "Dependencies installed on the pinned Python"
+
+[install.post]
+command = "test -f .env || cp sample.env .env"
+message = "Environment ready: put your DEEPGRAM_API_KEY in .env"
+
+[start]
+command = "uv run uvicorn backend.app:app --reload --port 8000"
+message = "HN Radio running at http://localhost:8000"
+
+[test]
+command = "uv run pytest -q"
+message = "Tests passed"

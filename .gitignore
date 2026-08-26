@@ -1,0 +1,85 @@
+# secrets
+.env
+.env.*
+!sample.env
+
+# python
+__pycache__/
+*.pyc
+.venv
+venv
+.pytest_cache/
+
+# generated audio + episode output (keep the dir, ignore contents)
+.render-cache/
+# Pristine copies of an episode's script.json / episode.json / segment PCM, taken by
+# scripts/recast_archive.py before it recasts that episode IN PLACE. Same reason episodes/ is
+# ignored: it is generated audio and generated JSON, it is large, and it is the safety net for a
+# local run rather than part of the project.
+.recast-backup/
+# Local episode directories that the hosted archive superseded. Six dates held a completely
+# different show under the same id as the deployed volume; the live version won, and the local one
+# was moved here rather than deleted. Same reason as above: generated audio, large, local only.
+.superseded-local-episodes/
+# The cast page's per-voice samples, as they were before 2026-08-21, when all 36 were re-rendered
+# on one line (scripts/make_cast_samples.py). Kept only so the old reads are recoverable by hand;
+# episodes/ is ignored, so these were never committed in the first place.
+.superseded-samples/
+episodes/*
+!episodes/.gitkeep
+!episodes/cover.png
+
+# macOS
+.DS_Store
+
+# --- Build-time working artifacts: on disk, deliberately not in the repo ---
+#
+# None of this is deleted. It all still lives in the working copy, and some of it is the raw
+# material for the write-ups about this project. What it has in common is that it is about
+# BUILDING HN Radio rather than running it, and someone cloning this to see how the show works
+# should not have to sort the two apart.
+#
+# Several of these also carry material that is simply not publishable: imported call summaries
+# and Slack captures with named colleagues, internal positioning, and workspace permalinks.
+# Nothing under these paths should ever be committed. A pre-commit hook in .githooks/ enforces
+# that; see DEPLOY.md if you are setting up a fresh clone.
+
+# Project board, append-only build ledger, imported conversations, and the generated event log.
+.hub/
+
+# Git hooks. Local-only tooling: the post-commit event log and the pre-commit guard above.
+.githooks/
+
+# Claude Code session state: handoffs, local settings, isolated worktrees.
+.claude/
+
+# Specs and plans. Historical: several describe designs the project moved off, so they read as
+# current documentation when they are not.
+docs/superpowers/
+
+# Point-in-time code review reports. Useful while building, stale the moment they are written.
+docs/code-review-*.md
+docs/code-review-*.html
+
+# subagent-driven-development scratch (ledger, briefs, review packages)
+.superpowers/
+
+# Hub page generator. Only input is the board, which is not in the repo.
+scripts/md_to_hub_page.py
+
+# Derived HTML renders. The markdown next to each one is canonical; DEPLOY.md and glossary.md
+# stay tracked and these do not.
+docs/*.html
+DEPLOY.html
+docs/deploy-briefing.md
+docs/script-tuning-session.md
+
+# Superseded status surfaces, replaced by the board and never updated after 2026-08-03.
+PROGRESS.md
+PROGRESS.html
+ROADMAP.html
+OPEN-ITEMS.html
+
+# Redundant with sample.env, which is the fuller and more current of the two. Shipping both left a
+# reader to guess which one to copy.
+.env.example

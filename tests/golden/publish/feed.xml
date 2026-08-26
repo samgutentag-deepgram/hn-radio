@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0">
+  <channel>
+    <title>HN Radio</title>
+    <link>https://example.test/</link>
+    <description>The front page, read aloud.</description>
+    <language>en-us</language>
+    <itunes:author>Test Author</itunes:author>
+    <itunes:summary>The front page, read aloud.</itunes:summary>
+    <itunes:type>episodic</itunes:type>
+    <itunes:explicit>false</itunes:explicit>
+    <itunes:category text="Technology"/>
+    <itunes:image href="https://example.test/episodes/cover.png"/>
+    <itunes:owner><itunes:name>Test Author</itunes:name><itunes:email>owner@example.test</itunes:email></itunes:owner>
+    <image><url>https://example.test/episodes/cover.png</url><title>HN Radio</title><link>https://example.test/</link></image>
+    <item>
+      <title>A title with &lt;angle&gt; &amp; ampersand</title>
+      <guid isPermaLink="false">https://example.test/episodes/2026-08-02/</guid>
+      <link>https://example.test/episode.html?id=2026-08-02</link>
+      <pubDate>Sat, 01 Aug 2026 12:00:00 +0000</pubDate>
+      <description><![CDATA[<p>A summary with an ampersand &amp; a &lt;tag&gt;.</p><p><strong>In this episode:</strong></p><ol><li>[0:09] First story &amp; its title (<a href="https://news.ycombinator.com/item?id=101">HN discussion</a> &middot; <a href="https://example.test/a">source</a>)</li><li>Second story, no url (<a href="https://news.ycombinator.com/item?id=202">HN discussion</a>)</li></ol><p><em>Every word read by Deepgram Flux text to speech.</em></p>]]></description>
+      <itunes:summary>A summary with an ampersand &amp; a &lt;tag&gt;.</itunes:summary>
+      <enclosure url="https://example.test/episodes/2026-08-02/episode.mp3" length="1024" type="audio/mpeg"/>
+      <itunes:duration>25</itunes:duration>
+      <podcast:chapters url="https://example.test/episodes/2026-08-02/chapters.json" type="application/json+chapters"/>
+      <podcast:transcript url="https://example.test/episodes/2026-08-02/transcript.vtt" type="text/vtt"/>
+    </item>
+    <item>
+      <title>A title with &lt;angle&gt; &amp; ampersand</title>
+      <guid isPermaLink="false">https://example.test/episodes/2026-08-01/</guid>
+      <link>https://example.test/episode.html?id=2026-08-01</link>
+      <pubDate>Sat, 01 Aug 2026 12:00:00 +0000</pubDate>
+      <description><![CDATA[<p>A summary with an ampersand &amp; a &lt;tag&gt;.</p><p><strong>In this episode:</strong></p><ol><li>[0:09] First story &amp; its title (<a href="https://news.ycombinator.com/item?id=101">HN discussion</a> &middot; <a href="https://example.test/a">source</a>)</li><li>Second story, no url (<a href="https://news.ycombinator.com/item?id=202">HN discussion</a>)</li></ol><p><em>Every word read by Deepgram Flux text to speech.</em></p>]]></description>
+      <itunes:summary>A summary with an ampersand &amp; a &lt;tag&gt;.</itunes:summary>
+      <enclosure url="https://example.test/episodes/2026-08-01/episode.mp3" length="1024" type="audio/mpeg"/>
+      <itunes:duration>25</itunes:duration>
+      <podcast:chapters url="https://example.test/episodes/2026-08-01/chapters.json" type="application/json+chapters"/>
+      <podcast:transcript url="https://example.test/episodes/2026-08-01/transcript.vtt" type="text/vtt"/>
+    </item>
+  </channel>
+</rss>

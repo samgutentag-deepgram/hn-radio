@@ -1,0 +1,80 @@
+# Daily HN Radio episode -> deploy.  ***DORMANT*** until you (1) add the secrets below and
+# (2) uncomment the `schedule:` trigger. Runs Option 2 from the roadmap: generate yesterday's
+# (Pacific) episode, commit its audio into this repo so the back-catalog survives fresh CI
+# checkouts, then deploy to Fly.
+#
+# TO ACTIVATE:
+#   1. Add repo secrets (Settings -> Secrets and variables -> Actions):
+#        DEEPGRAM_API_KEY, ANTHROPIC_API_KEY, FLY_API_TOKEN
+#        (Fly token:  fly tokens create deploy -a dg-devrel-hn-radio)
+#   2. Seed the back-catalog once, locally, so CI has the existing episodes to keep:
+#        git add -f episodes/*/episode.mp3 episodes/*/chapters.json episodes/*/episode.json \
+#                   episodes/*/script.json episodes/*/transcript.vtt episodes/feed.xml \
+#                   episodes/index.json episodes/voices.json
+#        git commit -m "seed episode catalog" && git push
+#      (This commits MP3s into the repo, a few MB/day. The source WAV stays gitignored. If you'd
+#       rather keep audio OUT of git, use the Fly-volume approach instead -- see the roadmap.)
+#   3. Uncomment the `schedule:` line.
+#
+# TIMING: GitHub cron is UTC and does NOT shift for DST. 3am Pacific = 10:00 UTC in summer (PDT),
+# 11:00 UTC in winter (PST). Pick one (or run two lines). daily.py always computes "yesterday" in
+# Pacific time, so the episode date is correct regardless of the exact minute it fires.
+
+name: daily-episode
+
+on:
+  workflow_dispatch: {}
+  # schedule:
+  #   - cron: "0 10 * * *"   # 3am Pacific (PDT). Use "0 11 * * *" for PST (winter).
+
+permissions:
+  contents: write            # to commit the new episode back to the repo
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      HN_RADIO_BASE_URL: https://dg-devrel-hn-radio.fly.dev/episodes
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          # Reads .python-version rather than repeating "3.12" here. This is only the interpreter
+          # that bootstraps uv; `uv sync` provisions the project's own from the same pin.
+          python-version-file: .python-version
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Install uv
+        # Unpinned on purpose, unlike the Dockerfile's pinned copy. `--frozen` below means uv.lock
+        # decides every package version, so which uv resolves it cannot change the result -- and a
+        # second pinned version string here would just be one more thing to keep in step.
+        run: pip install uv
+      - name: Install locked deps
+        # Same command and flags as the image: --frozen so a stale lock fails instead of silently
+        # re-resolving, --no-dev so this run installs what production installs and nothing else.
+        run: uv sync --frozen --no-dev
+      - name: Generate yesterday's (Pacific) episode
+        env:
+          DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: uv run python scripts/daily.py
+      - name: Commit the new episode (persist the catalog)
+        run: |
+          git config user.name "hn-radio-bot"
+          git config user.email "actions@users.noreply.github.com"
+          # No index.html anywhere in this list. `publish` stopped writing per-episode pages and
+          # `episodes/index.html` on 2026-08-09 -- web/ renders both from the JSON now -- and
+          # `git add -f` on a pathspec that matches nothing is a fatal error, so leaving them here
+          # would fail this step every night. transcript.vtt IS here: the feed advertises it on
+          # every item, so a catalog committed without it publishes links to nothing.
+          git add -f episodes/*/episode.mp3 episodes/*/chapters.json episodes/*/episode.json \
+                     episodes/*/script.json episodes/*/transcript.vtt episodes/feed.xml \
+                     episodes/index.json episodes/voices.json
+          git commit -m "daily: episode for $(date -u +%F)" || echo "nothing to commit"
+          git push
+      - name: Deploy to Fly
+        uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: flyctl deploy
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl deploy --remote-only

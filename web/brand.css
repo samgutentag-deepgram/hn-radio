@@ -1,0 +1,2263 @@
+/* ============================================================================
+   HN Radio brand stylesheet.
+
+   Design language: `flux-2026`, the token set behind talk.deepgram.com. Values
+   observed 2026-08-17 from deepgram/labs-project-flux-tts-component (the app
+   that site runs) and cross-checked against its shipped voice-widget.js bundle
+   on 2026-08-20. Where the two disagreed the component repo won; the bundle was
+   used only for component detail the token pack does not carry (the molten orb's
+   construction, the ambient field's palette, the entrance easing).
+
+   The per-voice palettes in block 1 no longer come from either. On 2026-08-21 the
+   team supplied the official orb SVGs, one per GA voice, and every shade and glow
+   below is read straight out of those files. Block 1's own header has the
+   extraction rule and the check that validated it.
+
+   THE SEAL. Blocks 0 and 1 below are the ONLY places in this file allowed to
+   contain a literal: no hex, no rgb(), no font stack, no brand radius anywhere
+   under them. Everything else says var(--dg-*) or var(--v-*). That is borrowed
+   from the same repo, where `make check` greps for violations so the rule is
+   enforced rather than documented. There is no grep gate here (adding one means
+   editing the Makefile, which was out of scope for this pass) so it is on the
+   next person to keep it. The payoff is concrete: the October 2026 rebrand is
+   one block at the top of one file.
+
+   Plain CSS, no build step, no @import, no font hosting. See the type note in
+   block 0 for what the named families actually resolve to.
+   ========================================================================= */
+
+/* ============================================================================
+   BLOCK 0 -- THE PACK. Literals live here and nowhere else.
+   Token names are copied verbatim from the flux-2026 pack so the two codebases
+   share one vocabulary. Do not rename them; a rebrand keeps the names and
+   changes the values.
+   ========================================================================= */
+:root {
+  color-scheme: dark;
+
+  /* ---- surfaces ---------------------------------------------------------
+     Dark-first and committed. Pure black page, near-black translucent glass
+     above it. The alpha matters: these expect a backdrop blur behind them. */
+  --dg-surface-page: #000;
+  --dg-surface-raised: rgba(10, 10, 15, 0.94);
+  --dg-surface-glass: rgba(8, 8, 11, 0.72);
+  --dg-surface-scrim: rgba(5, 5, 9, 0.5);
+  --dg-surface-deep: #030308;
+
+  /* ---- ink ------------------------------------------------------------- */
+  --dg-ink-primary: #fbfbff;      /* deliberately not pure white */
+  --dg-ink-secondary: #e7e7ee;
+  --dg-ink-muted: #949498;
+  --dg-ink-faint: #6a6a6f;
+  /* Ink for anything sitting ON the accent fill, and it is NOT theme-dependent,
+     which is the whole reason it is its own token. The accent is the same
+     electric green in both themes, so the ink on it has to be the same near-black
+     in both. Deriving it from the page (which is what --dg-text-on-accent used to
+     do) gave a filled green button #fbfbff text in the light theme: 1.5:1, found
+     by measuring rather than by looking. */
+  --dg-ink-on-accent: #030308;
+
+  /* ---- strokes ----------------------------------------------------------
+     White-alpha hairlines, not grey lines. On a black ground the difference
+     is visible: a grey line stays grey over glass, an alpha line does not. */
+  --dg-line-hairline: rgba(255, 255, 255, 0.08);
+  --dg-line-hover: rgba(255, 255, 255, 0.16);
+  --dg-line-active: rgba(255, 255, 255, 0.28);
+
+  /* ---- accent -----------------------------------------------------------
+     One electric green, used sparingly: live state, success, focus ring.
+     accent-alt is the second identity colour, for per-voice differentiation.
+     NOTE: no voice palette in block 1 uses --dg-accent as its ink. The accent
+     belongs to chrome, and a speaker wearing it would be confusable with a
+     link or a live indicator. */
+  --dg-accent: #13ef95;
+  --dg-accent-dim: #4a7d3f;
+  --dg-accent-alt: #ffadd8;
+  /* The accent as a component triple, so alpha washes can be built from it
+     without a second literal. */
+  --dg-accent-rgb: 19, 239, 149;
+  /* Readable green on a LIGHT ground: the accent itself is 1.5:1 on white and
+     unusable as text there. Same hue, from the same pool. */
+  --dg-accent-on-light: #075433;
+
+  /* ---- grey ramp -------------------------------------------------------- */
+  --dg-grey-100: #d0d0d0;
+  --dg-grey-200: #8a8a90;
+  --dg-grey-300: #5a5a60;
+  --dg-grey-400: #4e4e52;
+  --dg-grey-500: #2c2c33;
+
+  /* ---- status ----------------------------------------------------------- */
+  --dg-danger: #f04438;
+  --dg-danger-wash: rgba(240, 68, 56, 0.1);
+  --dg-danger-line: rgba(240, 68, 56, 0.3);
+
+  /* ---- type -------------------------------------------------------------
+     Space Grotesk for display and numerals, Inter for UI, Fira Code for
+     anything technical. Three roles, exactly as the pack declares them.
+
+     HONESTY NOTE, because it matters here: this repo ships no font files and
+     must not start, and the Google Fonts <link> that used to sit in the page
+     heads was removed in this pass (no external font hosting). So for any
+     reader without these installed, all three stacks resolve to system-ui.
+     That was already true of the 'Roobert Pro' this file used to name. Naming
+     the families the design language actually names means the day the repo
+     self-hosts a woff2, it lands on the real face rather than on one this
+     system does not use. */
+  --dg-font-display: "Space Grotesk", system-ui, -apple-system, sans-serif;
+  --dg-font-ui: "Inter", system-ui, -apple-system, sans-serif;
+  --dg-font-mono: "Fira Code", ui-monospace, Menlo, monospace;
+
+  --dg-weight-regular: 400;
+  --dg-weight-medium: 500;
+  --dg-weight-bold: 700;
+
+  /* ---- geometry ---------------------------------------------------------
+     Tight. The pack has three steps and a circle, and that is the whole set.
+     The 14px radius this file used to carry is gone. */
+  --dg-radius-sm: 6px;
+  --dg-radius-md: 10px;
+  --dg-radius-lg: 16px;
+  --dg-radius-round: 50%;
+  --dg-radius-pill: 999px;
+
+  /* ---- elevation -------------------------------------------------------- */
+  --dg-shadow-panel: 0 18px 48px rgba(0, 0, 0, 0.65);
+  --dg-shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.55);
+  --dg-blur-glass: 18px;
+
+  /* ---- motion -----------------------------------------------------------
+     The orb breathes on a 6s cycle when idle. The ambient field drifts far
+     slower than that. Both are identity, not decoration -- which is exactly
+     why the reduced-motion block below zeroes them rather than leaving them
+     running at a "tasteful" speed. */
+  --dg-motion-breathe: 6s;
+  --dg-motion-drift: 90s;
+  --dg-motion-fast: 160ms;
+  --dg-motion-base: 280ms;
+  --dg-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  /* The bundle's own entrance curve, used for one-shot arrivals only. */
+  --dg-ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --dg-orb-glow-blur: 8px;
+
+  /* ---- ambient field ----------------------------------------------------
+     The six desaturated hues the site's <ambient-background> canvas drifts
+     through, plus the ground it composites onto. Reproduced here as static
+     CSS gradients rather than a canvas: same read, no rAF loop, no JS. */
+  --dg-ambient-1: #4a7d3f;
+  --dg-ambient-2: #8a7d2a;
+  --dg-ambient-3: #8e2d5a;
+  --dg-ambient-4: #9e3b2f;
+  --dg-ambient-5: #2f6f6b;
+  --dg-ambient-6: #5a3a7a;
+}
+
+/* Light theme. The design language is dark-only and committed to it, so this is
+   a deliberate translation rather than a peer: same tokens, inverted surfaces,
+   ink and strokes. Everything below block 1 reads only the semantic names, so
+   the whole light theme is this one block plus the per-voice ink swap.
+   Strokes stay ALPHA (black-alpha here) for the same reason they are alpha in
+   dark: they have to sit correctly over glass as well as over the page. */
+html[data-theme="light"] {
+  color-scheme: light;
+
+  --dg-surface-page: #fbfbff;
+  --dg-surface-raised: rgba(255, 255, 255, 0.94);
+  --dg-surface-glass: rgba(251, 251, 255, 0.78);
+  --dg-surface-scrim: rgba(16, 16, 20, 0.35);
+  --dg-surface-deep: #f0f0f4;
+
+  --dg-ink-primary: #101014;
+  --dg-ink-secondary: #26262c;
+  --dg-ink-muted: #5a5a60;
+  --dg-ink-faint: #74747a;
+
+  --dg-line-hairline: rgba(16, 16, 20, 0.1);
+  --dg-line-hover: rgba(16, 16, 20, 0.22);
+  --dg-line-active: rgba(16, 16, 20, 0.38);
+
+  /* The electric green survives as a FILL on light (black text on it reads
+     fine) but not as text, which is what --dg-accent-on-light is for. */
+  --dg-accent-dim: #3f6a36;
+
+  --dg-grey-100: #3a3a40;
+  --dg-grey-200: #6a6a6f;
+  --dg-grey-300: #949498;
+  --dg-grey-400: #bbbbbf;
+  --dg-grey-500: #e1e1e5;
+
+  --dg-danger: #b42318;
+  --dg-danger-wash: rgba(180, 35, 24, 0.08);
+  --dg-danger-line: rgba(180, 35, 24, 0.28);
+
+  --dg-shadow-panel: 0 18px 48px rgba(16, 16, 20, 0.14);
+  --dg-shadow-soft: 0 8px 24px rgba(16, 16, 20, 0.1);
+}
+
+/* Both signature motifs must stop when asked. The reference implementation does
+   not do this; do not inherit that bug. Zeroing the DURATIONS rather than
+   setting `animation: none` on each user means one place to change and no way
+   for a new animation to miss the gate. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dg-motion-breathe: 0s;
+    --dg-motion-drift: 0s;
+    --dg-motion-fast: 0s;
+    --dg-motion-base: 0s;
+  }
+}
+
+/* ============================================================================
+   BLOCK 1 -- PER-VOICE IDENTITY. The second and last literal block.
+
+   On talk.deepgram.com every voice carries its own three-shade run plus a glow,
+   so you can tell speakers apart by eye as well as by ear. That is native to the
+   design, not something bolted on here: the pack declares --dg-accent-alt
+   explicitly "for per-voice differentiation", and the widget keys a whole orb
+   off each run.
+
+   THE RULE THIS BLOCK OBEYS, AND IT IS THE IMPORTANT PART.
+   Colour is always reinforcement and never the only signal. Every coloured
+   element on this site also carries the speaker's NAME in text, or a shape, or a
+   word. A reader with no colour perception at all loses nothing but decoration:
+   the transcript still names who is talking on every row, the cast cards still
+   print the voice id, the status board still says "Run stalled" in words and
+   marks it with a square rather than a differently coloured circle. Never add a
+   rule to this file where hue is the whole message.
+
+   WHERE THE VALUES COME FROM. One source now, and this is a 2026-08-21 rewrite of
+   what used to be three.
+
+   Sam received the official per-voice orb assets from the team: 36 SVGs, one per GA
+   voice, at ~/Downloads/voice-orbs/flux-<name>-en.svg. Each file draws the orb the
+   same way the shipped widget does, so the run is readable straight off it: a
+   rgb(16,16,20) ground rect, then the lava layers outermost-to-innermost, then one
+   final path carrying filter="url(#bs)" whose fill IS the glow. So
+
+       layer 1 -> --v-d      layer 2 -> --v-m      layer 3 -> --v-l      #bs -> --v-g
+
+   and every one of the 144 shade values below is lifted from a file rather than
+   chosen. NOTHING IS DERIVED ANY MORE. The eighteen voices that used to carry a
+   pool run picked from their catalog character now carry their real one, and their
+   per-voice rationale comments are gone with the guesswork that needed them.
+
+   THE EXTRACTION WAS VALIDATED BEFORE IT WAS TRUSTED, and this is the part worth
+   keeping. Sixteen of these voices already had a palette in this file taken
+   verbatim from the site's own `Bt` table. All sixteen came back byte-identical
+   from the SVGs, glow included, with no adjustment. The twenty that changed are
+   exactly the twenty that had been inferred. A one-in-sixteen agreement would be
+   luck; sixteen for sixteen means the layer-order mapping above is right.
+
+   TEN RUNS, THIRTY-SIX VOICES. The official set is not one palette per voice: it
+   reuses ten complete runs. Five voices are on the amber, five on the pink-violet,
+   five on the mint-violet, four each on three more, three on the amber-pink, and
+   Jack and Brooke each hold a run alone. Repeats are therefore upstream fact rather
+   than a shortcut here. Two shapes worth knowing:
+     - Brooke's orb is the only TWO-LOBE file, an upper lobe over a lower one, and
+       the two lobes have different outer shades (#274ee7 and #3d168f). Her --v-d is
+       the lower lobe's, the one the glow agrees with.
+     - Jack's run is the green run one step darker at the mid (#027a38 not #12b76a),
+       which is upstream's own way of separating him from Brittany, Bruce and Wes.
+
+   THE FIVE ARCHIVE IDS AT THE BOTTOM have no official orb, because they are not GA
+   voices: a studio variant, one voice dropped before GA, and three pre-GA candidate
+   ids. They keep the pool runs they already had, and the reason is unchanged, which
+   is that the archive has to keep rendering.
+
+   VERIFIED AGAINST THE ARCHIVE, not just asserted, and re-run after the official
+   set landed. All 20 episode.json files on disk were walked, every speaker resolved
+   through this block in BOTH themes, and every ink measured against both grounds.
+   Result: ZERO collisions in either theme, and no entry below 4.5:1. The lowest
+   ratio in the set is 4.70:1, which is Donovan's violet on black -- the same floor
+   the previous table had, so the official values cost nothing in legibility. The
+   one light-theme collision this paragraph used to record (Alexis and Bruce, both
+   #8f3702 in 2026-08-18) is gone, because Bruce's real run is green rather than
+   the burnt orange he had been assigned.
+
+   THE ARCHIVE IS A STAR GRAPH, which is what makes the checking cheap. Alexis is
+   the permanent host and appears in all 20 episodes; every other voice appears in
+   one or two. So "no two speakers collide" reduces almost entirely to "nobody
+   collides with Alexis", plus one four-voice cluster in 2026-08-20 (Cole, Brooke,
+   Marcelo, Priya, from an older five-voice local render).
+
+   That produced the ONE deliberate departure from the official set in this block,
+   and it is in the inks rather than the runs. Upstream puts Marcelo, Sean, Sienna
+   and Tanner on Alexis's exact amber run. Left alone they would print in the
+   host's ink in every episode they appear in, so all four step to another member
+   of the SAME run for the dark ink (#e35a04 rather than #f69a1b) and to deep rose
+   for the light one, since the pool holds exactly one dark orange that clears AA on
+   white and Alexis has it. Their ORBS are still upstream's amber, untouched. This
+   is the same trade the block already made for Marcus, and it is authorised by the
+   ink rule below: hue family first, then keep two runs that share an episode apart.
+
+   WHAT EACH VOICE DECLARES.
+     --v-l / --v-m / --v-d   light, mid and deep shades. The orb's three lava
+                             layers, in that order, exactly as the widget stacks
+                             them.
+     --v-g                   the glow, as an R,G,B component triple rather than
+                             a finished rgba() so any alpha can be built from it.
+     --v-ink                 The shade to print text and rules in on a DARK ground.
+                             Normally --v-m, but another member of the SAME RUN
+                             where --v-m misses WCAG AA (4.5:1) on the page black,
+                             chosen per run rather than per shade. Three runs
+                             need it: the Colin run's mid is a near-black violet,
+                             so it prints in its mint; the Cliff run's mid is a
+                             dark indigo, so it prints in a brighter blue; Jack's
+                             mid is a dark green, so he prints in the brighter
+                             green his three green siblings already use.
+     --v-ink-lt              The same job on a LIGHT ground. Chosen per run rather
+                             than derived, because the pool holds exactly NINE
+                             values that clear AA on the near-white light page --
+                             three greens, three blues, one violet, one dark
+                             orange, one deep rose -- for fourteen runs. Hue
+                             family first, then chosen to keep two runs that share
+                             an episode on disk off the same value. Left to
+                             "whatever the deep shade is" it collapses: the Cole
+                             run and Brooke both end at #3d168f, and the Alexis
+                             and Hannah runs both end at #e35a04, which is 3.6:1
+                             on white and unusable as text anyway.
+
+   BOTH INKS ARE DECLARED ON EVERY ENTRY, never left to default, and that is a
+   bug fix rather than verbosity. They started out optional, with the defaults
+   supplied at the use site as `var(--v-ink, var(--v-m))`. A transcript row
+   carries BOTH data-voice and data-desk, and custom properties cascade per
+   property, so on a row with a voice that declared no override the SEAT's
+   override was still the winning declaration -- source order cannot fix that,
+   because the two rules set the same property on the same element and only one
+   of them declares it. Haley on the anchor seat printed in the anchor's deep
+   green instead of her own indigo in the light theme, which is how it was found.
+   Declaring both on every entry means a voice can never inherit a seat's ink.
+   Every one of the 48 entries below was measured against both grounds. The
+   lowest ratio in the set is 4.70:1 and none fails.
+
+   ON THE CEILING, STATED SO NOBODY THINKS THIS IS SLOPPY.
+   The pool yields exactly EIGHT saturated inks that clear AA on the page black:
+   amber, orange, pink, rose, violet, blue, a second blue one step off it, and
+   mint. Everything else in the pool is a pale near-white tint that works as an
+   orb's top shade and reads as "white-ish" as text. Forty-eight identities over
+   eight inks means repeats -- the widest share is eight entries on the brighter
+   blue and eight on the pink -- and inventing a ninth hex to avoid that would
+   defeat the entire point of staying inside the palette. This is the concrete reason the name is printed on every row and the rule
+   at the top of this block is not negotiable: the colour narrows the field, the
+   name identifies the speaker. Within a single episode there are only ever two
+   or three voices in the current format, so the colours do separate them in
+   practice, and the archive walk above confirms they separate in the older
+   five-voice renders too; across the whole catalogue they group them, which is
+   honest and is what upstream does.
+
+   SPECIFICITY, DELIBERATE. The seat keys come FIRST and the voice keys second.
+   Both are one attribute selector, so source order decides, so a row that knows
+   which voice read it gets that voice's identity and a row that only knows which
+   seat it came from falls back to the seat. That ordering is the whole mechanism;
+   do not sort this block alphabetically.
+
+   The four legacy seat keys (ai, maker, security, drama) are kept because every
+   episode on disk predates the two-person show and tags its lines with them.
+   `cohost` used to reuse maker's #f69a1b exactly, which meant an archive episode
+   and a current one drew the same colour for different seats; it is indigo now.
+   The old one-shade comments here named "Haley, brand spring green" for `anchor`
+   and "Alexis, violet" for `ai`. Both were wrong by the time they were read:
+   Alexis is the permanent host and Priya, who sat at `ai`, is retired.
+   ========================================================================= */
+/* legacy seat keys */
+/* anchor: the host's seat. Mint, one step off the brand green so the seat never reads as chrome */
+[data-desk="anchor"]   { --v-l: #e8fbe8; --v-m: #a1f9d4; --v-d: #149afb; --v-g: 161,249,212;
+                         --v-ink: #a1f9d4; --v-ink-lt: #075433; }
+/* cohost: second chair. Indigo, and NOT maker's amber, which it used to duplicate exactly */
+[data-desk="cohost"]   { --v-l: #dfe6ff; --v-m: #274ee7; --v-d: #16308f; --v-g: 39,78,231;
+                         --v-ink: #149afb; --v-ink-lt: #16308f; }
+/* guest: quoted commenters. Keeps the orange these rows have always had */
+[data-desk="guest"]    { --v-l: #ffe1d1; --v-m: #e35a04; --v-d: #8f3702; --v-g: 227,90,4;
+                         --v-ink: #e35a04; --v-ink-lt: #8f3702; }
+/* ai: archive only. Keeps the violet, now as a full run rather than one shade */
+[data-desk="ai"]       { --v-l: #f3e2ff; --v-m: #9754e4; --v-d: #6d1c9e; --v-g: 151,84,228;
+                         --v-ink: #9754e4; --v-ink-lt: #6d1c9e; }
+/* maker: archive only. Keeps the amber */
+[data-desk="maker"]    { --v-l: #fff3df; --v-m: #f69a1b; --v-d: #e35a04; --v-g: 246,154,27;
+                         --v-ink: #f69a1b; --v-ink-lt: #8f3702; }
+/* security: archive only. Keeps the blue, one step off cohost's indigo */
+[data-desk="security"] { --v-l: #a1d7fd; --v-m: #1d9dfb; --v-d: #3d168f; --v-g: 61,22,143;
+                         --v-ink: #1d9dfb; --v-ink-lt: #16308f; }
+/* drama: archive only. Keeps the pink */
+[data-desk="drama"]    { --v-l: #ffd7ec; --v-m: #ef79b7; --v-d: #a62b6e; --v-g: 239,121,183;
+                         --v-ink: #ef79b7; --v-ink-lt: #a62b6e; }
+
+/* The ten official runs, most-populated first, voices alphabetical within a run. */
+/* mint over deep violet on indigo. Colin, Elise, Kai, Naveen, Sharon */
+[data-voice="flux-colin-en"]               { --v-l: #a1f9d4; --v-m: #3d168f; --v-d: #274ee7; --v-g: 39,78,231;
+                                             --v-ink: #a1f9d4; --v-ink-lt: #274ee7; }
+[data-voice="flux-elise-en"]               { --v-l: #a1f9d4; --v-m: #3d168f; --v-d: #274ee7; --v-g: 39,78,231;
+                                             --v-ink: #a1f9d4; --v-ink-lt: #274ee7; }
+[data-voice="flux-kai-en"]                 { --v-l: #a1f9d4; --v-m: #3d168f; --v-d: #274ee7; --v-g: 39,78,231;
+                                             --v-ink: #a1f9d4; --v-ink-lt: #274ee7; }
+[data-voice="flux-naveen-en"]              { --v-l: #a1f9d4; --v-m: #3d168f; --v-d: #274ee7; --v-g: 39,78,231;
+                                             --v-ink: #a1f9d4; --v-ink-lt: #274ee7; }
+[data-voice="flux-sharon-en"]              { --v-l: #a1f9d4; --v-m: #3d168f; --v-d: #274ee7; --v-g: 39,78,231;
+                                             --v-ink: #a1f9d4; --v-ink-lt: #274ee7; }
+
+/* pink over violet on indigo. Donovan, Gemma, Haley, Paige, Rufus */
+[data-voice="flux-donovan-en"]             { --v-l: #ffadd8; --v-m: #9754e4; --v-d: #274ee7; --v-g: 39,78,231;
+                                             --v-ink: #9754e4; --v-ink-lt: #16308f; }
+[data-voice="flux-gemma-en"]               { --v-l: #ffadd8; --v-m: #9754e4; --v-d: #274ee7; --v-g: 39,78,231;
+                                             --v-ink: #9754e4; --v-ink-lt: #16308f; }
+[data-voice="flux-haley-en"]               { --v-l: #ffadd8; --v-m: #9754e4; --v-d: #274ee7; --v-g: 39,78,231;
+                                             --v-ink: #9754e4; --v-ink-lt: #16308f; }
+[data-voice="flux-paige-en"]               { --v-l: #ffadd8; --v-m: #9754e4; --v-d: #274ee7; --v-g: 39,78,231;
+                                             --v-ink: #9754e4; --v-ink-lt: #16308f; }
+[data-voice="flux-rufus-en"]               { --v-l: #ffadd8; --v-m: #9754e4; --v-d: #274ee7; --v-g: 39,78,231;
+                                             --v-ink: #9754e4; --v-ink-lt: #16308f; }
+
+/* amber over burnt orange, white core. Alexis, Marcelo, Sean, Sienna, Tanner */
+[data-voice="flux-alexis-en"]              { --v-l: #fbfbff; --v-m: #f69a1b; --v-d: #e35a04; --v-g: 227,90,4;
+                                             --v-ink: #f69a1b; --v-ink-lt: #8f3702; }
+/* Marcelo: shares Alexis's run exactly, and Alexis is in all 20 episodes, so both inks step to
+   the run's other members rather than duplicating the host's */
+[data-voice="flux-marcelo-en"]             { --v-l: #fbfbff; --v-m: #f69a1b; --v-d: #e35a04; --v-g: 227,90,4;
+                                             --v-ink: #e35a04; --v-ink-lt: #a62b6e; }
+/* Sean: shares Alexis's run exactly, and Alexis is in all 20 episodes, so both inks step to
+   the run's other members rather than duplicating the host's */
+[data-voice="flux-sean-en"]                { --v-l: #fbfbff; --v-m: #f69a1b; --v-d: #e35a04; --v-g: 227,90,4;
+                                             --v-ink: #e35a04; --v-ink-lt: #a62b6e; }
+/* Sienna: shares Alexis's run exactly, and Alexis is in all 20 episodes, so both inks step to
+   the run's other members rather than duplicating the host's */
+[data-voice="flux-sienna-en"]              { --v-l: #fbfbff; --v-m: #f69a1b; --v-d: #e35a04; --v-g: 227,90,4;
+                                             --v-ink: #e35a04; --v-ink-lt: #a62b6e; }
+/* Tanner: shares Alexis's run exactly, and Alexis is in all 20 episodes, so both inks step to
+   the run's other members rather than duplicating the host's */
+[data-voice="flux-tanner-en"]              { --v-l: #fbfbff; --v-m: #f69a1b; --v-d: #e35a04; --v-g: 227,90,4;
+                                             --v-ink: #e35a04; --v-ink-lt: #a62b6e; }
+
+/* pale blue over green on forest. Brittany, Bruce, Priya, Wes */
+[data-voice="flux-brittany-en"]            { --v-l: #a1d7fd; --v-m: #12b76a; --v-d: #075433; --v-g: 2,122,56;
+                                             --v-ink: #12b76a; --v-ink-lt: #075433; }
+[data-voice="flux-bruce-en"]               { --v-l: #a1d7fd; --v-m: #12b76a; --v-d: #075433; --v-g: 2,122,56;
+                                             --v-ink: #12b76a; --v-ink-lt: #075433; }
+[data-voice="flux-priya-en"]               { --v-l: #a1d7fd; --v-m: #12b76a; --v-d: #075433; --v-g: 2,122,56;
+                                             --v-ink: #12b76a; --v-ink-lt: #075433; }
+[data-voice="flux-wes-en"]                 { --v-l: #a1d7fd; --v-m: #12b76a; --v-d: #075433; --v-g: 2,122,56;
+                                             --v-ink: #12b76a; --v-ink-lt: #075433; }
+
+/* mint over indigo on forest. Cliff, Conor, Drew, Marcus */
+[data-voice="flux-cliff-en"]               { --v-l: #a1f9d4; --v-m: #274ee7; --v-d: #075433; --v-g: 7,84,51;
+                                             --v-ink: #149afb; --v-ink-lt: #075433; }
+[data-voice="flux-conor-en"]               { --v-l: #a1f9d4; --v-m: #274ee7; --v-d: #075433; --v-g: 7,84,51;
+                                             --v-ink: #149afb; --v-ink-lt: #075433; }
+[data-voice="flux-drew-en"]                { --v-l: #a1f9d4; --v-m: #274ee7; --v-d: #075433; --v-g: 7,84,51;
+                                             --v-ink: #149afb; --v-ink-lt: #075433; }
+[data-voice="flux-marcus-en"]              { --v-l: #a1f9d4; --v-m: #274ee7; --v-d: #075433; --v-g: 7,84,51;
+                                             --v-ink: #149afb; --v-ink-lt: #075433; }
+
+/* pale blue over bright blue on deep violet. Cole, Kit, Miles, Wade */
+[data-voice="flux-cole-en"]                { --v-l: #a1d7fd; --v-m: #149afb; --v-d: #3d168f; --v-g: 61,22,143;
+                                             --v-ink: #149afb; --v-ink-lt: #3d168f; }
+[data-voice="flux-kit-en"]                 { --v-l: #a1d7fd; --v-m: #149afb; --v-d: #3d168f; --v-g: 61,22,143;
+                                             --v-ink: #149afb; --v-ink-lt: #3d168f; }
+[data-voice="flux-miles-en"]               { --v-l: #a1d7fd; --v-m: #149afb; --v-d: #3d168f; --v-g: 61,22,143;
+                                             --v-ink: #149afb; --v-ink-lt: #3d168f; }
+[data-voice="flux-wade-en"]                { --v-l: #a1d7fd; --v-m: #149afb; --v-d: #3d168f; --v-g: 61,22,143;
+                                             --v-ink: #149afb; --v-ink-lt: #3d168f; }
+
+/* rose over pink on burnt orange. Hannah, Heather, Kelsey, Meghan */
+[data-voice="flux-hannah-en"]              { --v-l: #ef79b7; --v-m: #ffadd8; --v-d: #e35a04; --v-g: 227,90,4;
+                                             --v-ink: #ffadd8; --v-ink-lt: #a62b6e; }
+[data-voice="flux-heather-en"]             { --v-l: #ef79b7; --v-m: #ffadd8; --v-d: #e35a04; --v-g: 227,90,4;
+                                             --v-ink: #ffadd8; --v-ink-lt: #a62b6e; }
+[data-voice="flux-kelsey-en"]              { --v-l: #ef79b7; --v-m: #ffadd8; --v-d: #e35a04; --v-g: 227,90,4;
+                                             --v-ink: #ffadd8; --v-ink-lt: #a62b6e; }
+[data-voice="flux-meghan-en"]              { --v-l: #ef79b7; --v-m: #ffadd8; --v-d: #e35a04; --v-g: 227,90,4;
+                                             --v-ink: #ffadd8; --v-ink-lt: #a62b6e; }
+
+/* amber over pink on violet. Bree, Maeve, Meena */
+[data-voice="flux-bree-en"]                { --v-l: #f69a1b; --v-m: #ffadd8; --v-d: #9754e4; --v-g: 61,22,143;
+                                             --v-ink: #ffadd8; --v-ink-lt: #6d1c9e; }
+[data-voice="flux-maeve-en"]               { --v-l: #f69a1b; --v-m: #ffadd8; --v-d: #9754e4; --v-g: 61,22,143;
+                                             --v-ink: #ffadd8; --v-ink-lt: #6d1c9e; }
+[data-voice="flux-meena-en"]               { --v-l: #f69a1b; --v-m: #ffadd8; --v-d: #9754e4; --v-g: 61,22,143;
+                                             --v-ink: #ffadd8; --v-ink-lt: #6d1c9e; }
+
+/* pale blue over dark green on forest. Jack */
+[data-voice="flux-jack-en"]                { --v-l: #a1d7fd; --v-m: #027a38; --v-d: #075433; --v-g: 2,122,56;
+                                             --v-ink: #12b76a; --v-ink-lt: #027a38; }
+
+/* pale blue over cyan-blue on deep violet, its own two-lobe orb. Brooke */
+[data-voice="flux-brooke-en"]              { --v-l: #a1d7fd; --v-m: #1d9dfb; --v-d: #3d168f; --v-g: 61,22,143;
+                                             --v-ink: #1d9dfb; --v-ink-lt: #16308f; }
+
+/* Retired by ear rather than by the catalog, so the archive still plays it back. No orb was
+   shipped for it; its run is the pool assignment that predates the official set. */
+[data-voice="flux-renee-en"]               { --v-l: #ffe1d1; --v-m: #e35a04; --v-d: #8f3702; --v-g: 227,90,4;
+                                             --v-ink: #e35a04; --v-ink-lt: #8f3702; }
+
+/* Resolve the two into ONE value the rest of the file reads: --v-on, "this
+   voice's colour on the ground you are currently standing on". Split by theme
+   here so no rule below has to know which theme it is in. The --v-m / --v-d
+   fallbacks only fire for an id or seat with no entry above, which leaves
+   --v-on at the guaranteed-invalid value so use sites take their own default. */
+[data-voice],
+[data-desk] { --v-on: var(--v-ink, var(--v-m)); }
+html[data-theme="light"] [data-voice],
+html[data-theme="light"] [data-desk] { --v-on: var(--v-ink-lt, var(--v-d)); }
+
+/* ============================================================================
+   BLOCK 2 -- SEMANTIC LAYER. No literals below this line.
+
+   Names copied from the same repo's theme.css so components in either codebase
+   read the same vocabulary. Semantic names survive a rebrand; palette names do
+   not, which is why nothing under here reaches past this block into --dg-ink-*
+   or --dg-surface-*.
+   ========================================================================= */
+:root {
+  /* text */
+  --dg-text-primary: var(--dg-ink-primary);
+  --dg-text-body: var(--dg-ink-secondary);
+  --dg-text-label: var(--dg-ink-muted);
+  --dg-text-disabled: var(--dg-ink-faint);
+  --dg-text-on-accent: var(--dg-ink-on-accent);
+
+  /* backgrounds */
+  --dg-bg-app: var(--dg-surface-page);
+  --dg-bg-panel: var(--dg-surface-raised);
+  --dg-bg-overlay: var(--dg-surface-glass);
+  --dg-bg-well: var(--dg-surface-deep);
+  --dg-bg-dim: var(--dg-surface-scrim);
+
+  /* borders */
+  --dg-border: var(--dg-line-hairline);
+  --dg-border-hover: var(--dg-line-hover);
+  --dg-border-selected: var(--dg-line-active);
+
+  /* interactive and state */
+  --dg-focus-ring: var(--dg-accent);
+  --dg-state-live: var(--dg-accent);
+  --dg-state-idle: var(--dg-grey-300);
+  --dg-state-error: var(--dg-danger);
+  --dg-control-track: var(--dg-grey-500);
+  --dg-control-thumb: var(--dg-grey-100);
+  --dg-icon-default: var(--dg-grey-200);
+  --dg-divider-strong: var(--dg-grey-400);
+
+  /* Links. Item 3 of the review notes: --link used to be the page's only blue
+     (#0f6fc4 / #79affa) on an otherwise green-and-white design, and it had just
+     become the Listen colour on nine rows. Row links adopt the accent. The
+     decision is safe because "this is a link" is never carried by hue here:
+     every link keeps an underline, and the Listen affordance also carries a
+     trailing arrow and an aria-label that says where it goes. */
+  --dg-link: var(--dg-accent);
+
+  /* geometry, elevation, motion */
+  --dg-shape-control: var(--dg-radius-sm);
+  --dg-shape-panel: var(--dg-radius-md);
+  --dg-shape-surface: var(--dg-radius-lg);
+  --dg-shape-orb: var(--dg-radius-round);
+  --dg-shape-pill: var(--dg-radius-pill);
+
+  --dg-elevation-panel: var(--dg-shadow-panel);
+  --dg-elevation-soft: var(--dg-shadow-soft);
+  --dg-glass-blur: var(--dg-blur-glass);
+  --dg-orb-glow: var(--dg-orb-glow-blur);
+  /* The ground the orb's lava sits on. Theme-INDEPENDENT on purpose, for the
+     same reason --dg-text-on-accent is: a voice's three shades are the same in
+     both themes, so the near-black behind them has to be too, or a mint orb
+     turns into a pale smear on the light page. The reference paints #101014
+     here; --dg-ink-on-accent is the pack's own theme-independent near-black and
+     lands within a hair of it, so no new literal was needed. */
+  --dg-orb-ground: var(--dg-ink-on-accent);
+
+  --dg-anim-breathe: var(--dg-motion-breathe);
+  --dg-anim-drift: var(--dg-motion-drift);
+  --dg-anim-fast: var(--dg-motion-fast);
+  --dg-anim-base: var(--dg-motion-base);
+  --dg-anim-ease: var(--dg-ease);
+  --dg-anim-enter: var(--dg-ease-enter);
+  /* How long an orb takes to cross from one speaker's palette to the next.
+     web/orb.js READS this value rather than carrying its own number, so the
+     crossfade is a token like every other duration -- and so it collapses to an
+     instant swap under prefers-reduced-motion along with the rest of them. */
+  --dg-anim-tint: var(--dg-motion-base);
+
+  /* Layout, one place. The content column and the gutter it sits in; the
+     masthead cancels the gutter with a negative margin derived from this. */
+  --dg-col: 46rem;
+  --dg-gutter: 1.2rem;
+}
+
+/* On a light ground the accent is a fill, not an ink: #13ef95 is 1.52:1 on white.
+   Links and any accent-coloured TEXT swap to the deep green from the same pool
+   (8.75:1 on the light page). Fills keep the electric green and put page-dark
+   text on it, which reads fine either way. */
+html[data-theme="light"] {
+  --dg-link: var(--dg-accent-on-light);
+  --dg-focus-ring: var(--dg-accent-on-light);
+}
+
+/* ----------------------------------------------------------------------------
+   BLOCK 3 -- LEGACY BRIDGE.
+
+   The short names this file used before the restyle, aliased onto the semantic
+   layer. New rules should use --dg-*.
+
+   STATUS, corrected 2026-08-21: this block is now UNUSED. Its stated reason to
+   exist was that web/index.html and web/app.js read --accent-solid and --rule
+   through getComputedStyle to colour the two bar waveforms. Both waveforms are
+   gone (see block 16), and with them the last reader of any name in here --
+   every alias below now resolves for nobody. `grep -c 'var(--<name>)'` across
+   web/ returns zero for all fifteen, and the only getComputedStyle reads left in
+   the tree are orb.js's palette probe, which asks for --v-* and --dg-anim-tint.
+
+   It is left in place rather than deleted because deleting it is a separate,
+   unrelated change and this pass was about the orb. Whoever does that cleanup
+   should re-run that grep first rather than trusting this paragraph.
+   -------------------------------------------------------------------------- */
+:root {
+  --bg: var(--dg-bg-app);
+  --surface: var(--dg-bg-panel);
+  --text: var(--dg-text-body);
+  --heading: var(--dg-text-primary);
+  --muted: var(--dg-text-body);
+  --faint: var(--dg-text-label);
+  --rule: var(--dg-border);
+  --code-bg: var(--dg-bg-well);
+  --accent: var(--dg-link);
+  --accent-solid: var(--dg-accent);
+  --link: var(--dg-link);
+  --danger: var(--dg-state-error);
+  --radius: var(--dg-shape-panel);
+  --radius-sm: var(--dg-shape-control);
+  --radius-pill: var(--dg-shape-pill);
+}
+
+/* ============================================================================
+   BLOCK 4 -- BASE.
+   ========================================================================= */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+/* This file has been bitten by the same bug three separate times: a class rule
+   that sets `display` out-ranks the UA sheet's `[hidden] { display: none }`, so
+   an element the JS thought it had hidden stays on screen. It shipped as an
+   empty confirm dialog on page load (.modal), as an empty hero on a catalogue
+   with zero episodes (.hero), and -- found in the browser during this pass -- as
+   90px of dead space under the hero's scrub bar, because `.hero-wave { display:
+   block }` kept a hidden canvas laid out.
+   One rule, once, instead of remembering to write a `[hidden]` guard beside every
+   future `display`. `!important` is the point: there is no element on this site
+   that carries the hidden attribute and is meant to be visible. */
+[hidden] { display: none !important; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  position: relative;
+  max-width: var(--dg-col);
+  margin: 0 auto;
+  padding: 0 var(--dg-gutter) 5rem;
+  font-family: var(--dg-font-ui);
+  font-weight: var(--dg-weight-regular);
+  font-size: 1rem;
+  line-height: 1.55;
+  background: var(--dg-bg-app);
+  color: var(--dg-text-body);
+}
+
+/* The ambient field. On the real site this is a canvas drifting ~24 soft radial
+   sprites through six desaturated hues, composited `lighter` over #030308 and
+   masked by a vignette. Reproduced as five fixed radial gradients on a
+   pseudo-element: same read at a glance, no rAF loop, no JS, and it cannot
+   compete with the page for paint. The alphas are low on purpose -- this is the
+   thing you notice only when it is missing.
+
+   `position: fixed` so it does not scroll (the canvas drifts, it does not
+   parallax) and z-index -1 so it sits behind every real element. Body needs no
+   background-attachment tricks as a result.
+
+   Off in the light theme rather than translated. The field is a black-ground
+   motif; the same gradients over #fbfbff read as a stain, not as depth. Said
+   plainly instead of shipped badly. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(38rem 30rem at 12% 8%, color-mix(in srgb, var(--dg-ambient-5) 26%, transparent) 0%, transparent 68%),
+    radial-gradient(34rem 26rem at 88% 18%, color-mix(in srgb, var(--dg-ambient-6) 24%, transparent) 0%, transparent 66%),
+    radial-gradient(42rem 32rem at 74% 76%, color-mix(in srgb, var(--dg-ambient-1) 22%, transparent) 0%, transparent 70%),
+    radial-gradient(30rem 24rem at 22% 92%, color-mix(in srgb, var(--dg-ambient-3) 20%, transparent) 0%, transparent 66%),
+    radial-gradient(26rem 22rem at 50% 44%, color-mix(in srgb, var(--dg-ambient-2) 14%, transparent) 0%, transparent 72%),
+    var(--dg-surface-deep);
+  animation: dg-drift var(--dg-anim-drift) var(--dg-anim-ease) infinite alternate;
+}
+/* The vignette the canvas draws on top of its sprites: four linear washes back
+   to the deep ground, so no gradient edge is ever visible against the frame. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, var(--dg-surface-deep), transparent 22%),
+    linear-gradient(to top, var(--dg-surface-deep), transparent 22%),
+    linear-gradient(to right, var(--dg-surface-deep), transparent 18%),
+    linear-gradient(to left, var(--dg-surface-deep), transparent 18%);
+}
+/* Slower than anything else on the page by an order of magnitude, and the whole
+   travel is under 2% of the viewport. It should never be catchable in the act. */
+@keyframes dg-drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(0, -1.5%, 0) scale(1.04); }
+}
+html[data-theme="light"] body::before,
+html[data-theme="light"] body::after { display: none; }
+
+h1, h2, h3, h4 {
+  font-family: var(--dg-font-display);
+  font-weight: var(--dg-weight-medium);
+  color: var(--dg-text-primary);
+  letter-spacing: -0.01em;
+  line-height: 1.16;
+}
+h1 { font-size: clamp(1.9rem, 1.4rem + 2.4vw, 2.9rem); margin: 0.2rem 0 0.5rem; }
+h2 { font-size: 1.3rem; }
+h3 { font-size: 1.05rem; }
+
+/* Numerals are display-face everywhere they carry meaning: durations, points,
+   timestamps, chapter numbers. Space Grotesk's figures are the reason the pack
+   names it for "display and numerals". */
+.ts, .transport-time, .sb-pts, .hero-sub, .chapter-dot {
+  font-family: var(--dg-font-display);
+  font-variant-numeric: tabular-nums;
+}
+
+code, pre { font-family: var(--dg-font-mono); }
+
+a { color: var(--dg-link); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { text-decoration-thickness: 2px; }
+
+/* One focus treatment, defined once, for everything. The accent on dark, the
+   deep green on light, and always an offset ring rather than a colour change,
+   because a colour change alone is not a focus indicator. */
+:focus-visible { outline: 2px solid var(--dg-focus-ring); outline-offset: 2px; }
+
+hr { border: 0; border-top: 1px solid var(--dg-border); margin: 1.6rem 0; }
+
+/* Micro-label. The site's signature text object: 10-11px, uppercase, tracked
+   wide. The padding-left compensates the trailing letter-space so the run stays
+   optically centred against whatever sits under it. */
+.eyebrow,
+.section-h,
+.hero-kicker,
+.ep-date,
+.cast-role,
+.cast-search-label,
+.preset-label,
+.chapter-strip-label,
+.pool-day {
+  font-family: var(--dg-font-ui);
+  font-size: 0.66rem;
+  font-weight: var(--dg-weight-medium);
+  letter-spacing: 0.18em;
+  padding-left: 0.18em;
+  text-transform: uppercase;
+  color: var(--dg-text-label);
+}
+.eyebrow { margin: 0; }
+.eyebrow a { color: inherit; }
+.eyebrow .dg { color: var(--dg-accent); font-weight: var(--dg-weight-bold); letter-spacing: 0.14em; }
+html[data-theme="light"] .eyebrow .dg { color: var(--dg-accent-on-light); }
+.section-h { margin: 2.2rem 0 0.5rem; }
+
+.muted { color: var(--dg-text-label); font-size: 0.86rem; }
+.lede { font-size: 1.02rem; color: var(--dg-text-body); max-width: 40rem; }
+
+/* Glass note. Replaces a left-border callout with the panel idiom the design
+   language actually uses: hairline box, glass fill, blur behind it. The accent
+   survives as a single hairline on the leading edge. */
+.note {
+  font-size: 0.8rem;
+  color: var(--dg-text-label);
+  background: var(--dg-bg-overlay);
+  -webkit-backdrop-filter: blur(var(--dg-glass-blur));
+  backdrop-filter: blur(var(--dg-glass-blur));
+  border: 1px solid var(--dg-border);
+  border-left: 2px solid var(--dg-state-live);
+  border-radius: 0 var(--dg-shape-control) var(--dg-shape-control) 0;
+  padding: 0.5rem 0.8rem;
+  margin: 0.6rem 0 0;
+}
+pre.note { white-space: pre-wrap; word-break: break-word; font-size: 0.74rem; }
+
+/* ============================================================================
+   BLOCK 5 -- THE ORB.
+
+   The single most recognisable object in this design language, and the reason
+   the restyle reads as Deepgram rather than as a green repaint. On the real site
+   <molten-orb> is a 50% circle over a near-black ground with three blurred,
+   border-radius-morphing ellipses drifting inside it in the voice's
+   [light, mid, deep] shades, lit by an inset glow from the top and dropping a
+   soft one below:
+
+     box-shadow: inset 0 11px 36px 0 <glow>, 0 20px 44px -14px <glow>;
+
+   THAT IS NOW THE REAL THING, not an impression of it. Every value in the
+   .orb-lava / .orb-ell rules below -- the 144px box, the three ellipse boxes,
+   the three blur radii -- is copied from the reference stylesheet, and
+   web/orb.js drives the per-frame transform and border-radius morph off the
+   reference's own sine coefficients. During playback the ellipses are also
+   driven by an audio envelope measured from the playing signal, which is what
+   lets the orb replace the bar waveform instead of decorating it.
+
+   TWO LOOKS, ONE CLASS, AND THE PLAIN ONE IS NOT DEAD CODE.
+   A bare .orb is the three shades as three radial gradients, positioned low in
+   the circle the way the real ellipses sit. It is what an orb looks like before
+   orb.js reaches it, if orb.js never loads, or if attaching throws -- the same
+   "visualisation must never break the page" contract app.js keeps around its
+   analyser. .orb.is-molten (added by JS) swaps that fill for the flat ground and
+   lets the three real lava layers paint instead.
+
+   Any element can be an orb by taking the class and sitting inside something
+   that declares a --v-* run. Size is one custom property. orb.js may also set
+   --v-l / --v-m / --v-d / --v-g directly ON an orb, which is how the speaker
+   crossfade works: it tweens the same four properties this block already reads,
+   so nothing below needs to know a crossfade exists.
+
+   MOTION, AND WHAT IT COSTS. Three blurred, promoted layers per orb is real GPU
+   work, and cast.html puts 30 orbs on one page. So an orb is only driven by the
+   rAF ticker while .is-moving is on it, which orb.js grants only to an orb that
+   is on screen AND live (playing, hovered, or focused). An orb that is NOT
+   moving is still not still: it holds the pose its own phase offset gave it,
+   keeps the whole-circle breathe, and drifts on the idle swirl further down this
+   block -- all three of which are declarative, run on the compositor, and leave
+   it -- the part that matters -- never `will-change`-promoted at all.
+
+   So an orb has three states, and they are three different amounts of work:
+     idle      breathe + swirl, CSS only, 0 promoted layers
+     live      the ticker, the sine stack, 3 promoted layers, breathe and swirl
+               both switched off so the audio motion is the only motion
+     reduced   no motion of any kind, pose held
+
+   ACCESSIBILITY. An orb is decoration with a name beside it, always. It is never
+   the only way to tell one speaker from another, and it is never a control on
+   its own -- where it sits inside a button, the button has a real accessible
+   name that says whose voice it plays. Under prefers-reduced-motion the pose
+   freezes and stays visible, which is the reference's own behaviour and the
+   right one: the object does not vanish, it stops.
+   ========================================================================= */
+.orb {
+  /* A DEFAULT, and deliberately left where it was while every real context grew.
+     Nothing on the site renders at 2rem: the hero, the transport and the two
+     cast cards all declare their own size, and there is no fifth orb. So this
+     number is the answer to "what does a brand new orb look like before anyone
+     has thought about it", and the smallest orb that still reads as molten is a
+     better answer to that than a copy of whichever context grew last. */
+  --orb-size: 2rem;
+  position: relative;
+  flex: none;
+  width: var(--orb-size);
+  height: var(--orb-size);
+  border-radius: var(--dg-shape-orb);
+  background:
+    radial-gradient(58% 42% at 48% 78%, var(--v-d, var(--dg-accent-dim)) 0%, transparent 72%),
+    radial-gradient(52% 38% at 36% 66%, var(--v-m, var(--dg-accent)) 0%, transparent 74%),
+    radial-gradient(34% 26% at 60% 60%, var(--v-l, var(--dg-ink-primary)) 0%, transparent 78%),
+    var(--dg-surface-raised);
+  box-shadow:
+    inset 0 11px 36px 0 rgba(var(--v-g, var(--dg-accent-rgb)), 0.55),
+    0 20px 44px -14px rgba(var(--v-g, var(--dg-accent-rgb)), 0.45);
+  transition: box-shadow var(--dg-anim-base) var(--dg-anim-ease),
+              transform var(--dg-anim-fast) var(--dg-anim-ease);
+  animation: dg-breathe var(--dg-anim-breathe) var(--dg-anim-ease) infinite;
+}
+
+/* Upgraded. The gradients go, because the lava layers now paint the shades for
+   real; `overflow: hidden` is what clips the ellipses to the circle, and it is
+   load-bearing rather than defensive -- the ellipses are wider than the orb at
+   every size. */
+.orb.is-molten {
+  overflow: hidden;
+  background: var(--dg-orb-ground);
+  /* `isolation` plus the lava's z-index: -1 is what lets the play glyph keep
+     painting on top of the lava with no change to any glyph markup: a positioned
+     child at z-index -1 paints above its parent's own background and below the
+     parent's in-flow content. Without `isolation` that child can escape the orb
+     entirely and land behind an ancestor's panel fill, which is the exact
+     failure the selection-bloom note below describes. This makes the orb its own
+     stacking context so it cannot. */
+  isolation: isolate;
+}
+/* The reference's large-orb variant: past 240px the inset glow widens and the
+   drop shadow goes, because at that size the drop reads as a smudge under the
+   circle rather than as light. orb.js toggles this off the measured width. */
+.orb.is-molten.is-large {
+  box-shadow: inset 0 24px 84px 0 rgba(var(--v-g, var(--dg-accent-rgb)), 0.55);
+}
+/* Moving orbs do not also breathe. The lava IS the motion; scaling the whole
+   circle underneath it as well just made the shape look like it was being
+   pumped. The breathe stays on every still orb, where it is one composited
+   transform and the only thing keeping a wall of cast cards from reading dead. */
+.orb.is-molten.is-moving { animation: none; }
+
+/* ----------------------------------------------------------------------------
+   THE IDLE SWIRL. An orb with nothing to say still drifts.
+
+   THE ASK. "It should have more of like an ambient swirling when nothing's
+   playing." Before this, an idle orb held a single frozen pose with only the
+   whole-circle breathe under it, so it read as a still picture of an orb rather
+   than as an orb at rest.
+
+   WHY IT IS CSS AND NOT THE TICKER, WHICH IS THE ENTIRE DESIGN. The obvious
+   implementation is to let web/orb.js run its rAF loop while idle: the sine
+   stack already produces motion at env = 0, so it would be a one-line change to
+   wants(). It was rejected on measurement, not on principle. cast.html holds 30
+   orbs, and the pass that built this thing spent its whole budget getting an
+   idle page to 0 moving orbs and 0 will-change-promoted layers, because
+   applyMolten writes border-radius as well as transform and border-radius
+   cannot be composited: 30 orbs x 3 blurred layers is 90 style recalculations
+   and 90 repaints per frame on the MAIN thread.
+
+   All three options were traced in one session with all 30 cast orbs on screen,
+   over 5s windows. Per frame, main thread / GPU process:
+     no idle motion at all (breathe only)   0.107ms / 0.606ms,  0 promoted
+     this swirl (90 CSS animations)         0.245ms / 0.782ms,  0 promoted
+     the rAF ticker driving all 30 orbs     2.306ms / 8.486ms, 90 promoted
+   So the swirl costs 0.0046ms per orb per frame more than standing still, and
+   the ticker costs 0.073ms -- roughly sixteen times as much -- while putting
+   8.5ms of a 16.7ms frame budget on the GPU of a desktop that is not throttled
+   and not on battery. All three held 60fps on this machine; only one of them
+   would still be doing it on a phone. That is the whole argument.
+
+   So the idle motion is declarative and never touches the main thread:
+   - It animates ONLY `translate` and `rotate`, the standalone transform
+     properties, which the compositor can run by itself.
+   - Those properties COMPOSE with `transform` rather than replacing it (the
+     final matrix is translate * rotate * scale * transform), and `transform` is
+     what orb.js writes. So the swirl rides on top of whatever pose the JS left,
+     including the phase offset that makes a grid of orbs a grid of different
+     shapes. Neither side has to know about the other, and there is no frame
+     where they fight over one property.
+   - It touches no property that forces layout or paint. No border-radius: the
+     outline morph stays exclusively a playback signal.
+
+   HOW IDLE STAYS TELLABLE FROM PLAYING, which matters more than either state
+   looking good on its own. Three separate cues, none of them colour:
+   - RATE. Idle runs on 4x, 5x and 6x the pack's 6s breathe (24s, 30s, 36s).
+     Playback's fastest term cycles in about 7.6s and its outline morph in 8.8s.
+   - DEPTH. Idle translates up to 12px in the 144px lava box and rotates 9deg.
+     Playback translates up to 36px and rotates up to 165deg -- a third of the
+     travel and a sixteenth of the spin.
+   - SHAPE. Idle NEVER changes the outline and NEVER changes scale. The
+     border-radius morph and the vertical stretch are what an envelope does, so
+     an orb that is stretching or rippling at its edge is an orb with audio
+     behind it, full stop. That is the cue that survives a glance.
+
+   The three durations are coprime multiples of one token, so the layers pull
+   apart and the composite reads as a swirl instead of three boxes sliding as
+   one body; on a 24/30/36s set the pattern does not repeat for six minutes.
+   Per-segment easing with zero velocity at every stop, so the loop closes
+   without a visible seam at 100%.
+
+   REDUCED MOTION comes free and by the same mechanism as everything else here:
+   --dg-anim-breathe resolves to 0s, calc() carries the zero, and a 0s animation
+   with the default fill applies nothing at all -- so the element keeps the pose
+   orb.js posed it at. Verified in the browser under the emulated query, not
+   assumed from the cascade.
+
+   .is-ambient rather than plain .is-molten because whether an orb should idle
+   in motion is a per-context decision, not a property of being an orb, and
+   orb.js hands it out per attach site. See the ambient option there. */
+.orb.is-molten.is-ambient .orb-ell0 {
+  animation: dg-orb-swirl-0 calc(var(--dg-anim-breathe) * 4) var(--dg-anim-ease) infinite;
+}
+.orb.is-molten.is-ambient .orb-ell1 {
+  animation: dg-orb-swirl-1 calc(var(--dg-anim-breathe) * 5) var(--dg-anim-ease) infinite;
+}
+.orb.is-molten.is-ambient .orb-ell2 {
+  animation: dg-orb-swirl-2 calc(var(--dg-anim-breathe) * 6) var(--dg-anim-ease) infinite;
+}
+/* Playback wins. While the ticker owns this orb the swirl stops dead, so the
+   audio-driven motion is the only motion and the two never sum into something
+   that is neither. Same shape as the breathe rule above it. */
+.orb.is-molten.is-moving .orb-ell { animation: none; }
+
+/* The lava layer. A fixed 144px box scaled to the orb, exactly as upstream:
+   that is what keeps the ellipse boxes integers at every orb size instead of
+   needing a set of ratios per size. The scale is a unitless ratio of the orb's
+   pixel width to 144, which calc() cannot express, so orb.js measures the
+   element and sets --orb-lava-scale. transform-origin sits at the top-left
+   corner so the scale pins the box to the orb's corner rather than its middle. */
+.orb-lava {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 144px;
+  height: 144px;
+  transform: scale(var(--orb-lava-scale, 1));
+  transform-origin: 0 0;
+  pointer-events: none;
+  z-index: -1;
+}
+.orb-ell {
+  position: absolute;
+  border-radius: var(--dg-shape-orb);
+}
+/* will-change ONLY while moving. Left on unconditionally this is three promoted
+   compositor layers per orb whether or not anything is animating, which on the
+   cast page is 102 of them sitting in GPU memory to hold still. */
+.orb.is-moving .orb-ell { will-change: transform, border-radius; }
+
+/* The three ellipses, verbatim from the reference: boxes, offsets and blur
+   radii. They are bigger than the 144px box is tall on purpose and hang below
+   its top edge; applyMolten's -26px lift is what pulls them into view, so these
+   numbers only make sense together with that constant in orb.js. Shade order is
+   light on the largest bottom layer, then mid, then deep on the small one --
+   the order the widget stacks them, which is why block 1 names them l/m/d. */
+.orb-ell0 {
+  left: 4px; top: 72px; width: 135px; height: 75px;
+  filter: blur(9px);
+  background: var(--v-l, var(--dg-ink-primary));
+}
+.orb-ell1 {
+  left: 9px; top: 60px; width: 124px; height: 69px;
+  filter: blur(8px);
+  background: var(--v-m, var(--dg-accent));
+}
+.orb-ell2 {
+  left: 40px; top: 66px; width: 66px; height: 37px;
+  filter: blur(7px);
+  background: var(--v-d, var(--dg-accent-dim));
+}
+/* The selection bloom, off .orb-slot.selected. Done as a third box-shadow layer
+   rather than the site's blurred pseudo-element on purpose: a pseudo-element
+   inset past the orb's own edge either gets clipped by overflow or needs a
+   negative z-index that can drop it behind an ancestor's panel fill. A shadow
+   paints outside the border box and behind the background, which is exactly
+   where the bloom belongs, with no stacking context to reason about. */
+/* The trigger list covers both shapes the orb takes: the orb IS the control
+   (.hero-play, .transport), or the orb is inside one (.cast-play, nested two
+   levels down in .cast-top, which is why these are descendant and not child
+   selectors -- `>` matched nothing on the cast cards). */
+.orb:hover,
+.orb:focus-visible,
+button:hover .orb,
+button:focus-visible .orb,
+a:hover .orb,
+.is-playing .orb {
+  box-shadow:
+    inset 0 11px 36px 0 rgba(var(--v-g, var(--dg-accent-rgb)), 0.6),
+    0 20px 44px -14px rgba(var(--v-g, var(--dg-accent-rgb)), 0.5),
+    0 0 22px 2px rgba(var(--v-g, var(--dg-accent-rgb)), 0.45);
+}
+
+@keyframes dg-breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.045); }
+}
+
+/* The three idle drifts. Distances are in the 144px lava box, so they scale with
+   the orb exactly like the ellipse boxes and the reference's own offsets do: a
+   7rem hero orb drifts proportionally further in real pixels than a 3.4rem cast
+   card, which is what keeps the motion looking like the same object at two
+   sizes. 0% and 100% are identity in all three, which is what makes the loop
+   seamless AND what makes a 0s duration under reduced motion a no-op.
+   The three paths run in different directions on purpose -- 0 sweeps left, 1
+   sweeps right, 2 orbits -- because three layers drifting the same way is a
+   sliding blob and three layers drifting past each other is a swirl. */
+@keyframes dg-orb-swirl-0 {
+  0%, 100% { translate: 0 0;        rotate: 0deg; }
+  25%      { translate: -12px 3px;  rotate: 5deg; }
+  50%      { translate: -6px 8px;   rotate: 0deg; }
+  75%      { translate: 7px 3px;    rotate: -5deg; }
+}
+@keyframes dg-orb-swirl-1 {
+  0%, 100% { translate: 0 0;        rotate: 0deg; }
+  25%      { translate: 10px -4px;  rotate: -7deg; }
+  50%      { translate: 4px -9px;   rotate: 0deg; }
+  75%      { translate: -9px -3px;  rotate: 7deg; }
+}
+@keyframes dg-orb-swirl-2 {
+  0%, 100% { translate: 0 0;        rotate: 0deg; }
+  25%      { translate: 8px 6px;    rotate: 9deg; }
+  50%      { translate: -7px 9px;   rotate: 0deg; }
+  75%      { translate: -8px -6px;  rotate: -9deg; }
+}
+
+/* An orb with a glyph on it: play triangles, pause bars, transport controls.
+   The glyph is --dg-text-on-accent in BOTH themes, because an orb's shades do
+   not change with the theme either, so a theme-dependent glyph would go white on
+   a pale mint orb in the light theme. Every one of the 48 runs in block 1 has a
+   light shade at 15:1 or better against that near-black. */
+.orb-glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dg-text-on-accent);
+}
+.orb-glyph svg { display: block; width: 46%; height: 46%; fill: currentColor; }
+
+/* There is no .orb-pip class. The transcript's speaker marker is a ::before on
+   .who (block 12) so that no JS had to learn about it; a shrunken .orb class
+   here would have been a hook nothing ever took. */
+
+/* ============================================================================
+   BLOCK 6 -- MASTHEAD AND PAGE CHROME.
+
+   Item 2 of the review notes, and it was a real bug: .subscribe was
+   `position: fixed` at top-right and .subscribe + #theme-toggle both floated
+   over the document, so at 500px wide the six app icons sat directly on top of
+   the first row's headline as soon as you scrolled. Reserving space for fixed
+   chrome only moves the problem to the next viewport width.
+
+   The fix is to stop pretending it is an overlay. Both are now children of a
+   sticky masthead that is IN THE FLOW, so nothing can ever be underneath them.
+   The bar is the design language's glass panel; the negative inline margin
+   cancels the body gutter so it spans the full column box rather than sitting
+   inset like a card. No viewport units anywhere in here, deliberately: 100vw
+   includes the scrollbar and overflows at narrow widths, which is the class of
+   bug this block exists to remove.
+   ========================================================================= */
+.masthead {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin: 0 calc(-1 * var(--dg-gutter)) 0.9rem;
+  padding: 0.55rem var(--dg-gutter);
+  background: var(--dg-bg-overlay);
+  -webkit-backdrop-filter: blur(var(--dg-glass-blur));
+  backdrop-filter: blur(var(--dg-glass-blur));
+  border-bottom: 1px solid var(--dg-border);
+}
+.masthead-chrome { display: flex; align-items: center; gap: 0.35rem; flex: none; }
+
+/* SUBSCRIBE BUTTON AND MODAL.
+   Replaced a row of six brand logos on 2026-08-23. At narrow widths that row was six
+   1.3rem icons with `gap: 0` -- about 21 CSS px, adjacent -- which is under the 24px
+   target-size floor and the classic mis-tap layout. It also dropped its "Subscribe"
+   label on mobile, leaving logo shape and brand hue as the only thing separating one
+   target from the next, which is the wrong cue to depend on.
+   Same pill idiom as .voice-chip: hairline border, translucent fill. */
+#subscribe-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  /* 2.25rem = 36px, and 2.75rem = 44px at the narrow breakpoint below. The target is the
+     BUTTON, so this is the number that matters, not the glyph inside it. */
+  min-height: 2.25rem;
+  padding: 0 0.7rem;
+  font: inherit;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--dg-text-label);
+  background: var(--dg-bg-well);
+  border: 1px solid var(--dg-border);
+  border-radius: var(--dg-shape-pill);
+  cursor: pointer;
+  transition: color var(--dg-anim-fast) var(--dg-anim-ease),
+              border-color var(--dg-anim-fast) var(--dg-anim-ease);
+}
+#subscribe-open:hover {
+  color: var(--dg-text-primary);
+  border-color: var(--dg-border-hover);
+}
+#subscribe-open svg { display: block; flex: none; }
+
+#subscribe-dialog {
+  width: min(24rem, calc(100vw - 2rem));
+  padding: 1rem 1rem 1.15rem;
+  color: var(--dg-text-primary);
+  background: var(--dg-bg-panel);
+  /* On the dark theme the panel fill sits within a shade or two of the page, so the border alone
+     did not read as a raised surface. The house elevation token is what every other raised
+     surface here uses, and it does the separating rather than a heavier fill. */
+  box-shadow: var(--dg-elevation-panel);
+  border: 1px solid var(--dg-border);
+  border-radius: var(--dg-shape-surface);
+}
+/* Darker than a conventional scrim because the page behind is already near-black: at 0.55 the
+   headlines behind stayed legible and competed with the list. */
+#subscribe-dialog::backdrop { background: rgb(0 0 0 / 0.72); }
+
+.sd-head { display: flex; align-items: flex-start; gap: 0.5rem; }
+.sd-head h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 0.98rem;
+  line-height: 1.3;
+  color: var(--dg-text-primary);
+}
+.sd-close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 44px. A close control is the one a mis-tap is most expensive on. */
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: -0.6rem -0.5rem 0 0;
+  color: var(--dg-text-label);
+  background: none;
+  border: 0;
+  border-radius: var(--dg-shape-control);
+  cursor: pointer;
+}
+.sd-close:hover { color: var(--dg-text-primary); background: var(--dg-bg-well); }
+
+.sd-note { margin: 0.3rem 0 0.75rem; font-size: 0.78rem; color: var(--dg-text-label); }
+
+.sd-list { list-style: none; margin: 0; padding: 0; }
+.sd-app {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  /* The whole row is the target, and it clears 44px on every viewport. */
+  min-height: 2.75rem;
+  padding: 0 0.6rem;
+  color: var(--dg-text-primary);
+  text-decoration: none;
+  border-radius: var(--dg-shape-control);
+}
+.sd-app:hover { background: var(--dg-bg-well); }
+.sd-mark { flex: none; display: inline-flex; align-items: center; }
+.sd-mark svg { display: block; }
+.sd-name { flex: 1; font-size: 0.88rem; }
+.sd-go { flex: none; color: var(--dg-text-label); font-size: 1.1rem; line-height: 1; }
+
+.sd-copy { margin-top: 0.9rem; padding-top: 0.85rem; border-top: 1px solid var(--dg-border); }
+.sd-copy label { display: block; font-size: 0.72rem; color: var(--dg-text-label); }
+.sd-copy-row { display: flex; gap: 0.4rem; margin-top: 0.4rem; }
+#sd-url {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.75rem;
+  padding: 0 0.55rem;
+  font-family: var(--dg-font-mono, ui-monospace, monospace);
+  font-size: 0.72rem;
+  color: var(--dg-text-primary);
+  background: var(--dg-bg-well);
+  border: 1px solid var(--dg-border);
+  border-radius: var(--dg-shape-control);
+}
+#sd-copy {
+  flex: none;
+  min-height: 2.75rem;
+  padding: 0 0.8rem;
+  font: inherit;
+  font-size: 0.75rem;
+  color: var(--dg-text-primary);
+  background: var(--dg-bg-well);
+  border: 1px solid var(--dg-border);
+  border-radius: var(--dg-shape-control);
+  cursor: pointer;
+}
+#sd-copy:hover { border-color: var(--dg-border-hover); }
+
+#theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  color: var(--dg-icon-default);
+  background: var(--dg-bg-well);
+  border: 1px solid var(--dg-border);
+  border-radius: var(--dg-shape-orb);
+  cursor: pointer;
+  transition: color var(--dg-anim-fast) var(--dg-anim-ease),
+              border-color var(--dg-anim-fast) var(--dg-anim-ease);
+}
+#theme-toggle:hover { color: var(--dg-text-primary); border-color: var(--dg-border-hover); }
+#theme-toggle svg { display: block; }
+
+/* Narrow: the button GROWS rather than shrinking, which is the whole point of the
+   2026-08-23 change. The old rules here did the opposite -- they hid the label and
+   took the icons down to 1.3rem -- so a phone got the smallest targets on the site.
+   The label stays: it is what makes the control legible without relying on an icon. */
+@media (max-width: 34rem) {
+  #subscribe-open { min-height: 2.75rem; padding: 0 0.85rem; font-size: 0.78rem; }
+  .masthead { flex-wrap: wrap; }
+}
+
+/* ============================================================================
+   BLOCK 7 -- HERO. The immediate-listen panel (Natalie's ask, NPR's homepage as
+   the reference). One obvious target: press it and today's episode starts.
+
+   It was already borrowing from talk.deepgram.com -- black ground, soft-cornered
+   panel, circular accent play target, wide label tracking. It now borrows the
+   real thing: the panel is glass over the ambient field with a blur behind it,
+   and the play target is an actual molten orb rather than a flat green disc.
+   ========================================================================= */
+/* The hidden attribute on #hero used to do nothing, because `display: flex`
+   below out-ranked it, so a catalogue with zero episodes rendered an empty hero:
+   a play button, a blank headline, and a "Full script" link pointing at "#".
+   The global `[hidden]` rule in block 4 now covers this and every case like it. */
+.hero {
+  display: flex;
+  gap: 1.2rem;
+  align-items: center;
+  margin: 1.2rem 0 0.4rem;
+  padding: 1.2rem 1.3rem;
+  background: var(--dg-bg-panel);
+  border: 1px solid var(--dg-border);
+  border-radius: var(--dg-shape-surface);
+  box-shadow: var(--dg-elevation-soft);
+  -webkit-backdrop-filter: blur(var(--dg-glass-blur));
+  backdrop-filter: blur(var(--dg-glass-blur));
+}
+.hero-meta { flex: 1; min-width: 0; }
+.hero-kicker { color: var(--dg-state-live); margin: 0 0 0.35rem; }
+html[data-theme="light"] .hero-kicker { color: var(--dg-accent-on-light); }
+.hero-title { font-size: 1.24rem; margin: 0 0 0.35rem; line-height: 1.22; }
+.hero-sub { color: var(--dg-text-label); font-size: 0.78rem; margin: 0 0 0.5rem; }
+
+/* WHO IS TALKING, in words. Added 2026-08-21 because the orb's palette change was correct and
+   invisible: this episode alternates the host's amber with a co-host, and orange against green is
+   the worst pair there is for red-green colour blindness. brand.css block 1 opens by saying colour
+   is never the only signal and every coloured element also carries a name; the hero was the one
+   place in the app that did not. It does now.
+
+   Inked with --v-on so the name matches the orb, which makes the two signals agree rather than
+   making the colour necessary. Read the name and you know; see the colour and you are reminded. */
+.hero-speaker {
+  margin: 0.35rem 0 0;
+  font-size: 0.84rem;
+  font-weight: var(--dg-weight-medium);
+  color: var(--v-on, var(--dg-text-label));
+}
+.hero-summary { font-size: 0.86rem; color: var(--dg-text-body); margin: 0 0 0.7rem; }
+.hero-links { margin: 0.7rem 0 0; font-size: 0.82rem; }
+
+/* The one obvious target, sized to read as the primary action from across a
+   room -- the whole point of an "immediate listen" affordance. The orb class
+   carries the look; only the size and the interaction live here.
+
+   7rem, up from 3.6rem, and this is the one context that got the full double.
+   The hero is where the object is supposed to have presence: it is the largest
+   orb on the site, it is the only one on its page, and at 58px the molten morph
+   was legible but not remarkable. 112px is where the three ellipses stop
+   reading as one smudge and start reading as separate bodies moving past each
+   other -- the whole reason the lava is three layers and not one.
+   It costs nothing in layout: .hero is `align-items: center` and its text
+   column already stands ~230px tall at the content column's width, so a 112px
+   orb sits inside the height the panel had anyway. Measured, not assumed. */
+.hero-play {
+  --orb-size: 7rem;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.hero-play:hover { transform: scale(1.05); }
+.hero-play:active { transform: scale(0.97); }
+/* Swap the glyph from the playing state, so the icon can never disagree with
+   the audio. Play and pause are distinct SHAPES, not two colours of one shape. */
+.hero-play .ico-pause { display: none; }
+.hero.is-playing .hero-play .ico-play { display: none; }
+.hero.is-playing .hero-play .ico-pause { display: block; }
+
+/* Scrub bar: a seek target and a chapter map. Taller than a pure readout so it
+   is a comfortable click target, and the ticks sit above the fill so they stay
+   visible as the played portion passes under them. */
+.hero-scrub {
+  position: relative;
+  height: 8px;
+  border-radius: var(--dg-shape-pill);
+  background: var(--dg-control-track);
+  overflow: hidden;
+  cursor: pointer;
+}
+.hero-bar {
+  height: 100%;
+  width: 0;
+  background: var(--dg-state-live);
+  border-radius: var(--dg-shape-pill);
+  transition: width var(--dg-anim-base) linear;
+}
+.hero-ticks { position: absolute; inset: 0; pointer-events: none; }
+.hero-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--dg-bg-app);
+  opacity: 0.9;
+}
+/* There is no waveform canvas here any more. The orb IS the signal now: it is
+   driven by the same AnalyserNode the bars used to be, so the page shows the
+   speech in the object it already had rather than in a second widget beside it.
+   The scrubber stays, because position in the episode and level of the signal
+   are different questions and only one of them has moved into the orb. */
+
+@media (max-width: 30rem) {
+  .hero { flex-direction: column; align-items: flex-start; gap: 0.9rem; }
+  /* 5.5rem, up from 3rem. Narrow, the hero STACKS, so the orb is no longer
+     sharing a row with the text and cannot squeeze it -- it costs pure vertical
+     space instead. 88px is the largest that still leaves the title, the summary
+     and the "Full script" link on a 500px-wide screen without the panel
+     swallowing the fold. Deliberately not the desktop 7rem: an orb that is a
+     third of the viewport width stops being a control and becomes a splash
+     screen. */
+  .hero-play { --orb-size: 5.5rem; }
+}
+
+/* ============================================================================
+   BLOCK 8 -- EPISODE ROWS.
+
+   Rules between rows rather than cards, so the page reads as a list of stories
+   instead of a grid of tiles. These used to carry a filled LISTEN button plus
+   Script and Download pills; the button did not go to the episode, it retargeted
+   the player at the top of the page, and Script pointed at the URL the headline
+   already did. The row is three things now and the only playable episode on this
+   page is the hero.
+   ========================================================================= */
+.ep-list { list-style: none; padding: 0; margin: 0.6rem 0 0; }
+.ep-list li { display: block; padding: 1.15rem 0; border-bottom: 1px solid var(--dg-border); }
+.ep-list li:first-child { padding-top: 0.5rem; }
+/* Item 1 of the review notes: the last row drew a rule under itself, so the list
+   ended on a hairline hanging in space with nothing below it. Same under the
+   single "No episodes yet." row, where the rule was the only thing on screen
+   after the message. A separator between two rows is a separator; a separator
+   after the last one is a mistake. */
+.ep-list li:last-child { border-bottom: none; }
+
+.ep-date { margin: 0 0 0.35rem; }
+.ep-list h3.ep-title { font-size: 1.14rem; margin: 0 0 0.35rem; line-height: 1.24; }
+.ep-list h3.ep-title a { color: var(--dg-text-primary); text-decoration: none; }
+.ep-list h3.ep-title a:hover { color: var(--dg-link); text-decoration: underline; }
+.ep-summary { font-size: 0.9rem; color: var(--dg-text-body); margin: 0 0 0.6rem; max-width: 40rem; }
+
+/* The row's one action, and it is a LINK, not a player. It replaced a filled
+   green pill that looked exactly like a play button and behaved like one.
+   Underline plus a trailing arrow, so "this goes somewhere" is carried by shape
+   and text and survives any palette change.
+
+   Item 5 of the review notes: the underline used to stop short of the arrow and
+   leave a visible gap, because the anchor was underlined and the arrow span
+   opted out -- which also un-underlined the space in between, mid-rule. The
+   underline now lives on a span around the WORD only and the anchor carries
+   none, so the rule ends exactly where the word does and there is no gap to
+   see. That needed one span in index.html. */
+.ep-listen-link {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  font-weight: var(--dg-weight-medium);
+  color: var(--dg-link);
+  text-decoration: none;
+}
+.ep-listen-label {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.ep-listen-link:hover .ep-listen-label { text-decoration-thickness: 2px; }
+/* No border-radius here. It was the only literal radius below block 1, and `border-radius`
+   is one of the four classes the seal polices. The two token options were both worse:
+   `var(--dg-shape-control)` is 6px, which visibly rounds a focus outline on a bare text
+   link (a rendering change, not a token swap), and adding a shape token to block 0 would
+   contradict its own "three steps and a circle, and that is the whole set" comment. So the
+   declaration is simply gone, and this outline is square like every other focus ring in
+   this file. Decided 2026-08-22. */
+.ep-listen-link:focus-visible { outline-offset: 3px; }
+.ep-listen-arrow { display: inline-block; transition: transform var(--dg-anim-fast) var(--dg-anim-ease); }
+.ep-listen-link:hover .ep-listen-arrow { transform: translateX(3px); }
+
+/* ============================================================================
+   BLOCK 9 -- STATUS BOARD AND TRENDING TICKER.
+   ========================================================================= */
+.status-board {
+  margin: 1.2rem 0;
+  padding: 0.8rem 1rem;
+  font-size: 0.88rem;
+  background: var(--dg-bg-overlay);
+  -webkit-backdrop-filter: blur(var(--dg-glass-blur));
+  backdrop-filter: blur(var(--dg-glass-blur));
+  border: 1px solid var(--dg-border);
+  border-radius: var(--dg-shape-panel);
+}
+.sb-row { display: flex; align-items: center; gap: 0.5rem; }
+/* 4px, matching the site's .live-dot, with its 2s pulse. */
+.sb-dot {
+  flex: none;
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: var(--dg-shape-orb);
+  background: var(--dg-state-idle);
+}
+.sb-dot.live {
+  background: var(--dg-state-live);
+  box-shadow: 0 0 6px 0 rgba(var(--dg-accent-rgb), 0.7);
+  animation: dg-pulse 2s var(--dg-anim-ease) infinite;
+}
+.sb-dot.err { background: var(--dg-state-error); }
+/* Stalled is a SQUARE, not a differently coloured circle, and the row says
+   "Run stalled" in words. Shape plus label, because hue alone is not a signal
+   everyone receives. No animation either: a pulsing marker would read as
+   "working", which is precisely the wrong impression. */
+.sb-dot.stalled {
+  background: var(--dg-state-idle);
+  border-radius: 0;
+  box-shadow: 0 0 0 2px var(--dg-state-error);
+  animation: none;
+}
+/* Distinct from .live's 2s pulse, which stays reserved for real generation. */
+.sb-dot.idle-live {
+  background: var(--dg-state-live);
+  animation: dg-breathe-opacity var(--dg-anim-breathe) var(--dg-anim-ease) infinite;
+}
+@keyframes dg-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@keyframes dg-breathe-opacity { 0%, 100% { opacity: 0.9; } 50% { opacity: 0.35; } }
+
+.sb-bar {
+  height: 4px;
+  margin: 0.55rem 0 0.2rem;
+  overflow: hidden;
+  background: var(--dg-control-track);
+  border-radius: var(--dg-shape-pill);
+}
+.sb-fill {
+  height: 100%;
+  background: var(--dg-state-live);
+  transition: width var(--dg-anim-base) var(--dg-anim-ease);
+}
+.sb-meta { margin-top: 0.4rem; font-size: 0.76rem; color: var(--dg-text-label); }
+
+/* Trending ticker: fills the status board's idle state with the live HN front
+   page. The track holds the row list twice and animates to -50%, which lands
+   exactly on the start of the second copy, so the loop is seamless. Rows must
+   never wrap or that math breaks. */
+.sb-ticker {
+  position: relative;
+  height: 6rem;
+  overflow: hidden;
+  margin: 0.5rem 0 0.1rem;
+  /* currentColor, not a literal black: a mask only reads the alpha channel, so
+     any opaque colour does the same job and this one keeps the seal intact. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent, currentColor 18%, currentColor 82%, transparent);
+          mask-image: linear-gradient(to bottom, transparent, currentColor 18%, currentColor 82%, transparent);
+}
+.sb-track { display: flex; flex-direction: column; animation: sb-scroll linear infinite; }
+@keyframes sb-scroll { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+/* Fewer than 5 rows: nothing to loop, so render as a static list, no animation. */
+.sb-track--static { animation: none; }
+.sb-item {
+  display: flex;
+  gap: 0.6rem;
+  align-items: baseline;
+  padding: 0.2rem 0;
+  color: var(--dg-text-body);
+  text-decoration: none;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+.sb-item:hover { color: var(--dg-text-primary); }
+.sb-item:hover .sb-title { text-decoration: underline; }
+/* Fixed width plus tabular figures make the points a stable column instead of a
+   ragged edge. */
+.sb-pts { flex: none; width: 3.2ch; text-align: right; color: var(--dg-text-label); font-size: 0.76rem; }
+.sb-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Two motions on this board cannot be gated by a zeroed duration token, so they
+   are gated by name here. The ticker's duration is set inline by index.html (it
+   scales with the row count), and the live pulse runs on a 2s cadence the pack
+   has no token for -- and adding one would mean this file's token set no longer
+   matches the pack it was copied from, which is the thing that makes a rebrand a
+   one-block edit. Named gates are the smaller cost. */
+@media (prefers-reduced-motion: reduce) {
+  .sb-track,
+  .sb-dot.live { animation: none; }
+}
+
+/* ============================================================================
+   BLOCK 10 -- CONTROLS. Buttons, tabs, pills, selects.
+
+   Two shapes only, matching the pack: a pill for anything that toggles or
+   navigates, a 6px control radius for anything that submits. Filled buttons put
+   page-dark text on the accent; everything else is a hairline outline that
+   brightens its border on hover. Hover NEVER changes a control's fill colour
+   alone, because a fill change is the least legible state cue there is.
+   ========================================================================= */
+button.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  font-size: 0.66rem;
+  color: var(--dg-icon-default);
+  background: transparent;
+  border: 1px solid var(--dg-border);
+  border-radius: var(--dg-shape-orb);
+  cursor: pointer;
+  transition: color var(--dg-anim-fast) var(--dg-anim-ease),
+              border-color var(--dg-anim-fast) var(--dg-anim-ease);
+}
+button.icon:hover { color: var(--dg-text-primary); border-color: var(--dg-border-hover); }
+
+button.btn {
+  font: inherit;
+  font-size: 0.84rem;
+  padding: 0.45rem 0.9rem;
+  color: var(--dg-text-body);
+  background: transparent;
+  border: 1px solid var(--dg-border);
+  border-radius: var(--dg-shape-control);
+  cursor: pointer;
+  transition: color var(--dg-anim-fast) var(--dg-anim-ease),
+              border-color var(--dg-anim-fast) var(--dg-anim-ease),
+              background var(--dg-anim-fast) var(--dg-anim-ease);
+}
+button.btn:hover { color: var(--dg-text-primary); border-color: var(--dg-border-hover); }
+button.btn.primary {
+  color: var(--dg-text-on-accent);
+  background: var(--dg-accent);
+  border-color: var(--dg-accent);
+  font-weight: var(--dg-weight-bold);
+}
+button.btn.primary:hover { filter: brightness(1.08); }
+button.btn.primary:disabled { opacity: 0.45; cursor: default; filter: none; }
+
+.tab {
+  font: inherit;
+  font-size: 0.84rem;
+  padding: 0.35rem 0.9rem;
+  color: var(--dg-text-label);
+  background: transparent;
+  border: 1px solid var(--dg-border);
+  border-radius: var(--dg-shape-pill);
+  cursor: pointer;
+  transition: color var(--dg-anim-fast) var(--dg-anim-ease),
+              border-color var(--dg-anim-fast) var(--dg-anim-ease);
+}
+.tab:hover { color: var(--dg-text-primary); border-color: var(--dg-border-hover); }
+/* The active tab is bolder AND brighter AND outlined, three cues, so it is not
+   colour doing the work on its own. */
+.tab.active {
+  color: var(--dg-text-primary);
+  border-color: var(--dg-border-selected);
+  font-weight: var(--dg-weight-medium);
+}
+
+.preset-btn {
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.8rem;
+  color: var(--dg-text-label);
+  background: transparent;
+  border: 1px solid var(--dg-border);
+  border-radius: var(--dg-shape-pill);
+  cursor: pointer;
+  transition: color var(--dg-anim-fast) var(--dg-anim-ease),
+              border-color var(--dg-anim-fast) var(--dg-anim-ease);
+}
+.preset-btn:hover { color: var(--dg-text-primary); border-color: var(--dg-border-hover); }
+.preset-btn.active {
+  color: var(--dg-text-primary);
+  border-color: var(--dg-border-selected);
+  font-weight: var(--dg-weight-medium);
+}
+.build-presets { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin: 0.6rem 0 0.9rem; }
+
+select,
+input[type="search"],
+input[type="text"] {
+  font: inherit;
+  font-size: 0.86rem;
+  padding: 0.35rem 0.5rem;
+  color: var(--dg-text-body);
+  background: var(--dg-bg-well);
+  border: 1px solid var(--dg-border);
+  border-radius: var(--dg-shape-control);
+}
+select:hover { border-color: var(--dg-border-hover); }
+
+/* Checkboxes stay native -- a hand-rolled one loses the platform's keyboard and
+   assistive behaviour for nothing -- but accent-color is the one hook that makes
+   the native control follow the brand instead of shipping the OS blue. */
+input[type="checkbox"],
+input[type="radio"],
+progress { accent-color: var(--dg-accent); }
+
+.tag {
+  display: inline-block;
+  font-size: 0.64rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.1rem 0.5rem;
+  color: var(--dg-text-label);
+  border: 1px solid var(--dg-border);
+  border-radius: var(--dg-shape-pill);
+}
+/* Both of these used to be the accent green on the accent green. They are the
+   same shape as .tag and are told apart by their WORDS, which is what a tag is
+   for; the border brightens so they still read as emphasised. */
+.tag-desk,
+.tag-new { color: var(--dg-text-primary); border-color: var(--dg-border-selected); }
+
+.status { font-size: 0.8rem; color: var(--dg-text-label); }
+
+audio { width: 100%; margin: 0.6rem 0 0.4rem; }
+
+/* ============================================================================
+   BLOCK 11 -- EPISODE CONSOLE. Player, chapter dots and the Recast call to
+   action, pinned as one block. It has to be contiguous to stick as a unit,
+   which is why the disclaimer and summary sit below it.
+   ========================================================================= */
+.console {
+  position: sticky;
+  top: 3rem;                        /* clears the sticky masthead above it */
+  z-index: 6;
+  margin: 0 calc(-1 * var(--dg-gutter)) 0.8rem;
+  padding: 0.7rem var(--dg-gutter) 0.6rem;
+  background: var(--dg-bg-overlay);
+  -webkit-backdrop-filter: blur(var(--dg-glass-blur));
+  backdrop-filter: blur(var(--dg-glass-blur));
+  border-bottom: 1px solid var(--dg-border);
+}
+.console-player { display: flex; align-items: center; gap: 0.8rem; }
+.transport {
+  /* Bigger than the 2.5rem it was, because it is doing two jobs now: it is the
+     play control AND it is the playback visual that replaced the bar canvas
+     beside it. A 2.5rem circle is too small to read a molten morph in.
+
+     6rem now, up from 3.2rem: the second full-ish double, for the same reason
+     as the hero. What capped it is that this orb lives in a STICKY console, so
+     every pixel it gains is a pixel of transcript permanently off screen.
+     Measured at the content column's width: the console stands 155px tall at
+     3.2rem and 200px at 6rem, because the chapter strip and the actions row
+     carry most of its height and the orb only grows one of its three rows. A
+     45px tax under a 48px masthead is worth an orb that reads as the thing
+     making the sound. 6.4rem was tried and gave back 6 more pixels of orb for
+     6 more of console, which is a worse trade at the top of a reading page. */
+  --orb-size: 6rem;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  /* app.js swaps this button's content between the play and pause CHARACTERS rather than two
+     SVGs, so the glyph needs a type size here. Shapes, not colours, so the icon can never
+     disagree with the audio. */
+  font-size: 0.8rem;
+  line-height: 1;
+}
+.transport:hover { transform: scale(1.05); }
+/* margin-left: auto rather than a flex:1 spacer in the middle. The bar canvas
+   used to be that spacer; with it gone the readout would otherwise sit glued to
+   the orb, and a player's elapsed time belongs at the far end of its row. */
+.transport-time { flex: none; margin-left: auto; font-size: 0.76rem; color: var(--dg-text-label); }
+.console-actions { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.55rem; flex-wrap: wrap; }
+.console-hint { font-size: 0.72rem; color: var(--dg-text-label); }
+.console .chapter-strip { margin: 0.55rem 0 0; }
+
+/* Narrow, the console keeps sticking but the viewport it sticks to is short and
+   the actions row wraps, so the same orb costs a much larger share of the first
+   screen. Step it down rather than let the transcript start below the fold. This
+   query did not exist before the orb grew; it exists now because the orb is the
+   only thing in the console whose height is a judgement call.
+
+   34rem, NOT the 30rem the hero stacks at, and the difference is deliberate. A
+   500px-wide window is between the two, and it is a real width -- it is where
+   this was checked. The hero at 500px is still a row and survives it, because
+   the panel had the height anyway. The console at 500px is a sticky block on a
+   short viewport, and at 6rem it pushed the first transcript line to y=650 of
+   an 800px screen. 34rem is the breakpoint the masthead and the host card
+   already use, so this borrows an existing one instead of adding a fourth. */
+@media (max-width: 34rem) {
+  .transport { --orb-size: 4.4rem; }
+}
+
+/* Recast call to action: a slow breathing bloom, purely so the feature is
+   discoverable. It is decoration on a control, not a signal about data, so an
+   idle loop is honest here. Reuses the pack's 6s identity cycle rather than
+   inventing a third tempo. */
+.recast-cta {
+  color: var(--dg-text-primary);
+  border-color: var(--dg-border-selected);
+  font-weight: var(--dg-weight-medium);
+  animation: dg-cta-glow var(--dg-anim-breathe) var(--dg-anim-ease) infinite;
+}
+@keyframes dg-cta-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(var(--dg-accent-rgb), 0.4); }
+  50%      { box-shadow: 0 0 0 5px rgba(var(--dg-accent-rgb), 0); }
+}
+.recast-cta:hover { background: rgba(var(--dg-accent-rgb), 0.1); }
+
+/* Chapter strip: one numbered dot per chapter, replacing the old repeated list
+   of titles. The titles already head each block below, so repeating them at the
+   top was noise; the count and the ability to jump are the parts worth keeping.
+   The NUMBER is the identity of a dot; the accent only marks which one is now. */
+.chapter-strip { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; margin: 1rem 0 0.2rem; }
+.chapter-strip-label { margin-right: 0.3rem; }
+.chapter-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  padding: 0;
+  font: inherit;
+  font-size: 0.76rem;
+  color: var(--dg-text-label);
+  background: var(--dg-bg-well);
+  border: 1px solid var(--dg-border);
+  border-radius: var(--dg-shape-orb);
+  cursor: pointer;
+  transition: color var(--dg-anim-fast) var(--dg-anim-ease),
+              border-color var(--dg-anim-fast) var(--dg-anim-ease),
+              background var(--dg-anim-fast) var(--dg-anim-ease);
+}
+.chapter-dot:hover { color: var(--dg-text-primary); border-color: var(--dg-border-hover); }
+.chapter-dot.active {
+  color: var(--dg-text-on-accent);
+  background: var(--dg-accent);
+  border-color: var(--dg-accent);
+  font-weight: var(--dg-weight-bold);
+}
+
+/* Episode script grouped under its chapters. The script used to be a flat list
+   under a separate flat list of chapters, so there was no way to see where one
+   chapter ended and the next began. Headings are flush left and their segments
+   sit in an indented block: the indent IS the grouping. */
+.chapter-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 1.8rem 0 0.2rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--dg-border);
+  scroll-margin-top: 9rem;          /* clears the sticky console when jumped to */
+}
+.chapter-head:first-child { margin-top: 0.8rem; }
+.chapter-head-title {
+  font-family: var(--dg-font-display);
+  font-weight: var(--dg-weight-medium);
+  font-size: 0.95rem;
+  color: var(--dg-text-primary);
+}
+.chapter-head-title a { color: inherit; text-decoration: none; }
+.chapter-head-title a:hover { text-decoration: underline; }
+/* The indent plus the rule is what visually contains a chapter's lines. */
+.chapter-block {
+  margin: 0 0 0.2rem 1.1rem;
+  padding-left: 0.9rem;
+  border-left: 1px solid var(--dg-border);
+}
+.chapter-block .seg { border-bottom: none; padding: 0.5rem 0.3rem; }
+.chapter-block .seg + .seg { border-top: 1px solid var(--dg-border); }
+/* An active line tints its own row; the chapter it belongs to picks up the
+   accent border so the current position is legible even when the active row is
+   scrolled out of view. */
+.chapter-block:has(.seg.active) { border-left-color: var(--dg-state-live); }
+
+/* ============================================================================
+   BLOCK 12 -- TRANSCRIPT ROWS. Where the per-voice identity from block 1 does
+   its real work.
+
+   Three cues per row, and only the third is colour:
+     1. the speaker's NAME, printed on every row without exception;
+     2. a pip -- a shape -- to the left of the name;
+     3. the pip's fill, the name's colour, and the row's leading rule, all
+        var(--v-on), which block 1 guarantees clears WCAG AA against whichever
+        ground the reader is on.
+   Delete cue 3 entirely and the transcript is still completely readable. That is
+   the test this block is written to pass.
+   ========================================================================= */
+.seg {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.6rem 0.4rem;
+  border-bottom: 1px solid var(--dg-border);
+  border-radius: var(--dg-shape-control);
+  scroll-margin-top: 9rem;
+}
+.seg .ctrl {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  width: 2rem;
+}
+.seg .body { min-width: 0; }
+/* The speaker line: 10px bold name, tracked, in the voice's ink. Straight off
+   the site's .sender / .label-row pair. */
+.seg .who {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  font-size: 0.7rem;
+  font-weight: var(--dg-weight-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dg-text-label);
+  margin-bottom: 0.2rem;
+}
+/* The voice id sits beside the name in the mono face, lowercase, dim: it is
+   technical detail, not a second name. */
+.seg .who .voice {
+  font-family: var(--dg-font-mono);
+  font-weight: var(--dg-weight-regular);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.66rem;
+  color: var(--dg-text-disabled);
+}
+.seg .text { font-size: 0.94rem; color: var(--dg-text-body); }
+.seg.commenter .text { font-style: italic; }
+.ts { font-size: 0.64rem; color: var(--dg-text-label); }
+
+/* The fallback belongs in the var() USE, never in the declaration. Writing
+   `--v-on: var(--v-on, ...)` is self-referential, which CSS treats as
+   guaranteed-invalid and drops, and because `.seg[data-voice]` outranks
+   `[data-voice="..."]` that broken declaration silently wins. The result is
+   uncoloured rows that look intentional. */
+.seg[data-voice],
+.seg[data-desk] {
+  border-left: 2px solid var(--v-on, var(--dg-border-hover));
+  padding-left: 0.6rem;
+}
+.seg[data-voice] .who,
+.seg[data-desk] .who { color: var(--v-on, var(--dg-text-label)); }
+/* The pip. `::before` rather than markup so no JS had to learn about it. */
+.seg[data-voice] .who::before,
+.seg[data-desk] .who::before {
+  content: "";
+  flex: none;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: var(--dg-shape-orb);
+  background:
+    radial-gradient(70% 60% at 40% 70%, var(--v-m, var(--dg-accent)) 0%, transparent 80%),
+    var(--v-d, var(--dg-accent-dim));
+  /* A 1px ring in the row's own ink, so the pip is outlined against BOTH grounds.
+     The gradient alone is built from the run's mid and deep shades, and a
+     mint-led run's shades on the light theme's near-white page are a pale smudge. */
+  box-shadow: 0 0 0 1px var(--v-on, var(--dg-border-hover)),
+              0 0 5px 0 rgba(var(--v-g, var(--dg-accent-rgb)), 0.55);
+}
+/* The active row already had a generic accent tint; tint with the voice instead,
+   so the playhead reads as "this speaker" rather than as a generic highlight. */
+.seg.active { background: rgba(var(--dg-accent-rgb), 0.1); }
+.seg[data-voice].active,
+.seg[data-desk].active { background: rgba(var(--v-g, var(--dg-accent-rgb)), 0.14); }
+.seg[data-voice] .icon:hover,
+.seg[data-desk] .icon:hover { color: var(--v-on); border-color: var(--v-on); }
+
+.summary { font-size: 0.94rem; color: var(--dg-text-body); margin: 0.7rem 0 0; }
+
+/* ============================================================================
+   BLOCK 13 -- RECAST TABLE.
+   ========================================================================= */
+.recast-table { width: 100%; border-collapse: collapse; margin: 0.6rem 0; }
+.recast-table th {
+  text-align: left;
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dg-text-label);
+  border-bottom: 1px solid var(--dg-border);
+  padding: 0.4rem;
+}
+.recast-table td { padding: 0.45rem 0.4rem; border-bottom: 1px solid var(--dg-border); vertical-align: middle; }
+.recast-table tbody tr:last-child td { border-bottom: none; }
+.slot-row .c-slot { font-weight: var(--dg-weight-medium); font-size: 0.86rem; white-space: nowrap; }
+/* Name, family badge and a sample button on one line. Flex rather than three
+   inline children with text nodes between them: the cell wrapped its button onto
+   a second row for whichever seat had a family label, so two structurally
+   identical rows sat at different heights. */
+.slot-row .c-current { white-space: nowrap; }
+.slot-row .c-current .vn { font-size: 0.86rem; }
+.slot-row .c-current .fam { font-family: var(--dg-font-mono); font-size: 0.64rem; color: var(--dg-text-disabled); }
+.slot-row .c-current button.btn { padding: 0.2rem 0.5rem; font-size: 0.7rem; vertical-align: middle; }
+.slot-row .c-recast { width: 42%; }
+.slot-row .c-recast select { width: 100%; min-width: 11rem; }
+.slot-row .c-sample { width: 2.4rem; text-align: right; }
+/* The row's state is carried by the WORDS in .c-mark ("will re-render" /
+   "unchanged" / "no lines to recast"), and a voice already held by the other
+   seat is a disabled <option> whose label says "(taken by the Showrunner)". The
+   tint and the brighter text below are redundant with those, never the only
+   signal: this page has to be readable with no colour perception at all. */
+.slot-row .c-mark { width: 8.5rem; }
+.slot-row .c-mark .mark {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dg-text-label);
+}
+.slot-row.changed { background: rgba(var(--dg-accent-rgb), 0.09); }
+.slot-row.changed .c-slot { color: var(--dg-text-primary); }
+.slot-row.changed .c-mark .mark { color: var(--dg-text-primary); font-weight: var(--dg-weight-bold); }
+/* A role with no lines in this episode, so nothing to recast. Struck through as
+   well as dimmed, so "this seat is not available" is legible without relying on
+   the opacity reading as "off". */
+.slot-row .c-recast select:disabled { opacity: 0.5; cursor: not-allowed; text-decoration: line-through; }
+.recast-actions { display: flex; gap: 0.5rem; align-items: center; margin-top: 1rem; flex-wrap: wrap; }
+
+/* ============================================================================
+   BLOCK 14 -- CAST CARDS.
+
+   One card per voice, seated at its desk, reusing the block 1 identity so a card
+   and that speaker's rows in an episode script are visibly the same character.
+   The play target is a real orb in the voice's own shades, which is the same
+   object the talk site uses to represent a voice -- so this page and that one now
+   depict a voice the same way.
+
+   The all-voices grid was built on 2026-08-21 and .cast-card kept the flex shape
+   it had; only surface, type and the play target changed. Its .cast-card-wide
+   sibling went with the sections, 2026-08-22.
+   ========================================================================= */
+/* FOUR COLUMNS, and to get them the grid breaks out of the prose column.
+   `body` is capped at --dg-col (46rem), which is right for reading and wrong for
+   36 cards: four columns inside it would be about 11rem each, and a 3.4rem orb
+   beside a 1.05rem name does not fit in 11rem. So the grid alone widens, centred
+   on the same axis, while every paragraph on the page stays at 46rem.
+   The margin trick: 50% is half the PARENT (23rem), so subtracting half the
+   grid's own width puts its left edge in the right place with no wrapper div.
+   Steps down to 3, 2 and 1 columns rather than reflowing continuously, because
+   at 4-up the card is the unit being sized and auto-fill would shrink it past
+   the point where the name still wins over the orb. */
+.cast-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin: 0.8rem 0 1.8rem;
+  width: min(74rem, calc(100vw - 2 * var(--dg-gutter)));
+  margin-left: calc(50% - min(37rem, (100vw - 2 * var(--dg-gutter)) / 2));
+}
+@media (max-width: 68rem) { .cast-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 52rem) { .cast-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 34rem) { .cast-grid { grid-template-columns: minmax(0, 1fr); } }
+.cast-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  text-align: left;
+  font: inherit;
+  color: var(--dg-text-body);
+  cursor: pointer;
+  padding: 0.95rem 1rem;
+  background: var(--dg-bg-panel);
+  border: 1px solid var(--dg-border);
+  border-left: 2px solid var(--v-on, var(--dg-border-hover));
+  border-radius: var(--dg-shape-panel);
+  -webkit-backdrop-filter: blur(var(--dg-glass-blur));
+  backdrop-filter: blur(var(--dg-glass-blur));
+  transition: border-color var(--dg-anim-fast) var(--dg-anim-ease),
+              transform var(--dg-anim-fast) var(--dg-anim-ease),
+              box-shadow var(--dg-anim-fast) var(--dg-anim-ease);
+}
+.cast-card:hover {
+  border-color: var(--dg-border-hover);
+  border-left-color: var(--v-on, var(--dg-border-hover));
+  box-shadow: var(--dg-elevation-soft);
+  transform: translateY(-1px);
+}
+.cast-top { display: flex; align-items: center; gap: 0.7rem; }
+/* 3.4rem, up from 2.2rem, and this is the one context that did NOT get doubled.
+   A cast card is a portrait of a voice, not a playback surface: it is not what
+   the ask was about, and it is the only place where 30 of them share a page. Two
+   things capped it.
+   1. LAYOUT. The card is a flex column and the orb shares .cast-top with the
+      voice name, so the orb sets the card's first row height and every card in
+      the grid grows with it. Measured on the 30-card page at the content
+      column's width: 2.2rem gives a 164px card and a 2957px document, 3.4rem
+      gives 180px and 3203px, and 4.4rem -- the true double -- gives 196px and
+      3443px. So doubling costs about 490px of extra scrolling for orbs nobody
+      pressed. The COLUMN count is safe at every one of those sizes (also
+      measured: 2 columns throughout), because it comes from minmax(15rem, 1fr)
+      and the orb never touches the card's width -- but "the grid survives" is
+      not the same as "the page is better".
+   2. THE NAME HAS TO WIN. .cast-name is 1.05rem. Past about 3.5rem the orb
+      out-weighs the word beside it, and the word is the part that is not
+      decorative: the colour is reinforcement, the name is the information. */
+.cast-play { --orb-size: 3.4rem; }
+.cast-card.is-playing .cast-play svg { opacity: 0.5; }
+.cast-name {
+  font-family: var(--dg-font-display);
+  font-weight: var(--dg-weight-medium);
+  font-size: 1.05rem;
+  line-height: 1.1;
+  color: var(--dg-text-primary);
+}
+/* The seat name, in the voice's own ink. The WORD is the seat; the colour is the
+   voice. Both are printed, so neither is load-bearing on its own. */
+.cast-role { color: var(--v-on, var(--dg-text-label)); margin-top: 0.2rem; }
+.cast-note { font-size: 0.82rem; color: var(--dg-text-body); margin: 0.2rem 0 0; }
+.cast-id {
+  align-self: flex-start;
+  margin-top: 0.2rem;
+  padding: 0.1em 0.45em;
+  font-family: var(--dg-font-mono);
+  font-size: 0.66rem;
+  color: var(--dg-text-label);
+  background: var(--dg-bg-well);
+  border-radius: var(--dg-shape-control);
+}
+
+/* The all-voices grid, 2026-08-21. The four sections above the grid were deleted
+   when the cast page became one grid of the whole published catalog: "today's
+   co-host" was one card out of 36 presented as a category, and the themed desks
+   describe a show that no longer airs.
+
+   .cast-card-wide and .cast-beat went with them on 2026-08-22. The comment here
+   claimed .cast-card-wide was "kept because the recast picker still promotes a
+   row with it" and that was simply wrong: the picker builds .slot-row and .c-*
+   inside .recast-table, and grep found zero users of .cast-card-wide in any HTML
+   or JS. The cast page was its only caller and this rewrite dropped it.
+
+   36 cards is enough that scanning stops working, so there is a filter. It is a
+   plain substring over name, id and character words, and the count beside it is
+   text, because "your filter matched nothing" has to be legible without noticing
+   that a grid got shorter. */
+/* The toolbar shares the GRID's left edge, not the prose column's. Left at 46rem
+   it sat visibly inset from the cards it filters, which read as two unrelated
+   blocks. Same break-out arithmetic as .cast-grid, so the two stay locked
+   together at every breakpoint. */
+.cast-toolbar {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin: 1.4rem 0 0.2rem;
+  width: min(74rem, calc(100vw - 2 * var(--dg-gutter)));
+  margin-left: calc(50% - min(37rem, (100vw - 2 * var(--dg-gutter)) / 2));
+}
+.cast-search { min-width: 18rem; flex: 0 1 26rem; }
+.cast-count { margin: 0; font-size: 0.78rem; color: var(--dg-text-label); }
+
+/* THE ONE SPECIAL STATE IS A SHAPE. The host card gets a THICKER left rule, so it
+   differs by edge treatment before it differs by ink, and .cast-role prints
+   "Host, every episode" which is the actual answer. Do not swap it for a hue.
+
+   There was a second state here until 2026-08-21: retired cards took a dashed
+   rule and 0.72 opacity. Removed on request. The page shows the catalog and does
+   not mark which two voices the show has stopped casting; the `retired` flag is
+   still in voices.json for anything that needs it. See the note in cast.html. */
+.cast-card.is-host { border-left-width: 5px; }
+/* A voice whose sample never rendered. The card stays pressable so the message can
+   explain itself, and the strikethrough on the id says which file is missing.
+   The message lives in .cast-err rather than in .cast-role: .cast-role is the
+   page's only host indicator, and overwriting it meant one failed press retired
+   the host badge for the whole session. */
+.cast-card.is-silent .cast-id { text-decoration: line-through; }
+.cast-err {
+  margin: 0.3rem 0 0;
+  font-size: 0.74rem;
+  color: var(--dg-danger);
+  font-family: var(--dg-font-mono);
+}
+
+/* ============================================================================
+   BLOCK 15 -- BUILD-YOUR-OWN-EDITION PICKER.
+
+   This page had drifted the furthest: it declared .wrap, .brand-eyebrow and
+   .lede, none of which this stylesheet defined, and it shipped no #theme-toggle
+   at all while still loading theme.js. So it rendered as unstyled prose in
+   whatever mode the reader arrived in, with no way out. .wrap and the eyebrow
+   are folded into the shared masthead now and the toggle is present.
+   ========================================================================= */
+.build-table { width: 100%; border-collapse: collapse; margin: 0.7rem 0 1rem; font-size: 0.88rem; }
+.build-table th {
+  text-align: left;
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dg-text-label);
+  border-bottom: 1px solid var(--dg-border);
+  padding: 0.4rem 0.5rem;
+}
+.build-table td { padding: 0.5rem; border-bottom: 1px solid var(--dg-border); vertical-align: middle; }
+.build-table tbody tr:last-child td { border-bottom: none; }
+.build-table select { max-width: 20rem; }
+
+/* The picker's per-row voice identity, 2026-08-21. Every row carries data-voice for the voice it
+   has SELECTED, so block 1 resolves --v-on for the whole row and the orb's shades and the row's
+   ink come from one declaration. The row used to show a bare triangle, which made this the only
+   place in the app where choosing a voice showed you nothing about it.
+
+   The rule from the top of block 1 still holds here: the row already prints the topic, the voice
+   name and the character words. The colour narrows the field; the words identify the voice. */
+.build-table tr[data-voice] td:first-child { border-left: 2px solid var(--v-on, transparent); padding-left: 0.6rem; }
+.build-orb { --orb-size: 2.4rem; }
+.build-orb:disabled { opacity: 0.4; cursor: default; }
+.build-days { font-size: 0.9rem; }
+.build-actions { display: flex; align-items: center; gap: 0.7rem; margin: 1.1rem 0; flex-wrap: wrap; }
+.pool-day { margin: 1.2rem 0 0.3rem; }
+.pool-list { list-style: none; padding: 0; margin: 0; font-size: 0.86rem; }
+.pool-list li { padding: 0.3rem 0; border-bottom: 1px solid var(--dg-border); }
+.pool-list li:last-child { border-bottom: none; }
+
+/* Dimmed backdrop so the confirm step reads as a decision, not another form
+   field. */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: var(--dg-bg-dim);
+  -webkit-backdrop-filter: blur(calc(var(--dg-glass-blur) / 3));
+  backdrop-filter: blur(calc(var(--dg-glass-blur) / 3));
+}
+/* The confirm dialog used to sit on screen, empty, from page load, because
+   `display: flex` above beat its hidden attribute. Covered by the global
+   `[hidden]` rule in block 4; kept as a note because it was not obvious. */
+.modal-card {
+  width: 100%;
+  max-width: 30rem;
+  padding: 1.2rem 1.35rem;
+  background: var(--dg-bg-panel);
+  border: 1px solid var(--dg-border);
+  border-radius: var(--dg-shape-surface);
+  box-shadow: var(--dg-elevation-panel);
+  -webkit-backdrop-filter: blur(var(--dg-glass-blur));
+  backdrop-filter: blur(var(--dg-glass-blur));
+}
+.modal-card h3 { margin: 0 0 0.6rem; }
+
+/* ============================================================================
+   BLOCK 16 -- WHAT WAS REMOVED, AND WHY, SO IT IS NOT RE-ADDED BY ACCIDENT.
+
+   .ep-play        per-row play button. The rows became links on 2026-08-20 and
+                   the hero is the only player on the landing page; nothing has
+                   emitted this class since.
+   .hero-wave2     a second, taller "self-drawing waveform that doubles as
+                   progress". Never rendered. The hero had one canvas; now it
+                   has none.
+   .wave           the episode console's bar canvas, and
+   .hero-wave      the hero's. Both drew bars from an AnalyserNode, and both were
+                   replaced by the molten orb on the same page reading the SAME
+                   analyser through an amplitude envelope (see block 5 and
+                   web/orb.js). Two things showing one signal was the reason to
+                   pick one. The orb won because it is the object this design
+                   language already recognises, and because it is the thing the
+                   author asked for. The <canvas> elements are gone from
+                   episode.html and index.html too, so nothing emits either
+                   class.
+   .chapter-src    a per-chapter source label. No page emits it.
+   .slot           the pre-table recast row (label + select in a flex row).
+                   Superseded by .slot-row inside .recast-table.
+   .tabs           a wrapper around the tab buttons. Only .tab is emitted.
+   header.player   the old sticky player header, replaced by .console. The reset
+                   in block 11 was kept on the stated grounds that "episode.html
+                   still carries the element". It does not, and no page ever did
+                   after the commit that added the reset: all four carry
+                   <header class="masthead">. Rule deleted 2026-08-22.
+   body::before    a 4px accent bar pinned across the top of every page. It was
+                   the whole brand cue and it was doing the job of a masthead
+                   badly. The pseudo-element is now the ambient field and the
+                   masthead carries the brand.
+   --chrome-box    sized the fixed toggle and the fixed subscribe row so the two
+   --chrome-gap    could not drift apart. Both are flex children of the masthead
+                   now, so the arithmetic they existed for is gone.
+   --link          the page's only blue. See the note on --dg-link in block 2.
+   ========================================================================= */

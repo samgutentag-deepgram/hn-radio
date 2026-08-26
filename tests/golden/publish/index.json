@@ -1,0 +1,20 @@
+{
+  "episodes": [
+    {
+      "id": "2026-08-02",
+      "title": "A title with <angle> & ampersand",
+      "edition": "frontpage",
+      "generated_at": "2026-08-01T12:00:00Z",
+      "duration_seconds": 25.0,
+      "summary": "A summary with an ampersand & a <tag>."
+    },
+    {
+      "id": "2026-08-01",
+      "title": "A title with <angle> & ampersand",
+      "edition": "frontpage",
+      "generated_at": "2026-08-01T12:00:00Z",
+      "duration_seconds": 25.0,
+      "summary": "A summary with an ampersand & a <tag>."
+    }
+  ]
+}
