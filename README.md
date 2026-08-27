@@ -72,6 +72,14 @@ leaves it out. Its fonts are looked up across a candidate list rather than hardc
 a Mac, in the container, and on a CI runner; with no TrueType face anywhere it says so and falls
 back to Pillow's bitmap default, which renders an ugly cover instead of raising.
 
+`scripts/make_favicon.py` writes the browser icons into `web/`: `favicon.ico` (16/32/48),
+`icon-192.png`, `icon-512.png` and `apple-touch-icon.png`. It is deliberately not the cover
+downscaled. The cover is a 36-orb honeycomb with a wordmark across it, tuned for the 55px Apple
+Podcasts renders it at, and at the 16px a browser tab renders it at both the pattern and the
+wordmark collapse into a grey square. So the favicon is a single orb, the same shape `web/orb.js`
+paints beside every voice, in the green run, with its palette and geometry imported from
+`make_cover.py` rather than copied. Same Pillow story: `dev` group, never in the container.
+
 ## Run it
 
 ```bash
