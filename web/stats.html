@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What Gets Played &middot; HN Radio</title>
+<!-- No font <link> here on purpose. This repo ships no font files and hosts none, so the
+     three families brand.css names all resolve to system-ui for most readers. There used to be
+     a Google Fonts stylesheet for Inter at this spot; it was a third-party request on every page
+     load and it is the one thing the "no CDN, no external font hosting" rule names outright. -->
+<link rel="stylesheet" href="brand.css">
+</head>
+<body>
+<!-- Masthead: brand lockup left, theme toggle right, sticky and in the flow. Same bar on every
+     page. See the longer note in index.html for why the toggle stopped being `position: fixed`. -->
+<header class="masthead">
+  <p class="eyebrow"><span class="dg">deepgram</span> &middot; <a href="index.html">HN Radio</a></p>
+  <div class="masthead-chrome">
+    <button id="theme-toggle" type="button" aria-label="Toggle dark mode"></button>
+  </div>
+</header>
+
+<h1>What gets played</h1>
+
+<!--
+  THE FIRST PARAGRAPH IS THE POINT OF THIS PAGE, not the numbers under it.
+
+  Every figure here counts something that happened ON THIS SITE. The RSS feed is real and it is
+  subscribable, and a client that pulled episode.mp3 out of it never loaded a page, never ran
+  plays.js, and is invisible to all of this. Catching those would take byte-range hits on the
+  audio out of an access log, which the Fly proxy does not retain.
+
+  So the honest reading of every number below is "on the dashboard", and stating that before the
+  first figure is the difference between a stats page and a misleading one. A reader who takes
+  "412 plays" for listenership has been misled by the page, not by their own arithmetic.
+-->
+<p class="lede">Plays that happened <strong>on this site</strong>. Podcast apps subscribed to the
+feed do not appear here at all: they fetch the MP3 directly and never load a page, so nothing counts
+them. Read every figure as &ldquo;on the dashboard&rdquo;, never as total listenership.</p>
+
+<div class="stat-tiles" id="tiles"></div>
+
+<h2 class="section-h">The last two weeks</h2>
+<!-- Days with no events are drawn as empty columns rather than skipped. A chart that silently
+     omits quiet days compresses the gaps and makes a flat fortnight look busy. -->
+<div class="daybars" id="daybars" role="img" aria-label="Daily plays for the last fourteen days"></div>
+<p class="note" id="daybars-note"></p>
+
+<h2 class="section-h">Every episode</h2>
+<div class="stats-scroll">
+  <table class="stats-table">
+    <thead>
+      <tr>
+        <th>Episode</th>
+        <th class="num">Views</th>
+        <th class="num">Plays</th>
+        <th>Furthest point reached</th>
+        <th class="num">Finished</th>
+      </tr>
+    </thead>
+    <tbody id="rows"><tr><td colspan="5" class="muted">Loading&hellip;</td></tr></tbody>
+  </table>
+</div>
+
+<p class="note" id="empty-note" hidden>Nothing has been played on the site yet. The counter starts
+at the first press of a play button, and it counts nothing retroactively.</p>
+
+<!--
+  Said on the page and not only in the source, because a page that counts people owes them this.
+  It is also a short list precisely because the server has nothing else to disclose: see the
+  module docstring in hn_radio/plays.py and the `_row` function it describes.
+-->
+<h2 class="section-h">What is stored</h2>
+<p class="note">Each event is one line in a file on the server: a timestamp, an episode id, and
+which of the six things happened. No IP address, no user agent, no cookie, no visitor id, nothing
+that persists past the browser tab. &ldquo;One play per listener&rdquo; is worked out in your own
+browser with <code>sessionStorage</code>, which is why the server never needs to know who you are
+to avoid counting you twice. Close the tab and that memory is gone; open the episode tomorrow and
+you count again.</p>
+
+<script src="theme.js"></script>
+<!-- Publishes window.HNPlays. This page only uses its stats fetch, not its tracking half. -->
+<script src="plays.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var DAYS = 14;
+
+  function n(v) { return (v || 0).toLocaleString(); }
+
+  function pct(part, whole) {
+    if (!whole) return '—';           // an em dash, not "0%": no denominator is not zero
+    return Math.round((part / whole) * 100) + '%';
+  }
+
+  function tile(value, label, hint) {
+    var d = document.createElement('div');
+    d.className = 'stat-tile';
+    var v = document.createElement('p'); v.className = 'stat-value'; v.textContent = value;
+    var l = document.createElement('p'); l.className = 'stat-label'; l.textContent = label;
+    d.appendChild(v); d.appendChild(l);
+    if (hint) {
+      var h = document.createElement('p'); h.className = 'stat-hint'; h.textContent = hint;
+      d.appendChild(h);
+    }
+    return d;
+  }
+
+  function isoDaysBack(count) {
+    // Local dates, matching how a person reads "yesterday". The server stamps events in UTC, so
+    // for a few hours each evening a Pacific listener's play lands on the next UTC day and shows
+    // up one column to the right. Not worth a timezone round-trip on a fourteen-column chart:
+    // the shape is the answer here, not the exact bucket.
+    var out = [];
+    var d = new Date();
+    for (var i = count - 1; i >= 0; i--) {
+      var x = new Date(d.getFullYear(), d.getMonth(), d.getDate() - i);
+      out.push(x.getFullYear() + '-'
+        + String(x.getMonth() + 1).padStart(2, '0') + '-'
+        + String(x.getDate()).padStart(2, '0'));
+    }
+    return out;
+  }
+
+  function drawDays(daily) {
+    var byDate = {};
+    (daily || []).forEach(function (d) { byDate[d.date] = d; });
+    var days = isoDaysBack(DAYS);
+    var peak = 0;
+    days.forEach(function (day) {
+      var row = byDate[day];
+      if (row && row.plays > peak) peak = row.plays;
+    });
+
+    var wrap = document.getElementById('daybars');
+    wrap.innerHTML = '';
+    days.forEach(function (day) {
+      var row = byDate[day] || { plays: 0 };
+      var col = document.createElement('div');
+      col.className = 'daybar';
+      var bar = document.createElement('div');
+      bar.className = 'daybar-fill';
+      // A floor of 2% so a day with zero plays still draws a visible baseline tick. Without it a
+      // quiet stretch is indistinguishable from a chart that failed to render.
+      bar.style.height = peak ? Math.max(2, (row.plays / peak) * 100) + '%' : '2%';
+      col.appendChild(bar);
+      var lab = document.createElement('span');
+      lab.className = 'daybar-label';
+      lab.textContent = day.slice(8);          // day of month; the month is in the note below
+      col.appendChild(lab);
+      col.title = day + ': ' + n(row.plays) + (row.plays === 1 ? ' play' : ' plays');
+      wrap.appendChild(col);
+    });
+
+    document.getElementById('daybars-note').textContent =
+      peak ? 'Plays per day, ' + days[0] + ' to ' + days[days.length - 1]
+             + '. Tallest column is ' + n(peak) + '.'
+           : 'No plays recorded in the last ' + DAYS + ' days.';
+  }
+
+  function buckets(row) {
+    // A real histogram: every play falls in exactly ONE bucket, the furthest mark it reached, and
+    // the five bars sum to `plays`.
+    //
+    // This replaced four independent bars, one per mark, each drawn as a share of plays. Those
+    // were cumulative -- a play that finished was counted in all four -- so the row always sloped
+    // down and every episode looked the same shape. The interesting question is where people
+    // STOP, and a cumulative chart is the one shape that cannot show it.
+    //
+    // The differences come out of the cumulative counts, which is what the log stores:
+    // reached-exactly-50 is (reached 50) minus (reached 75).
+    var plays = row.plays || 0;
+    var b = [
+      ['<25', plays - row.p25],
+      ['25', row.p25 - row.p50],
+      ['50', row.p50 - row.p75],
+      ['75', row.p75 - row.completes],
+      ['100', row.completes]
+    ];
+    // Clamped, because the cumulative counts are only guaranteed monotonic if every event landed.
+    // A tab closed between two milestones, or a torn line in the log, can leave p75 above p50 and
+    // turn a difference negative. A negative bar is a rendering bug; a zero bar is the truth as
+    // far as the log knows it.
+    return b.map(function (x) { return [x[0], Math.max(0, x[1] || 0)]; });
+  }
+
+  function farBar(row) {
+    var wrap = document.createElement('div');
+    wrap.className = 'histo';
+    var bars = buckets(row);
+    // Scaled to the tallest bucket in THIS row, not to plays and not to a global maximum. The
+    // question each row answers is "where did this episode lose people", which is a question about
+    // its own shape; a shared scale flattens every low-traffic episode into nothing.
+    var peak = bars.reduce(function (m, x) { return Math.max(m, x[1]); }, 0);
+    bars.forEach(function (x) {
+      var col = document.createElement('div');
+      col.className = 'histo-col';
+
+      var bar = document.createElement('div');
+      bar.className = 'histo-fill' + (x[0] === '100' ? ' is-end' : '');
+      bar.style.height = peak ? Math.max(2, (x[1] / peak) * 100) + '%' : '2%';
+      col.appendChild(bar);
+
+      var lab = document.createElement('span');
+      lab.className = 'histo-label';
+      lab.textContent = x[0];
+      col.appendChild(lab);
+
+      col.title = (x[0] === '<25'
+        ? n(x[1]) + ' stopped before the quarter mark'
+        : n(x[1]) + ' got as far as ' + x[0] + '%')
+        + ' of ' + n(row.plays) + ' plays';
+      wrap.appendChild(col);
+    });
+    return wrap;
+  }
+
+  function render(d) {
+    var totals = (d && d.totals) || {};
+    var episodes = (d && d.episodes) || [];
+
+    var tiles = document.getElementById('tiles');
+    tiles.innerHTML = '';
+    tiles.appendChild(tile(n(totals.plays), 'Plays', 'On this site, all time'));
+    tiles.appendChild(tile(n(totals.views), 'Episode page views'));
+    tiles.appendChild(tile(pct(totals.plays, totals.views), 'Pressed play',
+      'Of everyone who opened an episode'));
+    tiles.appendChild(tile(pct(totals.completes, totals.plays), 'Reached the end',
+      'Of everyone who started one'));
+
+    drawDays(d && d.daily);
+
+    var tbody = document.getElementById('rows');
+    tbody.innerHTML = '';
+    if (!episodes.length) {
+      document.getElementById('empty-note').hidden = false;
+      tbody.innerHTML = '<tr><td colspan="5" class="muted">No plays recorded yet.</td></tr>';
+      return;
+    }
+    episodes.forEach(function (row) {
+      var tr = document.createElement('tr');
+
+      var td = document.createElement('td');
+      var a = document.createElement('a');
+      a.href = 'episode.html?id=' + encodeURIComponent(row.id);
+      a.textContent = row.title || row.id;
+      td.appendChild(a);
+      var id = document.createElement('span'); id.className = 'stats-id'; id.textContent = row.id;
+      td.appendChild(id);
+      tr.appendChild(td);
+
+      var views = document.createElement('td'); views.className = 'num';
+      views.textContent = n(row.views); tr.appendChild(views);
+
+      var plays = document.createElement('td'); plays.className = 'num';
+      plays.textContent = n(row.plays); tr.appendChild(plays);
+
+      var far = document.createElement('td'); far.appendChild(farBar(row)); tr.appendChild(far);
+
+      var fin = document.createElement('td'); fin.className = 'num';
+      fin.textContent = pct(row.completes, row.plays); tr.appendChild(fin);
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  function fail(message) {
+    document.getElementById('rows').innerHTML =
+      '<tr><td colspan="5" class="muted">' + message + '</td></tr>';
+    document.getElementById('tiles').innerHTML = '';
+    document.getElementById('daybars-note').textContent = '';
+  }
+
+  if (!window.HNPlays) {
+    // plays.js is a separate file and this page is nothing without it, so say which piece is
+    // missing rather than leaving four "Loading..." cells forever.
+    fail('The stats script did not load.');
+  } else {
+    window.HNPlays.stats().then(function (d) {
+      if (!d) { fail('The stats endpoint is not answering. Is the backend running?'); return; }
+      render(d);
+    }).catch(function () { fail('Could not load the numbers.'); });
+  }
+}());
+</script>
+</body>
+</html>

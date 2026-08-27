@@ -27,3 +27,11 @@ fly.toml
 
 # ship the chaptered MP3 + per-segment PCM cache; the source WAV is not needed at runtime
 episodes/**/episode.wav
+
+# The play counter's log. It is per-DEPLOYMENT data that belongs to the volume, and a developer's
+# local copy baked into the image would be copied onto an empty volume by the entrypoint on first
+# boot -- publishing a fake play history as if it were real. The volume's own copy is authoritative
+# and the app creates the file when it needs it.
+episodes/plays.jsonl
+episodes/plays-*.jsonl
+episodes/plays-totals.json

@@ -188,9 +188,12 @@ and byte-copies the rest.
   `POST /api/build/plan` (prices the build in reuse / re-render / new segments, before you commit),
   and `POST /api/build` (actually renders it).
 
-The rest of the API is `POST /api/recast`, `GET /api/status`, `GET /api/trending`, and
-`GET /api/health`. (`POST /api/generate` was deleted on 2026-08-22: no caller anywhere, and
-`make episode` and `scripts/daily.py` already reach the same pipeline.)
+- `web/stats.html` is the play counter's board, linked from a footer on the landing page.
+
+The rest of the API is `POST /api/recast`, `GET /api/status`, `GET /api/trending`,
+`POST /api/plays`, `GET /api/stats`, and `GET /api/health`. (`POST /api/generate` was deleted on
+2026-08-22: no caller anywhere, and `make episode` and `scripts/daily.py` already reach the same
+pipeline.)
 
 When the nightly run fails you find out, which was not previously true: `status.error()` existed and
 nothing called it, and `scripts/daily.py` had no exception handling, so a run that died mid-render left
@@ -220,6 +223,30 @@ too, because the deployed app holds the keys server-side on purpose -- that is w
 page one click instead of a signup, and it means public callers spend ours. Tune with
 `HN_RADIO_RENDER_LIMIT` and `HN_RADIO_RENDER_WINDOW`. `/api/build/plan` is deliberately not
 throttled: it prices a build without spending anything.
+
+**Play counts, and the boundary on what they mean.** `hn_radio/plays.py` appends one line per
+event to `episodes/plays.jsonl` -- a timestamp, an episode id, and one of `view`, `play`, or a
+`progress` mark at 25/50/75/100. The rollup at `GET /api/stats` is derived from that file on every
+read, never stored, so no counter can drift out of sync with the events behind it. It rotates into
+`plays-totals.json` past 5MB and the totals survive the roll.
+
+**It counts the site, not the world.** A podcast client that pulled `episode.mp3` out of the feed
+never loaded a page and never ran `web/plays.js`, so it is invisible here and always will be.
+Catching those would take byte-range hits on the audio out of an access log the Fly proxy does not
+retain. `stats.html` says so above its first number, which is the difference between a stats page
+and a misleading one.
+
+Nothing identifying is stored: no IP, no user agent, no cookie, no visitor id. "One play per
+listener" is worked out in the browser with `sessionStorage`, specifically so the server never needs
+an identity to avoid double-counting. Two tabs count twice and tomorrow counts again, which for a
+daily show is arguably the more honest number.
+
+`POST /api/plays` validates the episode id against what is on disk before writing -- otherwise it is
+an append-anything primitive on the volume, and a junk id is a permanent key in the rollup. Past
+that gate the write is best-effort like `status.py`: a read-only volume or a full disk is still a
+202, because a listener pressing play must never see an error from a counter. It has its own per-IP
+window (`HN_RADIO_PLAYS_LIMIT`, default 60 per `HN_RADIO_PLAYS_WINDOW`, default 60s) and
+deliberately **not** the render slot, which is held for the whole five minutes a Flux render takes.
 
 `HN_RADIO_MUSIC=0` renders speech only: no intro cue, no stings, no cold-open bed. It exists so
 shipping the code and shipping the music are two decisions instead of one. `_finalize` had taken a

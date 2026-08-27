@@ -21,6 +21,9 @@
 </header>
 <h1 id="title">Loading&hellip;</h1>
 <p class="muted" id="meta"></p>
+<!-- Hidden until there is a number to show. A "0 plays" line on a fresh episode is worse than no
+     line: it draws the eye to the one fact nobody wants stated. -->
+<p class="muted play-count" id="play-count" hidden></p>
 
 <!-- Sticky console: the two controls you reach for while reading, plus the transport. It has to be
      one contiguous block to stick as a unit, which is why the disclaimer and summary sit below it
@@ -94,6 +97,9 @@
 <!-- Classic script, before app.js, because three callers need it and one of them is a module:
      app.js here, and the inline scripts in index.html and cast.html. It publishes window.HNOrb. -->
 <script src="orb.js"></script>
+<!-- Classic script, like orb.js and for the same reason: index.html and stats.html need it too
+     and neither of them loads a module. It publishes window.HNPlays. -->
+<script src="plays.js"></script>
 <script type="module" src="app.js"></script>
 </body>
 </html>

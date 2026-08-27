@@ -109,7 +109,8 @@ from plain text with no markup or tuning.</p>
   <div class="hero-meta">
     <p class="hero-kicker">Latest episode</p>
     <h2 id="hero-title" class="hero-title">&nbsp;</h2>
-    <p class="hero-sub"><span id="hero-date"></span><span id="hero-dur"></span></p>
+    <p class="hero-sub"><span id="hero-date"></span><span id="hero-dur"></span><span
+        id="hero-plays" hidden></span></p>
     <!-- Empty and aria-hidden until playback names someone, so a paused hero does not claim a
          speaker. role="status" so a screen reader hears the handoffs it cannot see either. -->
     <p class="hero-speaker" id="hero-speaker" role="status" hidden></p>
@@ -140,10 +141,20 @@ from plain text with no markup or tuning.</p>
 <h2 class="section-h" id="more-h" hidden>More episodes</h2>
 <ul class="ep-list" id="episodes"><li class="muted">Loading episodes…</li></ul>
 
+<!-- The site's only footer, added with the play counter. The stats page is public and should be
+     reachable, but it is a page ABOUT the site rather than part of it, and it was reading as a
+     fourth headline feature next to "Meet the cast" and "Build your own edition". -->
+<footer class="page-foot">
+  <a href="stats.html">What gets played</a>
+</footer>
+
 <script src="theme.js"></script>
 <!-- Classic script, before the page scripts: it publishes window.HNOrb, which the hero block
      below and web/app.js both use. See the header of web/orb.js. -->
 <script src="orb.js"></script>
+<!-- Same shape and the same reason as orb.js: a classic script, because the module block below
+     and episode.html's app.js both need it. It publishes window.HNPlays. -->
+<script src="plays.js"></script>
 <script>
 // The subscribe modal. One button in the masthead opens a <dialog> listing every app.
 //
@@ -472,6 +483,12 @@ from plain text with no markup or tuning.</p>
     // The hero already presents episodes[0]; repeating it directly underneath read as a bug.
     var more = d.episodes.slice(1);
 
+    // Filled in one pass after the rows exist, from a single /api/stats request. Building the
+    // rows first and decorating them second keeps the list rendering at full speed on a cold
+    // cache: the archive is readable before the counter has answered, and it stays readable if
+    // the counter never does.
+    var countEls = {};
+
     // A basic list: date, title, one-line description, and a link OUT to the episode page.
     // NO playback down here, on purpose. There used to be a "Listen" BUTTON per row, and it
     // retargeted the single player pinned at the top of the page instead of taking you to the
@@ -484,6 +501,11 @@ from plain text with no markup or tuning.</p>
 
       var kick = document.createElement('p'); kick.className = 'ep-date';
       kick.textContent = longDate(e.id);
+      var plays = document.createElement('span');
+      plays.className = 'ep-plays';
+      plays.hidden = true;
+      kick.appendChild(plays);
+      countEls[e.id] = plays;
 
       var h = document.createElement('h3'); h.className = 'ep-title';
       var link = document.createElement('a');
@@ -580,6 +602,37 @@ from plain text with no markup or tuning.</p>
         bar.style.width = (audio.currentTime / audio.duration * 100) + '%';
       });
       document.getElementById('hero-summary').textContent = latest.summary || '';
+
+      // --- play instrumentation ---------------------------------------------------------------
+      // The hero is the only player on this page, so it is the only thing here that can produce a
+      // `play`. Rows below link OUT to their episode page and are counted there, which is why a
+      // row click shows up as a view on episode.html rather than anything on this one.
+      //
+      // Guarded on window.HNPlays because plays.js is a separate file: a 404 after a bad deploy,
+      // or a blocker that dislikes the filename, must not stop the front page from working.
+      if (window.HNPlays) {
+        window.HNPlays.view(latest.id);
+        window.HNPlays.attach(latest.id, audio);
+
+        function label(n) { return n === 1 ? '1 play' : n.toLocaleString() + ' plays'; }
+
+        window.HNPlays.byEpisode().then(function (rows) {
+          var heroRow = rows[latest.id];
+          var heroEl = document.getElementById('hero-plays');
+          if (heroEl && heroRow && heroRow.plays) {
+            heroEl.textContent = ' \u00b7 ' + label(heroRow.plays);
+            heroEl.hidden = false;
+          }
+          Object.keys(countEls).forEach(function (epId) {
+            var row = rows[epId];
+            // Hidden rather than "0 plays". A zero on an episode nobody has opened yet is a fact
+            // that helps no reader and discourages the one person who might have been first.
+            if (!row || !row.plays) return;
+            countEls[epId].textContent = ' \u00b7 ' + label(row.plays);
+            countEls[epId].hidden = false;
+          });
+        });
+      }
 
       // --- seek + chapter markers -------------------------------------------------
       (function () {

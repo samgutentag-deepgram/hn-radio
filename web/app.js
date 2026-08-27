@@ -75,6 +75,27 @@ import { mmss } from './format.js';
     player.src = base + 'episode.mp3';  // chaptered MP3 (podcast-friendly, small)
     renderChaptersAndNotes(ep, chaptersDoc, player);
 
+    // --- play instrumentation -----------------------------------------------------------------
+    // Guarded on window.HNPlays rather than assumed. plays.js is a separate <script> and this is
+    // the page's core render path: if that file 404s after a bad deploy, or an ad blocker eats it
+    // for having "plays" in the name, the episode still has to render.
+    //
+    // The count read here does NOT include the view that was just fired -- /api/stats is a
+    // snapshot taken at load. Reconciling that would mean either a second request after the POST
+    // or an optimistic +1, and both are more machinery than a number under a headline deserves.
+    if (window.HNPlays) {
+      window.HNPlays.view(id);
+      window.HNPlays.attach(id, player);
+      window.HNPlays.byEpisode().then(function (rows) {
+        var row = rows[id];
+        var el = document.getElementById('play-count');
+        if (!el || !row || !row.plays) return;
+        el.textContent = (row.plays === 1 ? '1 play' : row.plays.toLocaleString() + ' plays')
+          + ' on this site';
+        el.hidden = false;
+      });
+    }
+
     // --- script (play tab), grouped under its chapters ---
     // Previously this rendered every chapter, then every segment, with nothing tying the two
     // together. Segments are now emitted inside the chapter whose time range contains them, so the

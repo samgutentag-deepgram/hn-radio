@@ -69,9 +69,26 @@ BUSY_RETRY_AFTER = 120
 # out anyway; if that frees nothing, the window is genuinely full of real callers and the oldest go.
 MAX_TRACKED_IPS = 10_000
 
+# The play beacon's window. Nothing to do with the render limits above and deliberately far
+# looser: a beacon costs one appended line, not five minutes of TTS, so the number here is sized
+# to stop a script filling the volume rather than to ration anything scarce.
+#
+# One real listener spends six of these on an episode (a view, a play, four milestones), and a
+# person clicking through the archive spends a view per page, so the floor has to sit well above
+# a curious afternoon. Sixty a minute is roughly ten episodes' worth per minute, which no human
+# reaches and a loop hits instantly.
+MAX_BEACONS = _positive_int_env("HN_RADIO_PLAYS_LIMIT", 60)
+BEACON_WINDOW_SECONDS = _positive_int_env("HN_RADIO_PLAYS_WINDOW", 60)
+
 _render_slot = threading.Lock()
 _hits_guard = threading.Lock()
 _hits: Dict[str, Deque[float]] = {}
+
+# A SEPARATE store, not a shared one keyed by route. Two reasons, and the first is the one that
+# matters: a beacon must never spend a render from someone's quota of three, because then reading
+# the archive costs you the thing you came to do. The second is that the windows are different
+# lengths, so one deque could not answer both questions anyway.
+_beacon_hits: Dict[str, Deque[float]] = {}
 
 
 def client_ip(request: Request) -> str:
@@ -88,34 +105,50 @@ def client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-def _prune_locked(now: float) -> None:
-    """Drop aged-out timestamps and any IP left with none. Caller holds `_hits_guard`."""
-    for ip in list(_hits):
-        q = _hits[ip]
-        while q and now - q[0] >= WINDOW_SECONDS:
+def _prune_locked(now: float, store: Dict[str, Deque[float]] = None,
+                  window: int = None) -> None:
+    """Drop aged-out timestamps and any IP left with none. Caller holds `_hits_guard`.
+
+    Defaults to the render window so the signature reads the same as it did when there was only
+    one; both stores are guarded by `_hits_guard`, since neither is hot enough to want its own.
+    """
+    store = _hits if store is None else store
+    window = WINDOW_SECONDS if window is None else window
+    for ip in list(store):
+        q = store[ip]
+        while q and now - q[0] >= window:
             q.popleft()
         if not q:
-            del _hits[ip]
+            del store[ip]
 
 
-def _claim(ip: str) -> float:
-    """Record one render against `ip`. Returns 0.0 if allowed, else seconds until a slot frees.
+def _claim(ip: str, store: Dict[str, Deque[float]] = None, limit: int = None,
+           window: int = None) -> float:
+    """Record one hit against `ip`. Returns 0.0 if allowed, else seconds until a slot frees.
 
     A sliding window rather than a fixed one, so the limit cannot be doubled by straddling a
     boundary: three at 12:59 and three at 13:01 is six renders in two minutes under a fixed window.
+
+    Parametrized over the store when the play beacon arrived, rather than copied. The eviction
+    policy below is the part worth not having two versions of: the dict is keyed by a
+    caller-controlled address on a 1GB machine, so an unbounded one is itself the attack, and a
+    second copy of that reasoning is a second place to get it wrong.
     """
+    store = _hits if store is None else store
+    limit = MAX_RENDERS if limit is None else limit
+    window = WINDOW_SECONDS if window is None else window
     now = time.monotonic()
     with _hits_guard:
-        if len(_hits) >= MAX_TRACKED_IPS:
-            _prune_locked(now)
-            if len(_hits) >= MAX_TRACKED_IPS:
-                for stale in sorted(_hits, key=lambda k: _hits[k][0])[:MAX_TRACKED_IPS // 10]:
-                    del _hits[stale]
-        q = _hits.setdefault(ip, deque())
-        while q and now - q[0] >= WINDOW_SECONDS:
+        if len(store) >= MAX_TRACKED_IPS:
+            _prune_locked(now, store, window)
+            if len(store) >= MAX_TRACKED_IPS:
+                for stale in sorted(store, key=lambda k: store[k][0])[:MAX_TRACKED_IPS // 10]:
+                    del store[stale]
+        q = store.setdefault(ip, deque())
+        while q and now - q[0] >= window:
             q.popleft()
-        if len(q) >= MAX_RENDERS:
-            return max(1.0, WINDOW_SECONDS - (now - q[0]))
+        if len(q) >= limit:
+            return max(1.0, window - (now - q[0]))
         q.append(now)
         return 0.0
 
@@ -153,6 +186,26 @@ def render_slot(request: Request):
         _render_slot.release()
 
 
+def play_beacon(request: Request):
+    """FastAPI dependency: admit one play-counter beacon, or refuse with 429.
+
+    Deliberately NOT `render_slot`, and the difference is the whole design of this endpoint.
+    `render_slot` is one process-wide lock held for the entire five minutes a Flux render takes.
+    A counter attached to it would leave the browser's fire-and-forget POST open for those five
+    minutes, and `navigator.sendBeacon` requests queue in the background: a listener who pressed
+    play during a render would watch their own page's beacons pile up behind someone else's build.
+
+    So this is a quota and nothing else. No slot, no lock held across the handler, no `yield`.
+    """
+    wait = _claim(client_ip(request), _beacon_hits, MAX_BEACONS, BEACON_WINDOW_SECONDS)
+    if wait:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit: {MAX_BEACONS} events per {BEACON_WINDOW_SECONDS} seconds.",
+            headers={"Retry-After": str(int(wait) + 1)},
+        )
+
+
 def reset() -> None:
     """Forget every quota and force the slot free. For tests, and only tests.
 
@@ -161,6 +214,7 @@ def reset() -> None:
     """
     with _hits_guard:
         _hits.clear()
+        _beacon_hits.clear()
     if _render_slot.locked():
         try:
             _render_slot.release()

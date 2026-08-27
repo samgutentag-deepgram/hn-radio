@@ -101,6 +101,11 @@ trusting the command, same as with deploys.
   the app and the cron at the mount, so nightly episodes survive a restart and a deploy. The image
   still carries whatever `episodes/` held at build time, and the entrypoint copies that in once on a
   first boot, when the empty volume would otherwise shadow it.
+- **Play counts live on the volume and are not backed up.** `episodes/plays.jsonl` and its rotated
+  archives sit beside the episodes on `/data`. Destroying the volume destroys the history: there is
+  no export, no replica, and nothing reconstructs it, because the events are only ever written at
+  the moment they happen. If the numbers ever start mattering, `fly ssh console -C 'cat
+  /data/episodes/plays.jsonl'` is the whole backup procedure.
 - **The source WAV is not shipped.** `.dockerignore` excludes `episodes/**/episode.wav`; the
   chaptered MP3 and the per-segment PCM cache are what the runtime needs.
 - **Keys are Fly secrets**, read at runtime by `hn_radio.config`; no secrets in the image.

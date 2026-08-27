@@ -21,7 +21,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from hn_radio import config, publish
-from .limits import render_slot
+from .limits import play_beacon, render_slot
 from hn_radio import recast as recast_mod
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -135,6 +135,78 @@ def api_trending():
     from hn_radio import trending
 
     return trending.snapshot()
+
+
+class PlayReq(BaseModel):
+    """One thing that happened on the site. `pct` is required for `progress` and ignored otherwise.
+
+    `Optional[int]` rather than `int | None`, matching BuildReq below: the container runs 3.12 but
+    a local .venv built from Xcode's python3 is 3.9, where the union syntax fails at import.
+    """
+    episode_id: str
+    event: str
+    pct: Optional[int] = None
+
+
+@app.post("/api/plays", status_code=202, dependencies=[Depends(play_beacon)])
+def api_plays(req: PlayReq):
+    """Record a play-counter event. Returns 202 and nothing useful, on purpose.
+
+    This is the first route here that a browser calls without anyone clicking, and the first whose
+    job is to write caller-supplied data to the volume, so both halves of its behaviour are odd
+    compared to the rest of the file and both are deliberate:
+
+    **It validates hard, then it swallows.** The 400s below are not there to tell a browser it got
+    something wrong -- `navigator.sendBeacon` cannot read a response, so nobody is listening. They
+    are there because an unvalidated `episode_id` makes this an append-anything primitive on our
+    volume, and a permanent one: a junk id is a permanent key in the rollup. Past that gate,
+    `plays.record` cannot raise, so a read-only volume or a full disk is still a 202. A listener
+    pressing play must never see an error from a counter.
+
+    **It counts the site, not the world.** Podcast clients pulling the MP3 out of `feed.xml` are
+    invisible to this and always will be. See the module docstring in `hn_radio/plays.py`.
+    """
+    from hn_radio import plays
+
+    if req.event not in plays.EVENTS:
+        raise HTTPException(400, f"unknown event {req.event!r}")
+    if req.event == "progress" and req.pct not in plays.MILESTONES:
+        raise HTTPException(400, f"progress needs one of {list(plays.MILESTONES)}")
+    if not plays.known_episode(req.episode_id):
+        raise HTTPException(400, f"episode {req.episode_id!r} not found")
+    plays.record(req.episode_id, req.event, req.pct)
+    return {"ok": True}
+
+
+@app.get("/api/stats")
+def api_stats():
+    """The play rollup: a row per episode, grand totals, and a per-day series.
+
+    Live rather than baked into `index.json` by `_rebuild_static()`. A published file would only be
+    as fresh as the last rebuild, and rebuilds happen on deploy, on the nightly run and after a
+    render -- so a count could sit hours behind the play that produced it, on the one page whose
+    entire job is to show that number.
+
+    Rows for episodes whose files have since been deleted are KEPT, titled by their id. Dropping
+    them would make the totals stop matching the sum of the rows, and a stats page that cannot add
+    up is not worth having.
+    """
+    import json as _json
+
+    from hn_radio import plays
+
+    rolled = plays.counts()
+    rows = []
+    for ep_id, counters in rolled["episodes"].items():
+        title = ep_id
+        meta = config.EPISODES_DIR / ep_id / "episode.json"
+        try:
+            title = (_json.loads(meta.read_text()).get("title") or ep_id)
+        except Exception:
+            pass  # deleted, unreadable, or written by an older schema: the id is a fine label
+        rows.append({"id": ep_id, "title": title, **counters})
+    rows.sort(key=lambda r: r["id"], reverse=True)
+    return {"episodes": rows, "totals": rolled["totals"], "daily": rolled["daily"]}
 
 
 class BuildReq(BaseModel):
