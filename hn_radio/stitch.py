@@ -125,7 +125,7 @@ def load_cached_segments(seg_dir: Union[str, Path], orders: List[int]) -> List[b
     return pcm
 
 
-# `rebuild_from_segments` was deleted 2026-08-22. It was a one-line wrapper with no caller, and
+# `rebuild_from_segments` was deleted. It was a one-line wrapper with no caller, and
 # its own docstring told you to do the thing the real production rebuild already does:
 # `load_cached_segments` -> `pacing.apply` -> `music.apply` -> `stitch`, which is
 # `scripts/add_chapters.py:80`.

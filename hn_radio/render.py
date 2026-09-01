@@ -5,7 +5,7 @@ Requesting raw linear16 (headerless) means the response body IS the PCM sample b
 stitching is byte concatenation and we avoid the batch container=wav placeholder-header bug
 (the ~2 GB data length). Each segment is one stateless call, which is all batch supports.
 
-Why raw HTTP and not the official SDK (conformance note, 2026-08-04): the published
+Why raw HTTP and not the official SDK (a conformance note): the published
 `deepgram-sdk` (6.1.1, latest) exposes Speak V2 ONLY as a streaming WebSocket client
 (`speak.v2 connect`), with no batch REST method. Deepgram documents Flux batch as a raw
 request (a curl), and the official `fastapi-flux` starter itself proxies Flux over raw

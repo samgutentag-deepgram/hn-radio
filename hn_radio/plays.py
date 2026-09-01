@@ -10,7 +10,7 @@ WHY A FILE AND NOT A DATABASE. `backend/limits.py` already argued this for rate 
 persistent store is a new dependency, a new failure mode, and a new thing to explain in a post
 whose argument is that this repo is simple enough to read. The same holds here with one addition
 in its favour -- a JSONL log is greppable. Answering "what happened the night the feed 404'd" is
-`grep 2026-08-26 plays.jsonl`, with no query language and no client.
+`grep <date> plays.jsonl`, with no query language and no client.
 
 THREE RULES THE REST OF THE FILE FOLLOWS.
 

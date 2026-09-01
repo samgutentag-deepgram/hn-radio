@@ -9,8 +9,8 @@ carries a seat tag and every performed comment already has a voice pinned by the
 remaining callers are the v1 `--legacy` path (`pipeline.run`, which uses `TemplateAssembler` and
 has no cast at all) and the assertions in tests/test_voices.py.
 
-WHAT CHANGED ON 2026-08-20, because this docstring has been wrong in both directions before and
-the code is always the answer.
+WHAT CHANGED, because this docstring has been wrong in both directions before and the code is
+always the answer.
 
 The show went two-person: a consistent host and a rotating co-host, who between them also perform
 the HN comments. So the SHOW no longer calls `guest_voice_for` at all. A performed comment is
@@ -19,7 +19,7 @@ pinned with the host's or the co-host's voice by the writer (see `writers.PanelW
 Sam's reasoning, verbatim: "we're kind of removing some functionality from the hashing of
 usernames, but we're just trying to simplify things."
 
-`guest_voice_for` WAS KEPT ON THREE STATED GROUNDS, AND IT IS NOW DELETED (2026-08-22). Two of the
+`guest_voice_for` WAS KEPT ON THREE STATED GROUNDS, AND IT IS NOW DELETED. Two of the
 three grounds were false when they were written, which is worth recording because they read as
 solid:
   - "recast still has a guest slot, so a listener can put a distinct voice back on quoted
@@ -41,8 +41,8 @@ old rationale was really justifying the POOL, which is independently used.
 Earlier history, kept because it is the same lesson twice. This docstring once claimed the
 recurring-character effect was live when it was not: the writers assigned guest voices by
 POSITION, cycling `guest_i % len(pool)` in order of appearance, so the first commenter in every
-episode got the same voice whoever they were. That was corrected on 2026-08-12, and the effect
-was made real the same day, in `guest_voice_for`.
+episode got the same voice whoever they were. That was corrected, and the effect was made real in
+the same change, in `guest_voice_for`.
 """
 
 from __future__ import annotations

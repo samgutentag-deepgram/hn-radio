@@ -8,7 +8,7 @@ preview samples are `scripts/make_cast_samples.py`'s job alone, not this module'
 
 TWO LAYERS, and the difference matters. A **slot** is the low-level thing a script segment carries:
 its `desk`, or "guest" for a performed comment (which carries no desk). A **role** is what the
-picker offers, and as of the two-person show (2026-08-20) there are exactly two of them:
+picker offers, and as of the two-person show there are exactly two of them:
 
     Showrunner -> the `anchor` slot        Guest host -> every other seat
 
@@ -19,7 +19,7 @@ voice by the writer (see `writers.PanelWriter`) and carries no `desk`, so `_slot
 "guest". A slot-level {anchor, cohost} mapping therefore skipped every quoted line, and a "recast"
 episode came out with FOUR voices in it: two new regulars and two stale ones reading the comments.
 
-Second, the archive. Every episode on disk as of 2026-08-20 predates the two-person format: they
+Second, the archive. Every episode on disk predates the two-person format: they
 carry `ai` / `maker` / `security` / `drama` desks and a separate guest voice on the quotes, and not
 one of them has a `cohost` slot. Matching roles to slots by name would have left the Guest host
 picker dead on every episode that exists. So the Guest host absorbs every non-host seat, a recast
@@ -31,7 +31,7 @@ of things the picker offers. The themed-desk CLI flags are gone with the desks: 
 cover an old script completely, so a flag per dead desk was a third way to say the same thing.
 
 There used to be a bare `SLOTS` list beside it saying the same thing with no labels. Deleted
-2026-08-22 with zero readers in any language: the code that actually reads a slot is `_slot_of`,
+with zero readers in any language: the code that actually reads a slot is `_slot_of`,
 `role_of` and `role_coverage`, and a literal list reads nothing.
 
 CLI:
@@ -51,7 +51,7 @@ from . import config, render, stitch
 from .cast import active_cast
 from .models import Episode, ScriptSegment
 
-# No SAMPLE_DIR / SAMPLE_TEXT here any more. `build_samples` owned them and is gone (2026-08-22):
+# No SAMPLE_DIR / SAMPLE_TEXT here any more. `build_samples` owned them and is gone now:
 # it and `scripts/make_cast_samples.py` both wrote `episodes/samples/<voice_id>.wav` with DIFFERENT
 # scripts and both skipped if the file existed, so alternating them left one line under some cards
 # and another under the rest while `web/cast.html:197` printed "Every card reads the same line, so
@@ -146,7 +146,7 @@ def _slot_of(seg: ScriptSegment) -> Optional[str]:
     return seg.desk if seg.desk else ("guest" if seg.role == "commenter" else None)
 
 
-# `apply_mapping` was deleted 2026-08-22: no production caller since the role model landed.
+# `apply_mapping` was deleted: no production caller since the role model landed.
 # `recast()` uses `apply_roles`, and `custom.py` imports only `rewrite_names`. It was the only
 # code that could perform a slot-level GUEST remap, and `voices.py` used to cite that as a live
 # reason for keeping `guest_voice_for`; both are gone now, together, rather than leaving a
@@ -177,7 +177,7 @@ def role_of(seg: ScriptSegment, anchor_voice: str) -> str:
          it, and its slot ("guest", because it carries no desk) cannot tell us which.
       3. everything else is the Guest host's.
 
-    Rule 3 is what makes this work on the archive. EVERY episode on disk as of 2026-08-20 predates
+    Rule 3 is what makes this work on the archive. EVERY episode on disk predates
     the two-person format: they have `ai` / `maker` / `security` / `drama` desks and a separate
     guest voice on the quotes, and not one of them has a `cohost` slot. A role model that only
     matched slot names by equality would leave the Guest host picker dead on every episode that

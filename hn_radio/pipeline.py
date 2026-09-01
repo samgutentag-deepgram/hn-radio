@@ -55,8 +55,8 @@ def _panel_title(edition: str, stories, top_story, episode_date: date) -> str:
 # pipeline holds that. Both are single segments and must stay that way: the merged cold open the
 # writers now produce follows this line, and `music.BED_SEGMENTS = 2` lays the ambient bed across
 # exactly those two.
-# THE DATE IS THE AIR DATE, NOT THE EPISODE DATE, and the difference is a bug Sam caught by ear on
-# 2026-08-23: the episode that landed that morning opened with "It's Saturday, August 22".
+# THE DATE IS THE AIR DATE, NOT THE EPISODE DATE, and the difference is a bug Sam caught by ear:
+# an episode landed one morning having opened with "It's Saturday, August 22" -- yesterday's date.
 #
 # `episode_date` is the CONTENT date and is deliberately yesterday -- `scripts/daily.py:57` asks for
 # `now(PACIFIC) - 1 day` because a complete day of front page is the whole point, and
@@ -75,7 +75,7 @@ _OUTRO = ("That's yesterday's front page. From me and {cohost}, on Deepgram Flux
           "to you tomorrow.")
 
 
-# THE SOLO-EPISODE VARIANTS ARE GONE, deleted 2026-08-22. There used to be a `_cohost_name`
+# THE SOLO-EPISODE VARIANTS ARE GONE. There used to be a `_cohost_name`
 # helper here plus a solo branch in each of these two functions, on the stated grounds that
 # `custom.py` builds casts from a listener's picks and could hand over one with no co-host. That
 # justification was false twice over, and both halves were checked before this was removed:
@@ -150,9 +150,9 @@ def run_panel(
     # longer reads the stories either, so the two stages are finally independent.
     selected = editions.select_stories(pool, edition, n_stories)
     # `run_panel` builds the cast itself, always. The `cast=` parameter this used to accept was
-    # removed 2026-08-22: nine call sites repo-wide, none passed it, so the guarded branch was
-    # unreachable. `render_recast` and `render_custom` are called directly and never come through
-    # here, which is why nothing needed the seam.
+    # removed: nine call sites repo-wide, none passed it, so the guarded branch was unreachable.
+    # `render_recast` and `render_custom` are called directly and never come through here, which
+    # is why nothing needed the seam.
     #
     # `before` does two jobs: it makes "held the second chair recently" relative to the episode
     # being generated (a backfill must not treat later episodes as recent, and a re-render of
@@ -250,8 +250,8 @@ def _space_cold_open(segments, pcm, log=print):
 
     The other half of the cold-open fix. The writers merged the preview into ONE segment so it is
     ONE TTS call, which killed the ~2.9s holes between headlines; what that leaves is Flux running
-    the sentences together (0.09 / 0.13 / 0.22s of silence inside the real 2026-08-20 read). This
-    evens those boundaries out to `pacing.COLD_OPEN_PAUSE_SECONDS` each. Splitting the segment
+    the sentences together (0.09 / 0.13 / 0.22s of silence measured on a real read). This evens
+    those boundaries out to `pacing.COLD_OPEN_PAUSE_SECONDS` each. Splitting the segment
     back up is the one repair known NOT to work; see the note above `writers.cold_open_index`.
 
     Lives here, in the wiring, rather than inside `pacing.apply`, for two reasons. `pacing.apply`

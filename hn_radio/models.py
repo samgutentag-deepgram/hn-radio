@@ -41,8 +41,8 @@ class Comment:
     text: str  # raw HTML from HN; cleaned in script_assembly
     # No `story_id`. It was written once (`ingest.py`) and read nowhere: the provenance that
     # survives into the artifact is `ScriptSegment.source_hn_id`, and since `fetch_top_comments`
-    # runs on exactly one story per episode the caller already holds it as `top_story`. Removed
-    # 2026-08-22; a comment recording a redundancy is not provenance.
+    # runs on exactly one story per episode the caller already holds it as `top_story`. Removed;
+    # a comment recording a redundancy is not provenance.
 
 
 @dataclass
@@ -59,8 +59,8 @@ class ScriptSegment:
     source_hn_id: Optional[int] = None
     voice_id: Optional[str] = None  # filled in by the voices stage
     # v2: which seat spoke -- "anchor" (the host) or "cohost" today, or one of the retired themed
-    # desks ("ai" / "maker" / "security" / "drama") in an episode rendered before 2026-08-20.
-    # None for v1, and None for a performed comment even in v2: `recast` reads an untagged
+    # desks ("ai" / "maker" / "security" / "drama") in an older episode that predates the
+    # two-person show. None for v1, and None for a performed comment even in v2: `recast` reads an untagged
     # commenter line as its "guest" slot and `custom.py` reads `desk` to find a story's coverage.
     desk: Optional[str] = None
     start_seconds: Optional[float] = None  # start offset in the stitched episode; set at render

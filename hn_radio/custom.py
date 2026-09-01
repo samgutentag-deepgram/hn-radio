@@ -39,8 +39,8 @@ from .models import ScriptSegment
 # every episode and "drama" performs comments rather than stories, so neither is selectable.
 #
 # Read from `editions.TOPICS` rather than written out here, because that module is now the one
-# place the keyword tables live (they moved out of `cast.py` when the daily show went two-person
-# on 2026-08-20; see `cast.py`). A second literal would be a second thing to keep in step.
+# place the keyword tables live (they moved out of `cast.py` when the daily show went two-person;
+# see `cast.py`). A second literal would be a second thing to keep in step.
 #
 # NOTE ON WHAT THESE MEAN NOW. In this module a desk is still a real seat with a voice, because
 # picking one is how a listener casts it. In the DAILY show there are no desks at all, so a
@@ -132,7 +132,7 @@ def _owning_desk(segments: List[dict], hn_id: int, title: str = "",
 
     Two eras of script to read, and both have to keep working or the cache tier dies.
 
-    OLD (before 2026-08-20): the story was covered by a themed desk and the script says which,
+    OLD (before the two-person show): the story was covered by a themed desk and the script says which,
     so read it off the script rather than re-deriving it. That way a rebuilt episode reflects
     what was really said. The anchor also has lines tagged with a story's id (it throws to the
     desk), so anchor lines are skipped.
@@ -162,8 +162,9 @@ def _desk_of_segment(seg: dict, story_desk: str) -> Optional[str]:
     """The topic desk a rendered segment belongs to, from the listener's point of view.
 
     A `cohost` line is that story's coverage whatever subject the story is, so it maps onto the
-    desk the story was placed in. Without this, a post-2026-08-20 episode's story lines matched
-    no picked desk, got dropped by `collect_segments`, and the story ended up listed in
+    desk the story was placed in. Without this, an episode rendered after the two-person change
+    had its story lines match no picked desk, got dropped by `collect_segments`, and the story
+    ended up listed in
     `source_items` and in the chapters while being absent from the audio -- the same
     everything-except-the-audio failure the story cap once caused.
     """
@@ -429,10 +430,10 @@ def cast_from_config(cfg: dict) -> Cast:
     Building the cast up front is why this does not need recast's name-rewriting pass for the
     lines it writes fresh: the writer already addresses the desks by their chosen names.
 
-    Beats and personas come from `editions.TOPICS` rather than from `cast.DEFAULT_CAST`, which as
-    of 2026-08-20 describes a two-person show and no longer has an ai/maker/security seat to copy.
-    Keywords are NOT carried any more: `Desk.keywords`/`Desk.domains` were deleted 2026-08-22
-    because nothing read them. `editions.TOPICS` still holds the keyword lists, and they are still
+    Beats and personas come from `editions.TOPICS` rather than from `cast.DEFAULT_CAST`, which now
+    describes a two-person show and no longer has an ai/maker/security seat to copy. Keywords are
+    NOT carried any more: `Desk.keywords`/`Desk.domains` were deleted because nothing read them.
+    `editions.TOPICS` still holds the keyword lists, and they are still
     live -- the topic FILTER reads them there. What is gone is the dead copy onto each Desk.
 
     ONE REDUCTION TO KNOW ABOUT, and it is not fixed here. `PanelWriter` no longer routes a story

@@ -27,7 +27,7 @@ def build_chapters(episode) -> List[dict]:
     # A SET, not "the previous id". The script permits a callback, a later story referring back
     # to an earlier one, and any such line carries the earlier story's source_hn_id. Comparing
     # against only the previous id minted a second chapter with the same title every time the
-    # script looked back, so 2026-08-08 shipped 8 chapters for 3 stories with two titles
+    # script looked back, so one early episode shipped 8 chapters for 3 stories with two titles
     # appearing twice. First occurrence opens the chapter; later references never do.
     seen_stories = set()
     commenter_start = None

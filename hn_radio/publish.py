@@ -8,9 +8,9 @@ and nothing about the formats:
     transcript  WebVTT, from the script's start times    hn_radio/transcript.py
     jsonio      how any JSON artifact gets written       hn_radio/jsonio.py
 
-It used to be all three of those plus a full HTML player page, at 568 lines. The page went on
-2026-08-09 (nothing linked to it; see `feed.py` for the 404 that hid behind it), and the formats
-moved out into modules small enough to read in one sitting. That is the point: someone following
+It used to be all three of those plus a full HTML player page, at 568 lines. The page was removed
+(nothing linked to it; see `feed.py` for the 404 that hid behind it), and the formats moved out
+into modules small enough to read in one sitting. That is the point: someone following
 "how do I add voice to my app" should be able to open any one of these and finish it.
 
 Nothing here renders HTML. Rendering an episode for a human is `web/`'s job.

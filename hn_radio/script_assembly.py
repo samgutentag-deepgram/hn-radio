@@ -3,8 +3,8 @@
 Plain text is the whole point: expression must come from Flux reading the words, not from
 markup or voice tags. So this stage produces bare strings tagged with a speaker role, nothing more.
 
-WHAT THIS MODULE IS NOW, decided 2026-08-22 rather than left implicit. Three helpers here are
-live and imported by `writers.py`; `TemplateAssembler` is NOT. Its last caller was `pipeline.run`,
+WHAT THIS MODULE IS NOW, decided rather than left implicit. Three helpers here are live and
+imported by `writers.py`; `TemplateAssembler` is NOT. Its last caller was `pipeline.run`,
 the v1 `--legacy` path, deleted along with the `ScriptAssembler` ABC it used to sit behind, because
 a traced run wrote an episode with no pacing, music, chapters, MP3 or VTT and `publish()` still put
 it in the feed as a real episode for subscribers.
@@ -21,8 +21,8 @@ follow, and they are deliberate rather than oversights:
   - the narrator introduces herself, matching what the panel show's fixed intro does, because that
     is a property of the show and not of one writer;
   - performed comments here still get a voice from `config.COMMENTER_VOICES` via the v1 hash in
-    `voices.assign_voice`. The panel show stopped using a separate comment voice on 2026-08-20
-    because it has two regulars to read them with. This path has one narrator, so removing the
+    `voices.assign_voice`. The panel show stopped using a separate comment voice because it has
+    two regulars to read them with. This path has one narrator, so removing the
     contrast would leave the host quoting other people in her own voice with nothing to mark it.
 """
 
@@ -96,8 +96,8 @@ class TemplateAssembler:
 
         weekday = episode_date.strftime("%A")
         pretty = episode_date.strftime("%B %-d") if hasattr(episode_date, "strftime") else str(episode_date)
-        # The narrator names herself, matching what the panel show's fixed intro does as of
-        # 2026-08-20. Read from the configured host voice rather than hardcoded: this path has no
+        # The narrator names herself, matching what the panel show's fixed intro does.
+        # Read from the configured host voice rather than hardcoded: this path has no
         # Cast at all (that is what makes it v1), so `config.host_voice()` is the only thing that
         # knows who is reading, and a literal name here would go stale the moment HOST_VOICE
         # changed -- which is exactly the drift that made HOST_VOICE say Haley while the panel
@@ -142,8 +142,8 @@ class TemplateAssembler:
                         and any(s.id == top_story.id for s in stories) else None)
 
         # No invitation on the throw, unlike `PanelWriter._INVITATIONS`. The panel show gained a
-        # named handoff at the top of every story on 2026-08-21, because the beat that was cutting
-        # from voice to voice is a story's FIRST co-host turn. There is no co-host here and no
+        # named handoff at the top of every story, because the beat that was cutting from voice to
+        # voice is a story's FIRST co-host turn. There is no co-host here and no
         # second turn: one narrator reads the whole rundown, so a handoff would either be the
         # narrator addressing herself or an invented second person. Same shape of reasoning as the
         # comment voice above -- the panel show's fix does not port to a path with one voice in it,

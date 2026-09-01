@@ -1,6 +1,6 @@
 """Guards on the two endpoints that render audio: /api/recast and /api/build.
 
-(There were three until 2026-08-22, when /api/generate was deleted as callerless.)
+(There were three until /api/generate was deleted as callerless.)
 
 Why this exists, in the order the risks actually bite.
 

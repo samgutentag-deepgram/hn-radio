@@ -8,12 +8,12 @@ match, and a product-launch detector, so it stays predictable and needs no LLM.
   security            promote breaches/CVEs/crypto/systems
   frontpage           no skew; straight popularity order
 
-This module also owns the TOPIC keyword tables, which is new as of 2026-08-20 and worth
-explaining because they used to live in `cast.py`.
+This module also owns the TOPIC keyword tables, which is worth explaining because they used to
+live in `cast.py`.
 
 They were the themed correspondent desks' routing keywords: each desk scored a story's title and
 domain, the best score won, and the desk that won covered the story out loud. The show went
-two-person that day (a consistent host plus a rotating co-host, see `cast.py`), so nothing routes
+two-person (a consistent host plus a rotating co-host, see `cast.py`), so nothing routes
 a story to a SPEAKER any more. But the keywords were never only about speakers: `_weight` below
 has always used them to skew the ai/security/makers editions, and `custom.py` uses them to filter
 the build-your-own pool. Both are selection concerns, so the tables came here with the code that
@@ -161,7 +161,7 @@ def select_stories(stories: List[Story], edition: str = DEFAULT_EDITION,
     A stable sort keeps original front-page rank as the tiebreaker, so equal-scoring stories
     stay in the order HN ranked them.
 
-    Took a `cast` argument until 2026-08-20, purely to reach `cast.score_for` for the keyword
+    Used to take a `cast` argument, purely to reach `cast.score_for` for the keyword
     match. The keywords live here now, so the parameter had nothing left to do; `run_panel` was
     building a whole Cast just to pass it in, which is also how the import-time cast trap
     documented in `cast.active_cast` kept finding new places to happen.

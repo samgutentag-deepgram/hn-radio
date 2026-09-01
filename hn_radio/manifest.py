@@ -18,10 +18,10 @@ from .models import is_recast
 
 # A default voice per build-your-own topic desk, for the picker's one-click Flux preset. These
 # used to fall out of `cast.ROLE_VOICES`, which listed a preferred voice per themed desk; the
-# desks went on 2026-08-20 and took that table's per-beat rows with them. Kept here rather than
+# desks were retired and took that table's per-beat rows with them. Kept here rather than
 # revived there because these are a UI suggestion for one page, not a casting rule the show obeys.
 _TOPIC_DESK_SUGGESTIONS = {
-    "ai": "flux-meena-en",        # was Priya, who Sam retired by ear on 2026-08-20
+    "ai": "flux-meena-en",        # was Priya, who Sam retired by ear
     "maker": "flux-wade-en",
     "security": "flux-jack-en",
 }
@@ -89,9 +89,9 @@ def build_voices_json(episodes_dir: Path) -> Path:
       - the rule is not cosmetic. `POST /api/recast` refuses a non-Flux voice, so publishing one
         would be advertising a choice the endpoint rejects.
 
-    The six Aura-2 entries and the `presets.aura` map went with the old-vs-new comparison on
-    2026-08-20. `config.AURA_CATALOG` and `render.py`'s /v1/speak path are untouched: an Aura
-    render still works, it is just not something the site offers.
+    The six Aura-2 entries and the `presets.aura` map went with the old-vs-new comparison.
+    `config.AURA_CATALOG` and `render.py`'s /v1/speak path are untouched: an Aura render still
+    works, it is just not something the site offers.
     """
     from . import custom
     from .cast import (COHOST_ROLE, RoleUnavailable, cohost_candidates, recent_cohost_voices,
@@ -101,11 +101,11 @@ def build_voices_json(episodes_dir: Path) -> Path:
     # (`episode_cast` -> `resolve_role`). It used to read `active_cast()` instead, and the two
     # DID disagree: on production `active_cast()` seats Haley at the anchor desk while
     # `resolve_role("anchor")` casts Alexis, so voices.json advertised one anchor and the
-    # committed 2026-08-08 script rendered another.
+    # committed script rendered another.
     #
-    # This is the catalog view, not an episode view. As of the two-person show (2026-08-20) it
-    # lists TWO seats rather than five: the host, who is the same every day, and the second
-    # chair, which is filled by whoever the rotation would pick right now. `before=None` is
+    # This is the catalog view, not an episode view. It lists TWO seats rather than five: the
+    # host, who is the same every day, and the second chair, which is filled by whoever the
+    # rotation would pick right now. `before=None` is
     # correct for a page: it means "as of the latest episode", which is what a visitor is asking.
     #
     # `taken` accumulates across the loop for the same reason `episode_cast` does it: each role
@@ -122,8 +122,8 @@ def build_voices_json(episodes_dir: Path) -> Path:
             # This computation is load-bearing and must stay: `candidates` is the only thing that
             # seats the second chair, and `resolve_role("cohost", ...)` raises `RoleUnavailable`
             # immediately without it. Only the `cohost_pool`/`cohost_recency_window` keys that
-            # used to be published off it were removed (2026-08-22), after `cast.html` was
-            # rewritten and stopped being their reader.
+            # used to be published off it were removed after `cast.html` was rewritten and
+            # stopped being their reader.
             candidates = cohost_candidates(recent_cohost_voices(), host_voice)
         try:
             desk = resolve_role(role, exclude=taken, candidates=candidates)[0]

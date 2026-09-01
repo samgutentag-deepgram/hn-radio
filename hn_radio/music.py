@@ -58,7 +58,7 @@ OUTRO_SECONDS = 5.0
 # near-peak material with no decrescendo starts or ends mid-phrase, and no fade length repairs
 # that. The fade was papering over a bad cut point, not a bad fade length.
 #
-# Re-measured 2026-08-20 at a 10 ms hop over 50 ms windows. The first pass used half- and
+# Re-measured at a 10 ms hop over 50 ms windows. The first pass used half- and
 # quarter-second buckets, which is coarser than the events being looked for, and it got the
 # track's shape wrong. What is actually there, in 0.5s RMS bands:
 #
@@ -137,9 +137,9 @@ OUTRO_AT = 171.5
 
 # Air on either side of a cue. Replaces the pacing gap at a boundary a sting lands on: the sting
 # IS the beat there, so keeping the story-change pause as well would leave a hole around it.
-# Tightened 2026-08-08 by ear (0.30 -> 0.16): a daily recap wants punctuation, not ceremony, and
+# Tightened by ear (0.30 -> 0.16): a daily recap wants punctuation, not ceremony, and
 # the first pass read as slow and metered. STING_SECONDS came down from 2.0 for that same reason
-# and went back to 2.0 on 2026-08-20: what read as slow was the old excerpt sitting on a flat
+# and went back to 2.0: what read as slow was the old excerpt sitting on a flat
 # near-peak plateau for a full second, not the two seconds itself, and the new excerpt spends
 # the extra 0.2s decaying. CUE_GAP_SECONDS stays where it is.
 CUE_GAP_SECONDS = 0.16
@@ -151,7 +151,7 @@ CUE_GAP_SECONDS = 0.16
 BED_SEGMENTS = 2
 BED_TAIL_SECONDS = 1.2  # bed keeps playing past the last cold-open word, then fades out
 
-# A single FADE_SECONDS served every cue's fade-in AND fade-out until 2026-08-08. That was the
+# A single FADE_SECONDS used to serve every cue's fade-in AND fade-out. That was the
 # bug: a cue arriving is a different event from a cue leaving, and "leaving" is not one event
 # either. The intro OPENS the show, so a fast tail feels clipped; a sting PUNCTUATES a beat
 # between stories, so it wants a quick tail that gets out of the way; the outro CLOSES the
@@ -161,7 +161,7 @@ BED_TAIL_SECONDS = 1.2  # bed keeps playing past the last cold-open word, then f
 # splitting the way leaving did.
 FADE_IN_SECONDS = 0.35
 INTRO_FADE_OUT = 2.0   # opens the show: give it room to breathe, not a clipped ending
-# Widened 0.80 -> 1.05 on 2026-08-20 by ear: Sam, on the first two-person render, "it still feels
+# Widened 0.80 -> 1.05 by ear: Sam, on the first two-person render, "it still feels
 # like it snaps off a bit too quickly." The excerpt itself was already right, so this is the
 # landing rather than the cut. The fade now starts 0.95s in instead of 1.20s, which is slightly
 # ahead of where the music's own decay flattens, so it leads the decay out instead of following
@@ -288,7 +288,7 @@ def _shape(pcm: bytes, fade_in: float, fade_out: float, target_rms: float,
     `name` is only for that message. `log=None` is silent, for the callers that are not the
     render path.
 
-    REVIEWED 2026-08-22 and DELIBERATELY KEPT. A prune pass proposed making `log` required and
+    REVIEWED and DELIBERATELY KEPT. A prune pass proposed making `log` required and
     dropping the one-line `if log:` guard below. Declined: `ad_bracket` passes `log=log` straight
     through and its own parameter is `Optional`, so `ad_bracket(rms, log=None)` is a legal call
     today and would become a TypeError. The proposal came with "must be paired with narrowing
@@ -430,7 +430,7 @@ def apply(
 
     `bed_db=None` lays no bed while leaving the cold-open piece's structure untouched, which is
     also how the "the bed moves nothing" guarantee is testable. There was a matching
-    `sting_db=None` until 2026-08-22; no caller ever passed it and silencing the cues is
+    `sting_db=None` parameter; no caller ever passed it and silencing the cues is
     `HN_RADIO_MUSIC=0`, so the parameter was a second way to say the same thing.
     """
     pieces_in = list(pcm)

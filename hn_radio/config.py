@@ -53,11 +53,11 @@ def speak_endpoint(voice_id: str) -> str:
 
 # Voices retired by decision rather than by the catalog. Marcus and Renee both still render:
 # Marcus is in the GA catalog and Renee was dropped from it, but neither belongs in this show.
-# Sam pulled both by ear on 2026-08-19 -- they were not sounding good in the generated podcast.
+# Sam pulled both by ear -- they were not sounding good in the generated podcast.
 # Kept as a named set so the reason survives, and so a future catalog regeneration cannot quietly
 # reinstate them: the generator writes VOICE_CATALOG from the docs, and the docs still list Marcus.
 #
-# Priya joined them on 2026-08-20, same kind of call: Sam pulled her by ear. She is still in the
+# Priya joined them later, same kind of call: Sam pulled her by ear. She is still in the
 # published docs, so like Marcus she needs this filter or the next regeneration puts her straight
 # back. One line to reverse if he changes his mind, which is the whole reason this is a set of ids
 # and not a series of edits scattered across the catalog and the pools.
@@ -73,7 +73,7 @@ def speak_endpoint(voice_id: str) -> str:
 # has no orb, so she is not part of that 36 and must never be offered anywhere.
 #
 # These two names were previously only in tests/test_voice_catalog.py, which pinned the same split.
-# They moved here on 2026-08-21 because PUBLISHED_VOICES below needs the distinction at runtime,
+# They moved here because PUBLISHED_VOICES below needs the distinction at runtime,
 # and a definition the code cannot reach is a definition that drifts.
 REMOVED_AT_GA = ("flux-renee-en",)
 RETIRED_BY_DECISION = ("flux-marcus-en", "flux-priya-en")
@@ -132,7 +132,7 @@ DEFAULT_SITE_BASE_URL = "http://localhost:8000/episodes"
 def site_base_url() -> str:
     """The absolute origin published URLs are built from, INCLUDING the /episodes segment.
 
-    A function, and it was not one until 2026-08-20. This was
+    A function. This was
     `SITE_BASE_URL = os.environ.get("HN_RADIO_BASE_URL", ...)` at module scope, which is the trap
     `music_enabled` was written as a function to avoid and which its docstring named by hand.
     Two things were wrong with the constant and they are separate:
@@ -172,7 +172,7 @@ SITE_OWNER_EMAIL = "devrel@deepgram.com"
 SITE_CATEGORY = "Technology"
 
 # --- Voices (Flux TTS launch catalog; model string = flux-{voice}-en) ---
-# Alexis, and only Alexis. This said flux-haley-en until 2026-08-20 while `cast.ROLE_VOICES`
+# Alexis, and only Alexis. This said flux-haley-en for a while, while `cast.ROLE_VOICES`
 # prefers the Alexis ids, so the show had been casting Alexis and this constant had been naming
 # Haley for weeks: the v1 legacy path (`voices.assign_voice`) read this and the panel path read
 # the cast, and the two disagreed with nothing to notice it. One host, one id, both paths.
@@ -187,9 +187,9 @@ COMMENTER_VOICES = [
 ]
 
 # Voices used to perform HN commenters in comment theater. Every catalog voice that CANNOT hold a
-# desk, which as of 2026-08-19 is 28 of 35.
+# desk, which is 28 of 35.
 #
-# It was three (Drew, Bruce, Heather) until then, and three was the wrong number for what this pool
+# It was three (Drew, Bruce, Heather) before that, and three was the wrong number for what this pool
 # is for. With N_COMMENTS = 2 there were only three possible pairings in the entire show, and two of
 # those three put two American adult men the docs describe almost identically next to each other. A
 # guest who sounds like that every night is not a member of the public, he is a fourth host.
@@ -206,8 +206,8 @@ COMMENTER_VOICES = [
 #
 # It cannot happen any more, because the show does not cast a guest voice at all: the host and the
 # co-host read the comments themselves. tests/test_voice_catalog.py inverted the assertion to match
-# on 2026-08-20 and now pins that the OVERLAP IS EXPECTED. This comment claimed the opposite until
-# 2026-08-22, and said the test pinned a separation the test had stopped pinning.
+# and now pins that the OVERLAP IS EXPECTED. This comment used to claim the opposite, and said the
+# test pinned a separation the test had stopped pinning.
 #
 # Curated by ear, not generated: every voice below rendered a preview via scripts/voice_preview.py,
 # and cutting one that reads wrong is expected. The tests guard the invariants, not the membership.
@@ -299,20 +299,20 @@ def http_retries() -> int:
 # if a streaming render path is added later.
 #
 # The EA note that used to sit here said the catalog might change before GA. It did. GA shipped
-# 2026-08-12 (deepgram-docs #1090, #1097) and the published catalog went from twelve voices to
-# thirty-six, with Renee dropped outright. The remaining twenty-five were added on 2026-08-19, so
-# this is now thirty-five of thirty-six: the whole published catalog except Renee, who is in
-# RETIRED_VOICES. Regenerate from fern/pages/text-to-speech/flux-tts/voices.mdx, not by hand.
+# (deepgram-docs #1090, #1097) and the published catalog went from twelve voices to thirty-six,
+# with Renee dropped outright. The remaining twenty-five were added afterward, so this is now
+# thirty-five of thirty-six: the whole published catalog except Renee, who is in RETIRED_VOICES.
+# Regenerate from fern/pages/text-to-speech/flux-tts/voices.mdx, not by hand.
 #
-# Only voices on that page belong here. A probe on 2026-08-06 found ~19 additional flux-* ids that
-# DO render on this project's key (they appear in the talk.deepgram.com demo bundle), but they are
-# not in the published launch catalog, so shipping them in a public demo would be showing off
-# voices no customer can rely on. They were added and then removed for exactly that reason.
+# Only voices on that page belong here. A probe found ~19 additional flux-* ids that DO render on
+# this project's key (they appear in the talk.deepgram.com demo bundle), but they are not in the
+# published launch catalog, so shipping them in a public demo would be showing off voices no
+# customer can rely on. They were added and then removed for exactly that reason.
 #
 # Notes are accent, gender, age band, then the first three character words from the docs table.
 #
-# GENERATED from voices.mdx on 2026-08-19, not hand-typed, which is why it is all 36 rather than
-# the 11 it sat at. Regenerate it the same way; do not add rows by hand.
+# GENERATED from voices.mdx, not hand-typed, which is why it is all 36 rather than the 11 it sat
+# at before GA. Regenerate it the same way; do not add rows by hand.
 #
 # It is a faithful copy of the docs ON PURPOSE, retired voices included, and RETIRED_VOICES filters
 # it immediately below. Deleting a retired voice from this literal instead would make the table stop
@@ -359,18 +359,18 @@ VOICE_CATALOG = {
 # Deepgram's suggested expressivity per voice, from the Flux TTS demo at talk.deepgram.com.
 # Range -5..5. Trimmed to the catalog voices; test_voice_catalog pins that it stays trimmed.
 #
-# CORRECTED 2026-08-24 against the live docs. Batch /v2/speak takes both knobs now: `speed`, from
+# CORRECTED against the live docs. Batch /v2/speak takes both knobs now: `speed`, from
 # 0.85 to 1.15 in 0.05 steps, which returns SPEED_NOT_SUPPORTED on model and language pairs that
 # do not have it, and `expressivity`, still marked beta, from -2 (calm) to 2 (animated). Sources:
 # developers.deepgram.com/docs/flux-tts/batch and developers.deepgram.com/docs/tts-voice-controls.
 #
-# The old note, kept so the reason we believed it survives. Probed exhaustively 2026-08-06: batch
+# The old note, kept so the reason we believed it survives. Probed exhaustively: batch
 # rejected every spelling of expressivity as an unknown query parameter, and rejected the
 # documented `speed` parameter with a different and more telling error ("Requested model does not
-# support the 'speed' parameter"). That probe predates Flux TTS GA on 2026-08-12, which is when
-# both parameters reached the batch path, so the conclusion aged out even though the observations
-# were real. The streaming spelling `perturbations` is still not a documented batch parameter, so
-# that half of the finding holds.
+# support the 'speed' parameter"). That probe predates Flux TTS GA, which is when both parameters
+# reached the batch path, so the conclusion aged out even though the observations were real. The
+# streaming spelling `perturbations` is still not a documented batch parameter, so that half of
+# the finding holds.
 #
 # CHECK THE SCALES BEFORE WIRING THIS UP. The values below run -5..5, because that is the scale the
 # demo publishes. The batch `expressivity` parameter runs -2..2. The two do not map onto each

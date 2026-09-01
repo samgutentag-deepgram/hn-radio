@@ -4,14 +4,14 @@ Why this exists: the show inserted one fixed `GAP_SECONDS` at every boundary, wh
 monologue tell. Two things were wrong with that, and only one of them was the number.
 
 1. Flux bakes its own silence into every rendered segment, and it is NOT symmetric. Measured at
-   SILENCE_THRESHOLD across the 2026-08-03 and 2026-08-04 caches (n=38 segments), the tail runs a
+   SILENCE_THRESHOLD across two days of cached renders (n=38 segments), the tail runs a
    median 0.25s, p10-p90 0.11-0.32. The lead-in runs a median 0.02s, p90 0.08. The renderer pads
    the END of a line and barely touches the start. So a 0.45s configured gap was really
    tail + 0.45 + the next segment's lead: a median 0.73s of dead air per boundary, ranging 0.50 to
    1.16, and swinging up to 0.52s from one boundary to the next. Conversational turn transitions in
    real speech sit nearer 0.20s, so the show was running about 3.6x a natural turn.
 
-   CORRECTED 2026-08-25. This block used to claim 0.22-0.29s of lead-in, 0.98s of total dead air,
+   CORRECTED. This block used to claim 0.22-0.29s of lead-in, 0.98s of total dead air,
    and 0.00-0.43s of segment-to-segment variation. The tail figure held up. The lead-in was over
    ten times too high, the 0.43 does not reproduce as any measure of this cache, and both numbers
    had already been copied into a corporate blog draft before anyone re-derived them. The asymmetry
@@ -159,8 +159,8 @@ def normalize_edges(pcm: bytes, edge_seconds: float = EDGE_SECONDS) -> bytes:
 # single continuous read with no per-headline onset or sentence-final fall (see the note above
 # `writers.cold_open_index` for why re-splitting it is the one repair known not to work).
 #
-# The cost of that merge is that Flux runs the headlines together. Measured on the real
-# 2026-08-20 cold-open renders joined into one read: the silence runs inside it are 0.09, 0.13
+# The cost of that merge is that Flux runs the headlines together. Measured on real
+# cold-open renders joined into one read: the silence runs inside it are 0.09, 0.13
 # and 0.22 seconds, so the largest gap between two headlines is 0.22s while a mid-headline breath
 # is 0.13s. Sam's verdict on the merged read was "maybe a touch too fast", and separately that the
 # cold open should be "as matter-of-fact as possible. We are just reporting information."
@@ -233,11 +233,11 @@ def set_internal_pauses(pcm: bytes, count: int,
 
     Targeting the longest runs rather than every run is what keeps this honest. A three-headline
     cold open has two sentence boundaries plus a handful of shorter intra-sentence breaths, and
-    padding all of them would open a hole in the middle of a headline. Verified against the
-    2026-08-07 merged render: the two longest runs (0.22s at 3.21s, 0.13s at 8.25s) sit within a
+    padding all of them would open a hole in the middle of a headline. Verified against a
+    merged render: the two longest runs (0.22s at 3.21s, 0.13s at 8.25s) sit within a
     half second of the boundaries predicted from word counts (3.67s, 8.27s), while every other
-    run is intra-sentence. The margin is thin by construction (0.13 boundary vs a 0.12 breath on
-    2026-08-20), so `count` must come from the read's own sentence count and not from a threshold.
+    run is intra-sentence. The margin is thin by construction (0.13 boundary vs a 0.12 breath
+    elsewhere), so `count` must come from the read's own sentence count and not from a threshold.
 
     Separator punctuation was tried first and does not work: across five separators (space,
     newline, blank line, ellipsis, dash) the boundary pauses ranged 0.08-0.40s with no separator

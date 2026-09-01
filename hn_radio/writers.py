@@ -7,8 +7,8 @@
 Both return the same thing: an ordered list of plain-text ScriptSegments tagged with a speaker
 and a seat role. No markup, ever. Expression comes from Flux reading the words.
 
-Two people as of 2026-08-20: the host and one co-host, both of whom cover every story AND perform
-the comments. See `cast.py` for what that replaced. Two consequences live in this file:
+Two people: the host and one co-host, both of whom cover every story AND perform the comments.
+See `cast.py` for what that replaced. Two consequences live in this file:
 
   - There is no comment-theater voice any more. A performed comment is read by whichever regular
     has it, so the segment carries a REGULAR's `voice_id` while keeping the commenter's real
@@ -42,11 +42,11 @@ MAX_COMMENT_CHARS = 320
 # reading. Split across segments, the pauses come from the gaps `stitch` inserts BETWEEN renders
 # instead, and each piece also carries its own sentence-final fall and its own onset.
 #
-# Measured on the 2026-08-20 episode, where ClaudeWriter emitted four cold-open segments (an
-# opener plus one per headline): segment starts at 7.16, 15.407, 21.847, 26.263 -- roughly 2.9s of
-# dead air between the first two beats, for a line that is about 3.5s of speech.
+# Measured on a real episode where ClaudeWriter emitted four cold-open segments (an opener plus
+# one per headline): segment starts at 7.16, 15.407, 21.847, 26.263 -- roughly 2.9s of dead air
+# between the first two beats, for a line that is about 3.5s of speech.
 #
-# An A/B on 2026-08-09 settled the direction by ear: "the one read feels most coherent... the issue
+# An A/B test settled the direction by ear: "the one read feels most coherent... the issue
 # with the three renders is that the inflection and the voice changes so much between them that it
 # feels very stark jumps". So if the merged read ever comes back feeling too FAST, re-splitting it
 # is the one repair that is known not to work -- separate renders are what causes the stark jumps.
@@ -98,7 +98,7 @@ def cold_open_pause_count(text: str) -> int:
     internal boundary at all and correctly counts zero.
 
     Counted rather than thresholded on purpose. The spacing pass stretches the N longest silence
-    runs in the render, and on real audio a headline boundary (0.13s on 2026-08-20) can be shorter
+    runs in the render, and on real audio a headline boundary (0.13s, measured) can be shorter
     than another headline's internal breath (0.12s), so a length threshold would pick the wrong
     runs. N comes from the words; only the choice of WHICH runs comes from the audio.
     """
@@ -134,13 +134,13 @@ class PanelWriter(ScriptWriter):
 
     # No lead-in. These used to be {"repo": "From the README: ", "article": "From the
     # write-up: "}, which put sourcing narration on EVERY desk line of a fallback night: eight
-    # such lines shipped across 2026-08-05 and 2026-08-06. The show may attribute to a person
+    # such lines shipped across two consecutive fallback nights. The show may attribute to a person
     # or a publication, but naming the artifact the pipeline fetched is the frame break. This
     # writer only has the HN submitter, never the article's author, so it cannot attribute
     # honestly and therefore says nothing rather than something false.
 
-    # ONE invitation per story, keyed to the story's index and cycled. This is the beat the
-    # 2026-08-20 episode was missing: the host read a headline and the co-host simply started
+    # ONE invitation per story, keyed to the story's index and cycled. This is the beat an early
+    # two-person episode was missing: the host read a headline and the co-host simply started
     # talking, so every story after the first cut straight from voice to voice. Sam, having
     # listened to it: it "cuts just from voice to voice".
     #
@@ -276,8 +276,8 @@ class PanelWriter(ScriptWriter):
                          solo: bool):
         """The performed comments, read by the two regulars themselves.
 
-        No third voice. Until 2026-08-20 a separate guest voice was hashed from the commenter's
-        username, so a regular reader recognised @dang before the name was said; that hook is gone
+        No third voice. A separate guest voice used to be hashed from the commenter's username, so
+        a regular reader recognised @dang before the name was said; that hook is gone
         and the simplification is the point. What replaces it is the performer SAYING the username
         out loud before reading the words, because with no voice change to signal it a listener
         otherwise cannot tell a quote from the co-host's own opinion.
@@ -507,8 +507,8 @@ class ClaudeWriter(ScriptWriter):
             "not selling the episode: no build-up, no teasing what is coming, no verdict on any "
             "of it. The reactions belong in the coverage.\n"
             f"2. Then cover each story properly, {anchor.name} and {cohost.name} together.\n"
-            # The handoff block. Added after the first native two-person episode (2026-08-20),
-            # where the diagnosis from the actual script was narrow: mid-story exchanges were
+            # The handoff block. Added after the first native two-person episode, where the
+            # diagnosis from the actual script was narrow: mid-story exchanges were
             # good, and every story's FIRST co-host turn had no invitation in front of it at all.
             # Names appeared twice in twenty-five segments. So this adds a beat per STORY and
             # says so, rather than a rule per exchange, which is the thing this show already
@@ -648,7 +648,7 @@ class ClaudeWriter(ScriptWriter):
             pts = "1 point" if s.points == 1 else f"{s.points} points"
             # The placeholder is an INSTRUCTION, not a description. It used to read "(no page
             # fetched; headline only)", and the model quoted that framing straight back on air
-            # ("We have a title and a link, and no fetched page", 2026-08-01). Handing the
+            # ("We have a title and a link, and no fetched page"). Handing the
             # writer the pipeline's vocabulary is handing it the words to break the frame with.
             src = ((s.source_text or "").strip()[:SOURCE_CHARS]
                    or "(none - cover this one briefly from what the title tells you; rule 6 applies)")
@@ -735,7 +735,7 @@ def _merge_cold_open(segments: List[ScriptSegment]) -> List[ScriptSegment]:
     """Join a cold open the model split across several segments back into one.
 
     Belt to the prompt's braces, and the belt is the part that actually holds. The instruction
-    asks for one segment; a model that returns four anyway produced the 2026-08-20 defect, and no
+    asks for one segment; a model that returns four anyway produced exactly that defect, and no
     amount of prompt wording makes that impossible. Merging here does.
 
     Merges only the LEADING run of host lines that carry no story id, which is what the cold open

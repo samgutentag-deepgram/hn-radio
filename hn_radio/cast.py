@@ -4,7 +4,7 @@ Two people. No desks.
 
 The show used to seat themed correspondent desks -- ai, maker, security -- and pick one per
 episode by scoring the day's stories against beat keywords, alongside a fixed "drama" desk that
-performed the comments. Sam deleted all of it on 2026-08-20, after being shown what it cost.
+performed the comments. Sam deleted all of it after being shown what it cost.
 Gone with it, on purpose and not by accident: beat routing (a story no longer reaches a speaker
 chosen by subject), and desk substitution (no more "Priya is out today, so someone else is
 covering the AI desk", because there is no AI desk to cover).
@@ -22,8 +22,8 @@ two shipped features nobody asked to lose. See that module's docstring.
 The role key for the host is still "anchor", not "host". That is deliberate and it is not
 nostalgia: `desk="anchor"` is read by `custom._owning_desk`, by `recast.role_of` and
 `recast._slot_of`, by the segment colours in `web/brand.css` and `web/index.html`, and by every
-script.json already on disk. (It said `recast.SLOTS` until 2026-08-22, which was wrong twice over:
-a literal list is not a reader, and that list is now deleted.)
+script.json already on disk. (It said `recast.SLOTS` for a while, which was wrong twice over: a
+literal list is not a reader, and that list is now deleted.)
 Renaming it would churn all of that for no listener-audible difference. "cohost" is a new key,
 so nothing old can be mistaken for it.
 """
@@ -50,7 +50,7 @@ class Desk:
     for its build-your-own editions. In the daily show there are exactly two of these and neither
     is themed.
 
-    NO `keywords` / `domains` as of 2026-08-22. They were kept as "inert data for `custom.py`",
+    NO `keywords` / `domains` any more. They were kept as "inert data for `custom.py`",
     and inert was the accurate word: nothing read them anywhere. `cast.py` copied them off a
     `DEFAULT_CAST` desk where both were always `[]`, no JSON on disk carries a `keywords` key, and
     `Cast.route`, the routing they were the input to, no longer exists. If per-story routing comes
@@ -90,8 +90,8 @@ class Cast:
         Still Optional, because a `Cast` with an empty `desks` list is constructible in Python.
         But the old docstring here claimed `custom.py` produces one "when a listener picks
         nothing", and that is false: `custom.validate` raises `ConfigError` on an empty desks map
-        (`custom.py:91-92`), so no listener config reaches a seatless cast. Corrected 2026-08-22,
-        when `pipeline`'s solo-episode branches were deleted for resting on the same false premise.
+        (`custom.py:91-92`), so no listener config reaches a seatless cast. Corrected when
+        `pipeline`'s solo-episode branches were deleted for resting on the same false premise.
         """
         return self.by_role(COHOST_ROLE) or (self.desks[0] if self.desks else None)
 
@@ -129,7 +129,7 @@ class RoleUnavailable(Exception):
 # the show still opens, in a named voice, and the listener is told a substitution happened.
 #
 # ONE ENTRY, and that is the design rather than an omission. The per-beat rows (ai / maker /
-# security / drama) went with the desks on 2026-08-20. The co-host deliberately has no fixed
+# security / drama) went with the desks. The co-host deliberately has no fixed
 # preference list: a list is exactly what would collapse it back into a small recurring pool,
 # which is the thing the change exists to escape. Its candidates are computed per episode from
 # the live catalog by `cohost_candidates`, and passed to `resolve_role` explicitly.
@@ -310,7 +310,7 @@ def episode_cast(recent_voices: Optional[List[str]] = None, before: Optional[str
     and `cast.desks`, so changing who sits in them needs no change in the writers, in
     `voices.assign_voices`, or on the cast page.
 
-    Took a `stories` argument until 2026-08-20, so `desk_of_the_day` could score the day's
+    Took a `stories` argument once, so `desk_of_the_day` could score the day's
     stories against each desk's beat. Nothing about casting reads the news any more, so keeping
     it would have been a parameter that only looked meaningful.
 

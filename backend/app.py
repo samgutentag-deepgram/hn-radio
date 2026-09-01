@@ -69,7 +69,7 @@ def api_recast(req: RecastReq):
     return {"id": episode.id, "audio_url": f"/episodes/{episode.id}/episode.wav"}
 
 
-# `POST /api/generate` was deleted 2026-08-22. Zero callers anywhere: no frontend fetch, no test,
+# `POST /api/generate` was deleted. Zero callers anywhere: no frontend fetch, no test,
 # no script, no documented curl. It was also the only render route with no test of its own, and
 # the same job is reachable two wired ways already, `make episode` and `scripts/daily.py`.
 #
@@ -80,7 +80,7 @@ def api_recast(req: RecastReq):
 
 @app.get("/api/health")
 def health():
-    """Liveness. KEPT on 2026-08-22, and deliberately NOT wired into fly.toml.
+    """Liveness. KEPT, and deliberately NOT wired into fly.toml.
 
     Three lines, documented in the README, and conventional on a public API. Nothing in fly.toml,
     the Dockerfile, the entrypoint, crontab or the workflow probes it, but absence of a repo-side
@@ -228,7 +228,7 @@ def api_build_pool(days: int = 3):
     Each row carries its routed desk and whether it is `episode` (cheap to reuse) or `live`
     (needs writing and rendering), so the page can show what a desk toggle would actually pull in.
 
-    NO `desks` KEY as of 2026-08-22. It published `custom.ROUTABLE_DESKS` and `loadPool` never
+    NO `desks` KEY. It used to publish `custom.ROUTABLE_DESKS`, but `loadPool` never
     read it: the picker's desk rows are written by hand at `build.html:317`. Driving the rows off
     the response was considered and rejected -- `Object.keys(rows)` includes the `always: true`
     anchor row whose `box` is null, which is an instant TypeError that kills every plan and build,

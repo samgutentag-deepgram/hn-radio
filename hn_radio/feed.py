@@ -8,7 +8,7 @@ Two URL shapes matter and they are not the same:
   - the ARTIFACT root, `{site_base_url()}/<id>/`, where the audio, chapters and transcript live
   - the PAGE, `{app}/episode.html?id=<id>`, where a human should land
 
-Getting those two confused is what put a 404 in every published `<link>` until 2026-08-09. The
+Getting those two confused is what put a 404 in every published `<link>`. The
 rule that sorts them: an `<enclosure>`, `<podcast:*>` url or `<image><url>` is an ASSET and lives
 under the artifact root; a `<link>` is somewhere a person clicks and lives under the app root.
 `<channel><image>` holds one of each, which is why the two halves of that one line disagree.
@@ -62,8 +62,8 @@ def build_show_notes(data: dict, chapters: list) -> str:
     """HTML show notes: the summary, then each story with its submitter, links and timestamp.
 
     The byline is where `Story.author` surfaces. It was carried on the model and read by nothing,
-    and the choice on 2026-08-22 was to surface it rather than delete it: show notes are metadata,
-    so naming the submitter here costs nothing, while having a desk say it would mean the show
+    and the choice was to surface it rather than delete it: show notes are metadata, so naming
+    the submitter here costs nothing, while having a desk say it would mean the show
     attributing a link to whoever posted it. `writers.py:139` still says nothing about authorship.
     """
     start_by_id = {}
@@ -91,8 +91,8 @@ def build_show_notes(data: dict, chapters: list) -> str:
         links = f'<a href="https://news.ycombinator.com/item?id={hn}">HN discussion</a>'
         if it.get("url"):
             links += f' &middot; <a href="{html.escape(it["url"])}">source</a>'
-        # The submitter, as text. `.get`, because every episode published before 2026-08-22 has
-        # `source_items` without an `author` key and the feed is rebuilt from those on startup.
+        # The submitter, as text. `.get`, because episodes published before this field existed
+        # have `source_items` without an `author` key and the feed is rebuilt from those on startup.
         by = f' by {html.escape(it["author"])}' if it.get("author") else ""
         parts.append(f"<li>{stamp}{html.escape(it['title'])}{by} ({links})</li>")
     parts.append("</ol><p><em>Every word read by Deepgram Flux text to speech.</em></p>")
@@ -138,9 +138,9 @@ def cover_url(episodes_dir: Path) -> str:
 
     The bytes changing is not enough. Podcast apps cache channel artwork keyed on its URL, and
     Overcast caches it server-side, so a subscriber who unsubscribes and resubscribes gets the
-    stored copy rather than a fresh fetch. `cover.png` never changed name, so the 36-orb cover that
-    shipped on 2026-08-23 was invisible to a client that had already seen the old one -- correct
-    `cache-control: no-cache` and a fresh ETag do not help for an asset the client never revalidates.
+    stored copy rather than a fresh fetch. `cover.png` never changed name, so a cover art update
+    was invisible to a client that had already seen the old one -- correct `cache-control:
+    no-cache` and a fresh ETag do not help for an asset the client never revalidates.
 
     Eight hex characters of the file's SHA-256, as `?v=`. A query string rather than a versioned
     filename so the file on the volume keeps one canonical name and nothing has to be copied or
