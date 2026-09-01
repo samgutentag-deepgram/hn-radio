@@ -36,6 +36,28 @@ def _fmt_ts(seconds: float) -> str:
     return f"{m}:{s:02d}"
 
 
+def _join_line(data: dict) -> str:
+    """"Join {host} and {cohost} as they discuss..." -- names the voices reading the episode.
+
+    Derived from `segments` rather than stored separately: every episode.json already carries
+    each line's `role` and `speaker_key`, and a regular's display name IS its voice name (see
+    `cast.Desk.name`, e.g. "Alexis" for `flux-alexis-en`), so there is no separate "voice name" to
+    look up. The first "anchor" segment names the host; the first "desk" segment names the
+    co-host. A solo cast (no "desk" segment at all, `custom.py` can build one) gets no co-host
+    named rather than a made-up one.
+    """
+    segments = data.get("segments", [])
+    host = next((s.get("speaker_key") for s in segments
+                if s.get("role") == "anchor" and s.get("speaker_key")), "")
+    cohost = next((s.get("speaker_key") for s in segments
+                   if s.get("role") == "desk" and s.get("speaker_key")), "")
+    title = data.get("title", "")
+    if not host or not title:
+        return ""
+    who = f"{html.escape(host)} and {html.escape(cohost)}" if cohost else html.escape(host)
+    return f"Join {who} as they discuss today's top stories: {html.escape(title)}."
+
+
 def build_show_notes(data: dict, chapters: list) -> str:
     """HTML show notes: the summary, then each story with its submitter, links and timestamp.
 
@@ -56,6 +78,9 @@ def build_show_notes(data: dict, chapters: list) -> str:
             start_by_id[url.rsplit("id=", 1)[-1]] = c["startTime"]
 
     parts = []
+    join_line = _join_line(data)
+    if join_line:
+        parts.append(f"<p>{join_line}</p>")
     if data.get("summary"):
         parts.append(f"<p>{html.escape(data['summary'])}</p>")
     parts.append("<p><strong>In this episode:</strong></p><ol>")

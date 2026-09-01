@@ -248,6 +248,28 @@ def test_show_notes_escape_a_submitter_name():
     assert "&lt;script&gt;" in notes
 
 
+def test_show_notes_join_line_names_host_and_cohost():
+    notes = feed.build_show_notes(_episode().to_dict(), [])
+    assert "Join Alexis and Cole as they discuss today's top stories:" in notes
+
+
+def test_show_notes_join_line_omits_cohost_on_a_solo_cast():
+    """No 'desk' segment at all (a solo custom.py cast) -- name the host, invent no co-host."""
+    ep = _episode().to_dict()
+    for s in ep["segments"]:
+        if s["role"] == "desk":
+            s["role"] = "anchor"
+    notes = feed.build_show_notes(ep, [])
+    assert notes.startswith("<p>Join Alexis as they discuss today's top stories:")
+    assert "and" not in notes.split("as they discuss")[0]
+
+
+def test_show_notes_join_line_escapes_the_title():
+    notes = feed.build_show_notes(_episode().to_dict(), [])
+    assert "&lt;angle&gt;" in notes
+    assert "<angle>" not in notes
+
+
 # --- the feed ----------------------------------------------------------------------------------
 
 def test_feed_is_unchanged(episodes_dir):

@@ -23,8 +23,8 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional
 
-from . import (config, editions, ingest, music, normalize, pacing, render, sources, status,
-               stitch, voices)
+from . import (config, deslop, editions, ingest, music, normalize, pacing, render, sources,
+               status, stitch, voices)
 from .cast import episode_cast as episode_cast_for
 from .editions import DEFAULT_EDITION, EDITION_TITLES
 from .models import Episode, ScriptSegment
@@ -68,8 +68,9 @@ def _panel_title(edition: str, stories, top_story, episode_date: date) -> str:
 # date is spoken outright, and the stories are framed as yesterday's relative to THAT. A listener
 # hearing it a week later still hears an internally consistent episode, which is what an archive
 # needs.
-_INTRO = ("Hi, this is {host}. You're listening to Hacker News Radio, from Deepgram Flux. It's "
-          "{date}, and I have {cohost} with me. Here's what happened on Hacker News yesterday.")
+_INTRO = ("Hi, this is {host}. You're listening to Hacker News Radio, read by Deepgram Flux. "
+          "It's {date}, and I have {cohost} with me. Here's what happened on Hacker News "
+          "yesterday.")
 _OUTRO = ("That's yesterday's front page. From me and {cohost}, on Deepgram Flux, we'll talk "
           "to you tomorrow.")
 
@@ -181,11 +182,13 @@ def run_panel(
     status.stage("writing", "writing the panel script")
     try:
         segments = writer.write(selected, top, comments, cast, edition, episode_date)
-    except Exception as e:  # LLM writer refusal / API / parse failure -> keep the show on air
+        deslop.gate(segments)  # AI-tells caught here never reach a paid Flux render
+    except Exception as e:  # LLM writer refusal / API / parse / de-slop failure -> keep the show on air
         if isinstance(writer, PanelWriter):
             raise
         log(f"      [warn] {type(writer).__name__} failed ({e}); falling back to PanelWriter")
         segments = PanelWriter().write(selected, top, comments, cast, edition, episode_date)
+        deslop.gate(segments)  # canned copy, should always pass; raises for real if it somehow doesn't
     log(f"      {len(segments)} segments")
 
     # Wrap the writer's content in the fixed show intro + outro, then renumber.

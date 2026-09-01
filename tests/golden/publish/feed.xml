@@ -18,7 +18,7 @@
       <guid isPermaLink="false">https://example.test/episodes/2026-08-02/</guid>
       <link>https://example.test/episode.html?id=2026-08-02</link>
       <pubDate>Sat, 01 Aug 2026 12:00:00 +0000</pubDate>
-      <description><![CDATA[<p>A summary with an ampersand &amp; a &lt;tag&gt;.</p><p><strong>In this episode:</strong></p><ol><li>[0:09] First story &amp; its title (<a href="https://news.ycombinator.com/item?id=101">HN discussion</a> &middot; <a href="https://example.test/a">source</a>)</li><li>Second story, no url (<a href="https://news.ycombinator.com/item?id=202">HN discussion</a>)</li></ol><p><em>Every word read by Deepgram Flux text to speech.</em></p>]]></description>
+      <description><![CDATA[<p>Join Alexis and Cole as they discuss today's top stories: A title with &lt;angle&gt; &amp; ampersand.</p><p>A summary with an ampersand &amp; a &lt;tag&gt;.</p><p><strong>In this episode:</strong></p><ol><li>[0:09] First story &amp; its title (<a href="https://news.ycombinator.com/item?id=101">HN discussion</a> &middot; <a href="https://example.test/a">source</a>)</li><li>Second story, no url (<a href="https://news.ycombinator.com/item?id=202">HN discussion</a>)</li></ol><p><em>Every word read by Deepgram Flux text to speech.</em></p>]]></description>
       <itunes:summary>A summary with an ampersand &amp; a &lt;tag&gt;.</itunes:summary>
       <enclosure url="https://example.test/episodes/2026-08-02/episode.mp3" length="1024" type="audio/mpeg"/>
       <itunes:duration>25</itunes:duration>
@@ -30,7 +30,7 @@
       <guid isPermaLink="false">https://example.test/episodes/2026-08-01/</guid>
       <link>https://example.test/episode.html?id=2026-08-01</link>
       <pubDate>Sat, 01 Aug 2026 12:00:00 +0000</pubDate>
-      <description><![CDATA[<p>A summary with an ampersand &amp; a &lt;tag&gt;.</p><p><strong>In this episode:</strong></p><ol><li>[0:09] First story &amp; its title (<a href="https://news.ycombinator.com/item?id=101">HN discussion</a> &middot; <a href="https://example.test/a">source</a>)</li><li>Second story, no url (<a href="https://news.ycombinator.com/item?id=202">HN discussion</a>)</li></ol><p><em>Every word read by Deepgram Flux text to speech.</em></p>]]></description>
+      <description><![CDATA[<p>Join Alexis and Cole as they discuss today's top stories: A title with &lt;angle&gt; &amp; ampersand.</p><p>A summary with an ampersand &amp; a &lt;tag&gt;.</p><p><strong>In this episode:</strong></p><ol><li>[0:09] First story &amp; its title (<a href="https://news.ycombinator.com/item?id=101">HN discussion</a> &middot; <a href="https://example.test/a">source</a>)</li><li>Second story, no url (<a href="https://news.ycombinator.com/item?id=202">HN discussion</a>)</li></ol><p><em>Every word read by Deepgram Flux text to speech.</em></p>]]></description>
       <itunes:summary>A summary with an ampersand &amp; a &lt;tag&gt;.</itunes:summary>
       <enclosure url="https://example.test/episodes/2026-08-01/episode.mp3" length="1024" type="audio/mpeg"/>
       <itunes:duration>25</itunes:duration>
