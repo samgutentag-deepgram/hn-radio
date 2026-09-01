@@ -16,14 +16,22 @@ deploy
 *.md
 fly.toml
 
-# Tooling directories. None of these are COPYd, and left in they dominate the context: the
-# 2026-08-18 deploy uploaded 486 MB across 680 files, and .claude alone was 270 MB of it, more
-# than episodes/. These are local build-time directories; none of them exist in a fresh clone.
+# Tooling directories. None of these are COPYd, and left in they dominate the context: a past
+# deploy uploaded 486 MB across 680 files, and .claude alone was 270 MB of it, more than
+# episodes/. These are local build-time directories; none of them exist in a fresh clone.
 .claude
 .render-cache
 .superpowers
 .hub
 .github
+
+# Local-only working directories, gitignored for the same reason but never added here: gitignore
+# has no effect on the Docker build context, only .dockerignore does, so these kept riding along
+# on every `fly deploy` from a machine that had them on disk. Same story as the tooling
+# directories above -- none of these are COPYd and none exist in a fresh clone.
+.recast-backup
+.superseded-local-episodes
+.superseded-samples
 
 # ship the chaptered MP3 + per-segment PCM cache; the source WAV is not needed at runtime
 episodes/**/episode.wav
