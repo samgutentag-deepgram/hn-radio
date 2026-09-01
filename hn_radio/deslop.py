@@ -1,21 +1,19 @@
 """De-slop gate: catch the machine fingerprints in a script before it costs a Flux render.
 
-Ported from the `de-slop` writing skill (~/Developer/advocacy-workflow/skills/de-slop). That
-skill's own claim is that a word blacklist is the weakest part of the pass and the real tell is
-conceptual incoherence a script cannot check -- it needs a human (or a model) to picture the
-sentence. This gate cannot do that read, so it only catches the countable, high-precision
-constructions the skill calibrates against: the "it's not X, it's Y" (DiGiorno) construct and
-the "worth ~ing" insight hedge. It deliberately skips the skill's pet-word lists (delve,
-toolkit, gap, ...): this show discusses AI and dev tooling daily, and "toolkit" is exactly the
-kind of domain term the skill warns a blacklist would flag by mistake.
+Catches the countable, high-precision constructions that read as AI-written: the "it's not X,
+it's Y" (DiGiorno) construct and the "worth ~ing" insight hedge. Deliberately skips a pet-word
+blacklist (delve, toolkit, gap, ...): this show discusses AI and dev tooling daily, and "toolkit"
+is exactly the kind of domain term a blacklist would flag by mistake. The real tell -- a mixed
+metaphor that reads fine at a glance and falls apart the moment you picture it -- is conceptual,
+not lexical, and no regex catches that; it still needs a human read.
 
 Runs over the WRITER's segments only, before `pipeline._intro_segments` /
 `_outro_segments` wrap them. The fixed intro and outro are reviewed copy, not generated text, so
 linting them would just be noise.
 
-Thresholds are counts, not zero-tolerance singles, except where the skill found no legitimate
-use at all. A script here is a few hundred words of two people talking; one "that's not X, it's
-Y" is a normal rhetorical move in banter, and a cluster is what actually reads as machine-written.
+Thresholds are counts, not zero-tolerance singles, except where there's no legitimate use at
+all. A script here is a few hundred words of two people talking; one "that's not X, it's Y" is a
+normal rhetorical move in banter, and a cluster is what actually reads as machine-written.
 """
 
 from __future__ import annotations

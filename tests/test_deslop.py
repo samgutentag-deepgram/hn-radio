@@ -46,6 +46,6 @@ def test_self_validation_allows_one_but_not_two():
 
 
 def test_toolkit_is_not_flagged():
-    """The skill's own warning: a domain term (this show discusses dev tooling daily) is not a tell."""
+    """A domain term (this show discusses dev tooling daily), not a tell."""
     segments = [_seg("It's a solid toolkit if you're already on that stack.")]
     assert deslop.lint(segments) == []
