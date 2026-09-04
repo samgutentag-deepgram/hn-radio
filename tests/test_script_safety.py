@@ -1,6 +1,6 @@
 """Guards on the two scripts that could destroy or publish something by accident.
 
-Both bugs here were found by review on 2026-08-21, both were latent for weeks, and both are the
+Both bugs here were found by review, both were latent for weeks, and both are the
 same shape: a rule that was correct when it was written and became wrong when the world around it
 grew. Neither had a test, which is why neither was noticed.
 
@@ -25,7 +25,7 @@ from hn_radio import config, feed, manifest  # noqa: E402
 # --- scripts/backfill.py --clean ---------------------------------------------------------------
 #
 # The old rule was an allow-list: delete any directory whose name is not YYYY-MM-DD, except
-# `samples`. Safe on 2026-08-04 when it was written and catastrophic by 08-19, because `episodes/`
+# `samples`. Safe when it was written and catastrophic two weeks later, because `episodes/`
 # had grown `_ads`, `_coldopen`, `_music`, `_pace` and `_voices`. Measured against the real
 # directory at the time of the fix: 366 MB, of which `_ads` and `_music` have no generator anywhere
 # in the repo and are unrecoverable at any price.

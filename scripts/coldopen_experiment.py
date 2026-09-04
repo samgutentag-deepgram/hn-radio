@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Is the cold open three recordings, or one read of a list of three? A/B it. One TTS call.
 
-Sam, by ear on 2026-08-07: the cold open "still feels like three recordings stitched together vs
+Sam, by ear: the cold open "still feels like three recordings stitched together vs
 one coherent read of three items in a list." It is. That episode's cold open is THREE
 ScriptSegments, so it is three separate Flux requests, each rendered with no knowledge of the
 others. Every one of them lands on a sentence-final falling contour, because to the renderer each
@@ -47,7 +47,7 @@ _SPEC.loader.exec_module(breath)
 
 OUT_ROOT = config.EPISODES_DIR / "_coldopen"
 
-# Sam chose 0.25 by ear on 2026-08-09 from scripts/breath_experiment.py. Applied to BOTH sides
+# Sam chose 0.25 by ear from scripts/breath_experiment.py. Applied to BOTH sides
 # here so the cold-open shape is the only thing that differs between them.
 BREATH_CAP = 0.25
 

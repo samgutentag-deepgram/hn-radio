@@ -1,6 +1,6 @@
 """Shared loader for the pace / breath / coldopen experiment scripts.
 
-WHY THIS EXISTS, decided 2026-08-22 (judgment call 18). Four scripts in `scripts/` replay a
+WHY THIS EXISTS (code-review judgment call 18). Four scripts in `scripts/` replay a
 rendered episode from its cached PCM to try a different pacing or music policy. Three of them
 already shared one `load` by importing it from `breath_experiment`; `pace_experiment` carried its
 own copy of both `Seg` and `load`. One shared module beats a script importing a sibling script for

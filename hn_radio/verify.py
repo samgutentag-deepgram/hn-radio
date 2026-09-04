@@ -1,6 +1,6 @@
 """Verification pass: is this a real episode, or a broken one that happens to have rendered?
 
-Written after the 2026-09-03 episode shipped at 173 seconds. The Claude writer had failed, the
+Written after an episode shipped at 173 seconds. The Claude writer had failed, the
 pipeline fell back to `PanelWriter` as designed, and the fallback read a story's raw source text
 aloud: a markdown image tag and an S3 URL, spoken by Flux, on the public feed. Every stage had
 succeeded. Nothing was checking whether what they produced was a show.

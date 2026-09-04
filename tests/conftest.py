@@ -3,7 +3,7 @@
 Without this the suite reads the developer's `.env`, so a machine pointed at a different
 endpoint gets a different base URL than CI or a teammate. Tests would pass or fail depending on
 whose laptop they ran on, which is the exact failure this fixture exists to prevent. It showed
-up for real on 2026-08-07: repointing `.env` broke 29 tests that had nothing to do with the
+up for real: repointing `.env` broke 29 tests that had nothing to do with the
 change.
 
 A test that wants a different host opts in explicitly with
@@ -22,7 +22,7 @@ from hn_radio import config
 # laptop is set up right now, and each changes what the pipeline produces, so leaving any of them
 # readable makes tests pass or fail per machine. HN_RADIO_MUSIC joined the list when the deploy
 # switch landed: setting it to 0 to work on scripts without waiting for beds would otherwise
-# quietly turn the music tests into no-ops. HN_RADIO_BASE_URL joined it on 2026-08-20, when
+# quietly turn the music tests into no-ops. HN_RADIO_BASE_URL joined it when
 # `SITE_BASE_URL` became `site_base_url()` and started reading `.env` like everything else here --
 # a developer who points their local feed at their Fly app would otherwise bake that host into
 # every URL the feed tests build.

@@ -11,7 +11,7 @@ changed, which is what makes a refactor provably behaviour-preserving.
 They were written while `build_index` still existed, and originally pinned two of its bugs on
 purpose: it did not filter `-recast` episodes the way `rebuild_feed` and `build_manifest` do, and
 it wrote `episodes/index.html`, which stopped being the landing page when `backend/app.py` began
-mounting `web/` at `/`. Both are moot now: the function was deleted on 2026-08-09 rather than
+mounting `web/` at `/`. Both are moot now: the function was deleted rather than
 refactored, since the cheapest way to fix a page nobody navigates to is to stop building it.
 What survives is `test_every_enumerator_agrees_on_what_an_episode_is`, which is the guard against
 a third enumerator growing back with its own idea of what counts.
@@ -161,7 +161,7 @@ def episodes_dir(tmp_path, monkeypatch):
 # --- the HTML pages: everything a listener sees ------------------------------------------------
 
 def test_publish_emits_data_and_feeds_only():
-    """`build_episode_page` was deleted 2026-08-09; rendering for humans is web/'s job now.
+    """`build_episode_page` was deleted; rendering for humans is web/'s job now.
 
     It generated a full player page as an f-string in publish.py. Nothing in web/ linked to it,
     and its only referrer was the feed's <link>, which 404'd. Two implementations of one view,
@@ -177,7 +177,7 @@ def test_every_enumerator_agrees_on_what_an_episode_is(episodes_dir):
 
     `rebuild_feed` and `build_manifest` skip ids matching `-recast`; `build_index` did not, so a
     recast appeared on the landing page but not in the feed or the manifest. `build_index` was
-    deleted on 2026-08-09 (it wrote `episodes/index.html`, which stopped being the landing page
+    deleted (it wrote `episodes/index.html`, which stopped being the landing page
     when `backend/app.py` began mounting `web/` at `/`), which removed the only disagreeing
     enumerator. This test is what stops a third one growing back.
     """
@@ -408,13 +408,13 @@ def test_the_feed_links_humans_at_a_url_that_resolves(episodes_dir):
 def test_no_show_level_link_points_into_the_artifact_root(episodes_dir):
     """The same 404, one level up: the SHOW's own links, not an episode's.
 
-    `<channel><link>` was fixed on 2026-08-09 with the episode links. `<channel><image><link>`
+    `<channel><link>` was fixed with the episode links. `<channel><image><link>`
     was not, and it kept pointing at `{site_base_url()}/`, i.e. `/episodes/`. That is the
     "website" button next to the artwork in a podcast app rather than an episode link, so it is
     cosmetic -- but it is the identical mistake, and the episode version of it shipped broken for
     twelve days, so leaving the last one in place is leaving a live 404 in a published file.
 
-    Probed against the app on 2026-08-20 with `TestClient(backend.app.app)` rather than guessed:
+    Probed against the app with `TestClient(backend.app.app)` rather than guessed:
     `GET /` returns 200 text/html, because `web/` is mounted with `html=True` and serves
     `web/index.html` for a directory. `GET /episodes/` returns 404, because the catalog mount has
     no `html=True` and therefore no directory index. So the app root is the one show-level URL

@@ -63,7 +63,7 @@ def test_rewrite_names_updates_handoffs_but_not_comments():
                       text="Wade makes a good point here.", voice_id="flux-drew-en"),
     ]
     orig_voice = {"anchor": "flux-haley-en", "maker": "flux-wade-en", "guest": "flux-drew-en"}
-    segs[1].voice_id = "flux-meena-en"   # was `recast.apply_mapping`, deleted 2026-08-22
+    segs[1].voice_id = "flux-meena-en"   # was `recast.apply_mapping`, deleted
     recast.rewrite_names(segs, {"maker": "flux-meena-en"}, orig_voice)
 
     assert config.ALL_VOICES["flux-meena-en"][0] == "Meena"

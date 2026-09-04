@@ -261,7 +261,7 @@ def test_the_cold_open_names_the_host(monkeypatch):
 
 
 def test_the_intro_speaks_the_air_date_not_the_story_date(monkeypatch):
-    """THE OFF-BY-ONE Sam caught by ear on 2026-08-23. Regression guard.
+    """THE OFF-BY-ONE Sam caught by ear. Regression guard.
 
     `scripts/daily.py` renders `now(PACIFIC) - 1 day`, because a complete day of front page is the
     point, so `episode_date` is the CONTENT date. The intro used to speak that same date as if it
@@ -283,7 +283,7 @@ def test_the_intro_speaks_the_air_date_not_the_story_date(monkeypatch):
 def test_the_air_date_is_derived_not_read_off_the_clock():
     """A re-render must not re-date the episode. Same trap `generated_at` fell into.
 
-    The archive re-render on 2026-08-21 nearly republished nineteen episodes as if they had aired
+    The archive re-render nearly republished nineteen episodes as if they had aired
     that day, because `_finalize` stamped a fresh `generated_at` and the feed reads it as pubDate.
     Deriving the air date from the episode date means a backfill or a re-render says what the
     episode would have said had it aired on time, however long after the fact it runs.
@@ -469,7 +469,7 @@ def test_claude_writer_comments_keep_the_username_and_get_a_regulars_voice():
     assert all(s.desk is None for s in performed)
 
 
-# `test_the_show_path_no_longer_calls_guest_voice_for` was deleted 2026-08-22. It monkeypatched
+# `test_the_show_path_no_longer_calls_guest_voice_for` was deleted. It monkeypatched
 # `voices.guest_voice_for` to raise, proving the show never reached it. The function is now gone
 # outright, which is a stronger guarantee than a guard: there is nothing left to call. The
 # monkeypatch also passed no `raising=False`, so it would have errored on the missing attribute.

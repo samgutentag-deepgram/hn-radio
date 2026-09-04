@@ -6,7 +6,7 @@ succeeded.
 
 `_finalize` writes the per-segment PCM cache first thing so a later crash cannot lose the spend,
 but nothing protects the window between the first Flux call and that write. An episode is around
-22 segments, and any one of them can fail on a cold model or a transient 500. On 2026-08-18 a run
+22 segments, and any one of them can fail on a cold model or a transient 500. One run
 reached 347 seconds of rendered audio and then died before `_finalize` entered, binning 25
 successful calls.
 

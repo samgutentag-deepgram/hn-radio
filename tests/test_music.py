@@ -555,7 +555,7 @@ def test_ad_bracket_degrades_like_everything_else(tmp_path):
 def test_the_ad_bracket_is_not_wired_into_the_render_path():
     """It exists so the demo can reach for it. Wiring it in is a separate, unbuilt feature.
 
-    PARKED DELIBERATELY on 2026-08-08, not merely unfinished. Sam auditioned a five-company
+    PARKED DELIBERATELY, not merely unfinished. Sam auditioned a five-company
     roster and ruled the reads "fine, not great", and the ad-to-show transition "mechanical":
     voice ends, pause, stinger, pause, ad starts. Four sequential events where a real break
     has one continuous one. So this stays unwired until the transition is designed rather

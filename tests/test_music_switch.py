@@ -121,7 +121,7 @@ def test_the_suite_does_not_inherit_a_developers_dot_env(monkeypatch):
 
     If Sam sets `HN_RADIO_MUSIC=0` in `.env` to work on the script without waiting for beds, every
     music test would start reading his laptop's preference. conftest masks it for the same reason
-    it masks DEEPGRAM_API_HOST: 29 tests broke that way on 2026-08-07.
+    it masks DEEPGRAM_API_HOST: 29 tests broke that way once.
     """
     monkeypatch.delenv("HN_RADIO_MUSIC", raising=False)
     assert config.music_enabled() is True

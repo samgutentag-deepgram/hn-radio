@@ -77,7 +77,7 @@ def test_episode_audio_revalidates_as_well(tmp_path, monkeypatch):
 def test_api_routes_are_untouched_by_the_static_header():
     """The header belongs to the file mounts; JSON routes set their own policy (currently none).
 
-    Repointed from `/api/health` to `/api/status` on 2026-08-22. `/api/status` has real consumers
+    Repointed from `/api/health` to `/api/status`. `/api/status` has real consumers
     (the feed page's status board), so a leak here would be a leak onto a route someone reads.
     """
     r = _client().get("/api/status")

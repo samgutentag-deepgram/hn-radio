@@ -10,7 +10,7 @@ from hn_radio.writers import PanelWriter
 def _cast():
     """The two-person show: a host and one co-host, who between them do everything.
 
-    Was a host plus an "ai" desk plus a "drama" desk until 2026-08-20. Both of those seats were
+    Was a host plus an "ai" desk plus a "drama" desk until the two-person show. Both of those seats were
     deleted from the product, so a fixture that still built them would be testing PanelWriter
     against a cast the pipeline can no longer produce.
     """

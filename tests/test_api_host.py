@@ -68,7 +68,7 @@ def test_the_cast_is_castable_from_the_catalog(monkeypatch):
     monkeypatch.delenv("DEEPGRAM_API_HOST", raising=False)
     monkeypatch.setattr(config, "_read_env_var", lambda name: None)
     assert config.active_voice_catalog() is config.VOICE_CATALOG
-    # Alexis since 2026-08-20. This said Haley while `cast.ROLE_VOICES` had been preferring the
+    # Alexis. This said Haley while `cast.ROLE_VOICES` had been preferring the
     # Alexis ids for weeks, so the legacy v1 path and the panel path cast different hosts.
     assert config.host_voice() == "flux-alexis-en"
     referenced = {config.host_voice(), *config.commenter_voices(), *config.guest_voices()}

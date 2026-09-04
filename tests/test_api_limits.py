@@ -2,7 +2,7 @@
 
 `POST /api/recast` and `/api/build` each run a full pipeline synchronously on the
 one shared-cpu-1x machine that also serves the site, spending our server-side keys. (`/api/generate`
-was a third until 2026-08-22.) Before these
+was a third once.) Before these
 guards existed there was no auth, no throttle, and nothing rejecting a second concurrent run, so two
 people clicking Build at once were two pipelines on one vCPU with 1GB of RAM.
 

@@ -1,6 +1,6 @@
 """The verification pass: a take that rendered is not automatically an episode.
 
-Pinned against the 2026-09-03 episode, which shipped at 173 seconds with `PanelWriter` reading a
+Pinned against the episode that shipped at 173 seconds with `PanelWriter` reading a
 markdown image tag and an S3 URL aloud. Two gates, two places, and the scheduled run re-runs on
 either. See `hn_radio/verify.py` for why each sits where it does.
 """
@@ -19,7 +19,7 @@ def _seg(text, order=0, who="Alexis"):
 
 # --- the script gate ------------------------------------------------------------------------------
 
-def test_the_09_03_fallback_lines_are_caught():
+def test_the_fallback_lines_that_aired_are_caught():
     """The two lines that actually aired. Both must fail, and the reason must name the segment."""
     segs = [
         _seg("Next up, 1103 points: Audacity 4.0. Wade, what do you make of it?", 12),

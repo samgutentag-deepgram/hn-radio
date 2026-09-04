@@ -71,7 +71,7 @@ def test_prompt_tells_the_cold_open_not_to_claim_a_story_id():
 def _cold_open_line(s=None):
     """The COLD OPEN instruction, including its indented continuation lines.
 
-    It used to be one concatenated line. The word cap added on 2026-08-08 pushed the
+    It used to be one concatenated line. The word cap pushed the
     source_hn_id rule onto its own indented line, so grabbing only the first line silently
     dropped half the instruction from every assertion below.
     """
@@ -87,7 +87,7 @@ def _cold_open_line(s=None):
 
 
 def test_the_cold_open_asks_for_one_SHORT_sentence_per_story():
-    """A cold open that runs long stops being a cold open. Heard on 2026-08-08: the previews
+    """A cold open that runs long stops being a cold open. Heard on a real episode: the previews
     were full sentences with context, so the top of the show restated the whole episode."""
     line = _cold_open_line()
     # "Short" alone did not hold: Sam had to raise the length twice, so the cap is a NUMBER now.
@@ -186,7 +186,7 @@ def test_the_cold_open_shows_both_a_right_and_a_wrong_example():
 def test_the_cold_open_requires_the_final_item_to_start_with_and():
     """N headline sentences in a row just stop; the last one needs to signal it is the last.
 
-    Heard on 2026-08-08: a three-story open read as three unrelated announcements rather than
+    Heard on a real episode: a three-story open read as three unrelated announcements rather than
     a list, because nothing marked the final sentence as the end of one."""
     line = _cold_open_line()
     assert "FINAL cold-open sentence must start with" in line

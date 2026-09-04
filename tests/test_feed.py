@@ -127,7 +127,7 @@ def test_the_cover_url_carries_a_content_hash(tmp_path):
     """New bytes at the same URL do not reach a podcast app. Pin that the URL moves with them.
 
     Overcast caches channel artwork server-side keyed on the URL, so unsubscribing and
-    resubscribing returns the stored copy. The 36-orb cover shipped on 2026-08-23 to the same
+    resubscribing returns the stored copy. The 36-orb cover shipped to the same
     `cover.png` path and was invisible to any client that had already seen the old one.
     """
     from hn_radio import feed

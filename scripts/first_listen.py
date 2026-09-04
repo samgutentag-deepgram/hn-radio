@@ -34,7 +34,7 @@ from hn_radio.models import ScriptSegment
 #
 # This script is a dated artifact: a hand-authored script from 2026-08-03 whose WORDS name Haley,
 # Priya and Cole and whose lines are tagged with the themed desks the show had then. Those desks
-# were deleted on 2026-08-20 (see hn_radio/cast.py) and Priya was retired by ear the same day, so
+# were deleted (see hn_radio/cast.py) and Priya was retired by ear, so
 # reading the live cast would resolve `desk="ai"` to nothing, fall through to the host's voice, and
 # render Priya's lines as Haley talking to herself while the text still says "Priya, this one's
 # yours".
@@ -42,7 +42,7 @@ from hn_radio.models import ScriptSegment
 # Pinning the cast keeps the artifact reproducible. Do NOT rewrite the prose to the two-person
 # show: it is a record of one episode that aired, not a template.
 #
-# THE SECURITY SEAT WAS MISSING UNTIL 2026-08-21, so the claim above was false for one line.
+# THE SECURITY SEAT WAS MISSING FOR A WHILE, so the claim above was false for one line.
 # `Cast.voice_for` returns `self.anchor.voice_id` for a role it has no desk for, and this cast
 # declared ai, maker and drama only, so Jack's `desk="security"` line rendered in HALEY's voice
 # while the text around it introduces Jack by name. The seat is declared below now. There is no

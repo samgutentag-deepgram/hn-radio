@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Space the headlines inside a ONE-READ cold open, without breaking the single read. Zero TTS.
 
-Sam, 2026-08-09, after hearing three-renders vs one-read: "The one read feels most coherent,
+Sam, after hearing three-renders vs one-read: "The one read feels most coherent,
 maybe a touch too fast... the issue with the three renders is that the inflection and the voice
 changes so much between them that it feels very stark jumps." And: the cold open should be "as
 matter-of-fact as possible. We are just reporting information."
@@ -49,7 +49,7 @@ coldopen = importlib.util.module_from_spec(_C)
 _C.loader.exec_module(coldopen)
 
 OUT_ROOT = config.EPISODES_DIR / "_coldopen"
-BREATH_CAP = 0.25          # Sam's pick for the body of the show, 2026-08-09
+BREATH_CAP = 0.25          # Sam's pick for the body of the show
 SPACINGS = [None, 0.40, 0.55, 0.70]
 
 # A run shorter than this is a zero crossing inside a word, not a pause. Without this guard the
@@ -74,7 +74,7 @@ def space_boundaries(pcm: bytes, n_gaps: int, seconds: float) -> bytes:
     (space, newline, blank line, ellipsis, dash) the boundary pauses ranged 0.08-0.40s with no
     separator producing two even ones. Flux does not take pause direction from punctuation here.
 
-    SHIPPED on 2026-08-20 as `pacing.set_internal_pauses`, at 0.55s
+    SHIPPED as `pacing.set_internal_pauses`, at 0.55s
     (`pacing.COLD_OPEN_PAUSE_SECONDS`, which carries the arithmetic that picked it). This now
     delegates to that function rather than keeping a second copy of the mechanism: the point of
     this harness is to audition what the show will actually do, and two implementations of the

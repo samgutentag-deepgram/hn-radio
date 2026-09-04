@@ -259,7 +259,7 @@ def run_panel(
     status.stage("writing", "writing the panel script")
     segments = None
     # An LLM writer gets WRITER_ATTEMPTS tries before the show falls back to PanelWriter. Added
-    # after the 2026-09-03 replay showed what the fallback was covering for: not an API outage but
+    # after replaying a fallback episode showed what the fallback was covering for: not an API outage but
     # the de-slop gate, which rejected a perfectly good Claude script for three "it's not X, it's Y"
     # constructions and handed the show to canned copy that read a README's markdown aloud. Half
     # the Claude episodes since the gate landed went that way. A second sample from the same
@@ -284,7 +284,7 @@ def run_panel(
         segments = PanelWriter().write(selected, top, comments, cast, edition, win)
         deslop.gate(segments)  # canned copy, should always pass; raises for real if it somehow doesn't
     # Whichever writer produced it, nothing unspeakable goes to the renderer. This is the gate the
-    # 2026-09-03 fallback episode needed: it read a markdown image tag and an S3 URL aloud. Raises
+    # 173-second fallback episode needed: it read a markdown image tag and an S3 URL aloud. Raises
     # `verify.VerificationError`; the scheduled run treats that as "try again", not as a crash.
     verify.gate_script(segments)
     log(f"      {len(segments)} segments")

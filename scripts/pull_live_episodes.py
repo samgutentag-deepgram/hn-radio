@@ -1,7 +1,7 @@
 """Pull episodes down from the deployed archive into a local staging directory. READ ONLY.
 
 Why this exists: the local `episodes/` directory is a working scratch dir, not a mirror of what
-aired. Compared against the live `index.json` on 2026-08-21 it held ten episodes, three of which
+aired. Compared against the live `index.json` it held ten episodes, three of which
 were the same show as live, six of which were a DIFFERENT show under the same date id, and one
 (2026-08-20) which existed only locally. Ten live episodes were not on the machine at all. So
 "recast the archive" needs the archive first.

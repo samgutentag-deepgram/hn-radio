@@ -1,9 +1,9 @@
-"""Rewrite the archive's WORDS to match the two-person cast the 2026-08-20 recast gave it.
+"""Rewrite the archive's WORDS to match the two-person cast the archive recast gave it.
 
 THE PROBLEM THIS EXISTS FOR. The recast changed every archive voice and deliberately changed no
 words, on an instruction that turned out to be wrong. So all 19 episodes still say names and places
 that are not in them: a host thanks Marcus, introduces Priya, then the same co-host voice answers as
-both. Counted off disk 2026-08-21: 211 name mentions across 191 lines, and 60 sentences naming a
+both. Counted off disk: 211 name mentions across 191 lines, and 60 sentences naming a
 desk that no longer exists.
 
 `recast.rewrite_role_names` does the name half and only the name half, in memory, during a recast.
@@ -259,7 +259,7 @@ def double_named(text: str, names: set) -> list:
 def recast_commenters(segs: list) -> list:
     """Give every quoted comment the voice that did NOT set it up. Returns the changes.
 
-    THE PROBLEM THIS SOLVES IS AUDIBLE AND THE WORD FIX CANNOT TOUCH IT. After the 2026-08-20
+    THE PROBLEM THIS SOLVES IS AUDIBLE AND THE WORD FIX CANNOT TOUCH IT. After the two-person
     recast every old correspondent collapsed onto one co-host, and the archive's comment block
     alternates `desk` (the co-host introducing a quote) with `commenter` (the quote itself). Both
     ended up the same voice, so the co-host introduces a commenter and then performs that commenter
@@ -343,7 +343,7 @@ def review_page(results: list) -> str:
                 f'<p class="why">{html.escape(why)}</p></div>')
     body = f"""
 <h1>Archive word fix</h1>
-<p class="lede">The 2026-08-20 recast changed every voice and no words. This is the proposed
+<p class="lede">The two-person recast changed every voice and no words. This is the proposed
 rewrite: {total} lines across {len([r for r in results if r['changes']])} episodes. Every edit is a
 deterministic rule, listed under the line that it changed. Nothing here is written by a model.</p>
 <p class="lede"><strong>{len(dbl)} lines still name one person twice</strong> after the rewrite.

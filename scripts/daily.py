@@ -15,7 +15,7 @@ on the way out, and each covers a hole the others do not:
      only way a HANG is ever reported. A hang raises nothing -- a socket with no timeout, a wedged
      ffmpeg -- so no except clause anywhere can catch it and nothing writes `error`. What it does
      leave is silence, and the next run noticing that silence is what turns it into an alert.
-  4. A take that RENDERS but is not a show is caught and re-run. The 2026-09-03 episode shipped at
+  4. A take that RENDERS but is not a show is caught and re-run. One episode shipped at
      173 seconds: the Claude writer failed, `PanelWriter` covered as designed, and the fallback read
      a markdown image tag and an S3 URL aloud. Every stage succeeded and nothing asked whether the
      result was an episode. `hn_radio/verify.py` now asks, twice (unspeakable text before the

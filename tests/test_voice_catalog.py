@@ -7,7 +7,7 @@ happened to render on this project's key. They did render, but most are not in t
 catalog, so a public demo would have been showing off voices no customer can rely on. Rendering
 successfully is not the same as being shipped.
 
-The mirror of that rule bit on 2026-08-12, when Flux TTS went GA and the published catalog went
+The mirror of that rule bit when Flux TTS went GA and the published catalog went
 from twelve voices to thirty-six. Renee was dropped, and this table pinned her, so three tests
 agreed with the code and all four were wrong about the world. She is gone from both now. The
 other twenty-five GA voices are deliberately NOT added here yet: this table is transcribed by
@@ -138,7 +138,7 @@ def test_every_cast_role_can_be_filled_from_the_production_catalog(monkeypatch):
     """Retiring a voice that holds a seat is how you crash the nightly show.
 
     `episode_cast` does not catch RoleUnavailable, so a seat whose every candidate is missing
-    takes the whole episode down. Retiring Priya on 2026-08-20 would have done exactly that under
+    takes the whole episode down. Retiring Priya would have done exactly that under
     the old desk model, where she was the AI desk's only real candidate and any AI-heavy day
     picked it. Under the two-person show the co-host draws from the whole catalog, which is most
     of why a by-ear retirement is now cheap.
@@ -207,7 +207,7 @@ def test_the_two_regulars_can_still_cast_a_full_episodes_comments_distinctly():
 
 
 def test_the_guest_pool_no_longer_has_to_avoid_the_cast():
-    """DELIBERATELY INVERTED on 2026-08-20, and the inversion is the point.
+    """DELIBERATELY INVERTED, and the inversion is the point.
 
     This used to assert that no GUEST_VOICES entry could also hold a desk. The reason was real:
     `taken_guests` in writers.py started empty rather than seeded with the episode's cast, so a
@@ -279,7 +279,7 @@ def test_published_voices_is_the_catalog_plus_the_two_retired_by_ear():
 
 
 def test_the_config_owns_the_retirement_split_this_module_pins():
-    """The two halves of RETIRED_VOICES moved into config on 2026-08-21.
+    """The two halves of RETIRED_VOICES moved into config.
 
     They used to live only here. PUBLISHED_VOICES needs the distinction at runtime, and a
     definition the code cannot reach is a definition that drifts, so config is now the owner and

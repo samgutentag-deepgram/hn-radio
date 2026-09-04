@@ -34,7 +34,7 @@ def _seg(order, desk, hn_id, voice, text="line"):
 
 def test_validate_fills_defaults_and_sorts_desks():
     cfg = custom.validate({"desks": {"maker": "flux-wade-en", "ai": "flux-meena-en"}})
-    assert cfg["anchor"] == "flux-alexis-en"         # config.HOST_VOICE, Alexis since 2026-08-20
+    assert cfg["anchor"] == "flux-alexis-en"         # config.HOST_VOICE, Alexis
     assert list(cfg["desks"]) == ["ai", "maker"]     # sorted, so the hash is order-independent
     assert cfg["drama"] is None
     assert cfg["days"] == custom.DEFAULT_DAYS
@@ -221,8 +221,8 @@ def test_cast_from_config_carries_chosen_voices_and_drops_unpicked_desks():
     assert roles["ai"].voice_id == "flux-heather-en" and roles["ai"].name == "Heather"
     # The assertion here used to be `roles["ai"].keywords` with the message "routing keywords are
     # inherited so routing still works", which said the opposite of what `custom.py` says: fresh
-    # lines have not been routed by keyword since `Cast.route` was removed. The field went with it
-    # on 2026-08-22. What actually matters for a picked desk is the beat and persona it speaks
+    # lines have not been routed by keyword since `Cast.route` was removed. The field went with it.
+    # What actually matters for a picked desk is the beat and persona it speaks
     # with, so pin those.
     assert roles["ai"].beat and roles["ai"].persona, "a picked desk must carry its topic's brief"
     assert cast.default_role in roles, "the fallback desk must be one that is actually present"
@@ -333,7 +333,7 @@ def test_select_fills_entirely_from_live_when_nothing_is_cached():
     assert len(chosen) == 6 and all(c["source"] == "live" for c in chosen)
 
 def test_the_routable_desks_are_exactly_the_three_topics():
-    """RELOCATED from `tests/test_api_build.py` on 2026-08-22, and it had to be.
+    """RELOCATED from `tests/test_api_build.py`, and it had to be.
 
     That test asserted the membership through `/api/build/pool`'s `desks` key, which was the
     suite's ONLY pin on it. The key was deleted as unread by the picker, so without moving the

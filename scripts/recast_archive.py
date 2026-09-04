@@ -1,6 +1,6 @@
 """Recast the whole local archive into the two-person show, in place, resumably.
 
-Every episode on disk predates the two-person format (2026-08-20). They carry `ai` / `maker` /
+Every episode on disk predates the two-person format. They carry `ai` / `maker` /
 `security` / `drama` desks plus separate hashed guest voices on the quoted comments, so five to
 seven distinct voices each. This walks them in date order and reduces each one to Alexis plus one
 rotating co-host, so the back catalogue sounds like the show has always worked this way.

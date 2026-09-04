@@ -1,6 +1,6 @@
 """The twice-daily window: what an episode covers, what it is called, and what the intro says.
 
-Before 2026-09-04 a `date` carried all of it. The cron now runs at 3am and 3pm Pacific and each run
+A `date` used to carry all of it. The cron now runs at 3am and 3pm Pacific and each run
 reaches back `config.LOOKBACK_HOURS`, so the window is a first-class value (`hn_radio/window.py`)
 and the old date-shaped callers are coerced at the edge. Both shapes are pinned here because both
 are live: the archive and the backfill speak dates, the cron speaks windows.

@@ -1,6 +1,6 @@
 """An LLM writer gets a second try before the show falls back to canned copy.
 
-Found on the 2026-09-03 replay: the fallback was not covering an API outage, it was covering the
+Found on the replay of a fallback episode: the fallback was not covering an API outage, it was covering the
 de-slop gate rejecting a good Claude script for three "it's not X, it's Y" lines. Half the Claude
 episodes since the gate landed shipped as PanelWriter. A second sample is one LLM call and no
 render; a fallback episode is a full render plus the re-run that verification then forces.

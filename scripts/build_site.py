@@ -3,7 +3,7 @@
 The episodes/ dir is NOT the web root. `backend/app.py` mounts `web/` at `/` and `episodes/`
 at `/episodes`, so the landing page is `web/index.html`. This script used to also generate an
 `episodes/index.html` landing page from a time when the static dir WAS the root; that page was
-superseded by the app and removed on 2026-08-09.
+superseded by the app and removed.
 
 Run: uv run python scripts/build_site.py
 Set HN_RADIO_BASE_URL to the real origin so RSS + subscribe links are absolute. It must INCLUDE

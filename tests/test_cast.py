@@ -79,7 +79,7 @@ def test_run_panel_takes_no_cast_parameter_at_all():
     The shipped bug (`cast.py:222`) was `cast=DEFAULT_CAST` bound at import: the cast page
     advertised one seating while the render path used another, and it was silent because both
     id sets authenticated. A default of None could not reintroduce that, but
-    the parameter itself was the invitation. It was deleted 2026-08-22 as unreachable, so pin its
+    the parameter itself was the invitation. It was deleted as unreachable, so pin its
     ABSENCE: no default to get wrong, and re-adding the seam fails here.
     """
     import inspect
@@ -129,7 +129,7 @@ def test_cast_page_anchor_is_the_one_the_render_path_would_cast(tmp_path, monkey
 def test_cast_page_seats_the_two_the_render_path_would(tmp_path, monkeypatch):
     """Two seats, on both hosts, and the page must agree with the render path about both.
 
-    It listed five until 2026-08-20 because the show had five desks. Now it is a host and a
+    It listed five when the show had five desks. Now it is a host and a
     second chair.
 
     The `cohost_pool` key this used to assert on is gone (2026-08-22): `cast.html` was rewritten
@@ -203,7 +203,7 @@ def test_resolve_role_keeps_the_description_of_the_role(monkeypatch):
     # The shared-mutable-state assertions that used to live here are gone with their subject.
     # They pinned that a resolved Desk did not share `keywords`/`domains` list objects with
     # DEFAULT_CAST, so mutating one could not corrupt the module constant. Both fields were
-    # deleted 2026-08-22 as unread, and every field left on Desk is an immutable str, so there is
+    # deleted as unread, and every field left on Desk is an immutable str, so there is
     # no shared mutable state left to protect. Re-add the guard with any future mutable field.
     assert not [f for f in fields(desk) if f.default_factory is not MISSING], (
         "a mutable default is back on Desk; restore the DEFAULT_CAST aliasing guard above"

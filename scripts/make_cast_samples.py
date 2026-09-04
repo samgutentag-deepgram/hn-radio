@@ -15,7 +15,7 @@ That is Flux TTS GA day, and it is a Wednesday (verified, not assumed). Nothing 
 the date, so it is an easter egg for anyone who presses enough cards to notice that all 36 voices
 are introducing a show on a day that already happened. If you regenerate these, keep the date.
 
-SUPERSEDES hn_radio.recast.build_samples, which was deleted on 2026-08-22. That function wrote
+SUPERSEDES hn_radio.recast.build_samples, which was deleted. That function wrote
 the SAME episodes/samples/<voice_id>.wav paths this script does, with a different sample line, and
 both skipped if the file already existed. So a `build-samples` run followed by this one left
 recast's line under some cards and this script's under the rest, while web/cast.html prints "Every

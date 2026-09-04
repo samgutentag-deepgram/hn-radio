@@ -3,7 +3,7 @@
 WHAT THIS PROVES AND WHAT IT DOES NOT. It reads `web/brand.css` and checks the declared minimums.
 It cannot prove rendered geometry -- that needs a browser, and this suite deliberately runs with no
 network, no key and no browser in about ten seconds. The rendered sizes were measured once, over
-CDP at a 390x844 mobile viewport on 2026-08-23: button 111x44, each app row 318x44, close 44x44,
+CDP at a 390x844 mobile viewport: button 111x44, each app row 318x44, close 44x44,
 copy 57x44, feed field 255x44, and no horizontal overflow (`documentElement.scrollWidth == 390`).
 
 So this is the regression guard for the specific failure that already happened, which was not a

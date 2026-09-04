@@ -37,7 +37,7 @@ class EpisodeWindow:
 
     @classmethod
     def calendar_day(cls, day: date) -> "EpisodeWindow":
-        """The whole Pacific day `day`, aired the next morning. The pre-2026-09 shape."""
+        """The whole Pacific day `day`, aired the next morning. The original once-a-day shape."""
         start = datetime.combine(day, time.min, tzinfo=config.PACIFIC)
         return cls(start=start, end=start + timedelta(days=1), air_date=day + timedelta(days=1),
                    slot=None)

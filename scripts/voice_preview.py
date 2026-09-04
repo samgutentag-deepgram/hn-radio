@@ -6,7 +6,7 @@ read as a support line instead of a person posting at 2am, and that is only audi
 words.
 
 Built originally for one decision -- which voices belong in the comment-theater guest pool -- and
-now serving a bigger one. Since 2026-08-20 the co-host is drawn from the WHOLE catalog with a
+now serving a bigger one. The co-host is drawn from the WHOLE catalog with a
 no-repeat window, so every voice on this page is a voice that will host a morning show sooner or
 later. That makes auditioning the full catalog the point rather than a side effect, and it is how
 a voice gets pulled by ear into `config.RETIRED_VOICES`.
@@ -67,7 +67,7 @@ def main(argv=None) -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     key = config.get_api_key()
 
-    # Which voices the show can SEAT. Post-2026-08-20 this is the host's preference chain plus
+    # Which voices the show can SEAT. This is the host's preference chain plus
     # the default second chair; the rotating co-host can be anything in the catalog, so the "desk"
     # tag on the page now means "named in the cast tables", not "the only voices that ever air".
     desk_ids = {DEFAULT_CAST.anchor.voice_id, *(d.voice_id for d in DEFAULT_CAST.desks)}

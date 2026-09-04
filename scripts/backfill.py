@@ -14,7 +14,7 @@ Two months later `episodes/` held `_ads`, `_coldopen`, `_music`, `_pace` and `_v
 `_music` (228 MB of variant renders) have NO GENERATOR anywhere in this repo and are
 unrecoverable at any price; `_voices` is the Flux preview cache that `voice_preview.py` skips a
 call for when the file is already there. The allow-list predated all five: `_clean` landed
-2026-08-04, the directories on 08-09 and 08-19.
+first, the directories over the following two weeks.
 
 The fix is the SHAPE, not the list. Adding `_` to the exceptions would have left the same
 structure that had already failed once for `samples`, and would fail again for the next directory
