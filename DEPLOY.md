@@ -61,9 +61,17 @@ the name first.
    imports `ClaudeWriter` at module scope, so without the key the scheduled job dies rather than
    falling back, and the only symptom is a feed that stops moving.
 
-Optionally also `fly secrets set HN_RADIO_ALERT_WEBHOOK=...` to be told when a scheduled run fails or a take is rejected by verification
-instead of having to look. A Slack or Discord incoming webhook URL is enough; unset, alerting is a
-logged no-op.
+Optionally also set an alert channel, to be told when a scheduled run fails or both takes are
+rejected by verification instead of having to look. Either or both:
+
+```bash
+fly secrets set HN_RADIO_ALERT_WEBHOOK=https://hooks.slack.com/services/...      # Slack or Discord
+fly secrets set HN_RADIO_PUSHOVER_TOKEN=<application token> HN_RADIO_PUSHOVER_USER=<user key>
+```
+
+Pushover needs both halves; one without the other is logged as misconfigured and sends nothing.
+With nothing set, alerting is a logged no-op. Setting a secret restarts the machine, so no deploy
+is needed.
 
 On later updates: `fly deploy`. Episodes generated on the volume are not in the image and are not
 affected by a deploy.

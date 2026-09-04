@@ -1,6 +1,6 @@
 """When the nightly run dies, somebody has to find out. These pin how.
 
-Before 2026-08-12 nothing found out. `status.error()` was defined and had **zero callers** anywhere
+For a while nothing found out. `status.error()` was defined and had **zero callers** anywhere
 in the repo, and `scripts/daily.py` had no exception handling at all, so a run that died on segment 4
 of 19 left `{"state": "rendering"}` on disk permanently: the board showed a spinner forever and the
 traceback existed only in `/data/cron.log`, which nothing surfaces and nothing alerts on.
@@ -31,6 +31,8 @@ from hn_radio import alerts, status
 def _tmp_status(monkeypatch, tmp_path):
     monkeypatch.setattr(status.config, "EPISODES_DIR", tmp_path)
     monkeypatch.delenv("HN_RADIO_ALERT_WEBHOOK", raising=False)
+    monkeypatch.delenv("HN_RADIO_PUSHOVER_TOKEN", raising=False)
+    monkeypatch.delenv("HN_RADIO_PUSHOVER_USER", raising=False)
     monkeypatch.delenv("HN_RADIO_STALL_SECONDS", raising=False)
     return tmp_path
 
@@ -227,6 +229,59 @@ def test_notify_posts_json_text_to_the_webhook(monkeypatch):
     assert seen["type"] == "application/json"
 
 
+def _capture_posts(monkeypatch):
+    posts = []
+
+    class _Resp:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def fake_urlopen(req, timeout=None):
+        posts.append({"url": req.full_url, "body": req.data.decode(),
+                      "type": req.headers.get("Content-type")})
+        return _Resp()
+    monkeypatch.setattr(alerts.urllib.request, "urlopen", fake_urlopen)
+    return posts
+
+
+def test_notify_posts_a_form_to_pushover_with_both_keys(monkeypatch):
+    """Pushover's documented shape: form-encoded token, user, message, title to messages.json."""
+    from urllib.parse import parse_qs
+    posts = _capture_posts(monkeypatch)
+    monkeypatch.setenv("HN_RADIO_PUSHOVER_TOKEN", "app-token")
+    monkeypatch.setenv("HN_RADIO_PUSHOVER_USER", "user-key")
+    assert alerts.notify("the show did not ship", log=lambda *a: None) is True
+    assert len(posts) == 1 and posts[0]["url"] == alerts.PUSHOVER_URL
+    assert posts[0]["type"] == "application/x-www-form-urlencoded"
+    form = parse_qs(posts[0]["body"])
+    assert form == {"token": ["app-token"], "user": ["user-key"],
+                    "message": ["the show did not ship"], "title": [alerts.PUSHOVER_TITLE]}
+
+
+def test_every_configured_channel_gets_the_alert(monkeypatch):
+    posts = _capture_posts(monkeypatch)
+    monkeypatch.setenv("HN_RADIO_ALERT_WEBHOOK", "https://hooks.example.test/abc")
+    monkeypatch.setenv("HN_RADIO_PUSHOVER_TOKEN", "app-token")
+    monkeypatch.setenv("HN_RADIO_PUSHOVER_USER", "user-key")
+    assert alerts.notify("x", log=lambda *a: None) is True
+    assert {p["url"] for p in posts} == {"https://hooks.example.test/abc", alerts.PUSHOVER_URL}
+
+
+def test_half_a_pushover_config_sends_nothing_and_names_the_missing_half(monkeypatch):
+    """The likeliest mistake, and the one that would otherwise look exactly like "not configured"."""
+    posts = _capture_posts(monkeypatch)
+    monkeypatch.setenv("HN_RADIO_PUSHOVER_TOKEN", "app-token")
+    lines = []
+    assert alerts.notify("x", log=lines.append) is False
+    assert posts == []
+    assert any("HN_RADIO_PUSHOVER_USER is not set" in ln for ln in lines)
+
+
 def _load_daily():
     """Import scripts/daily.py, which is a script rather than a package module."""
     root = str(status.config.PROJECT_ROOT / "scripts")
@@ -237,7 +292,7 @@ def _load_daily():
 
 # --- the bad-take path (verification + re-run) --------------------------------------------------
 #
-# A third failure shape, found 2026-09-04: every stage SUCCEEDS and the result is still not a show.
+# A third failure shape, found by replaying a fallback episode: every stage SUCCEEDS and the result is still not a show.
 # The Claude writer failed, PanelWriter covered, and a 173-second episode that read a markdown image
 # tag aloud went out on the public feed. `hn_radio/verify.py` raises on it; this is what daily.py
 # does with the raise.
