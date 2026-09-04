@@ -84,6 +84,11 @@ _INTRO_FRAMING = {
     MORNING:   "Here's what happened on Hacker News overnight.",
     AFTERNOON: "Here's what's been happening on Hacker News today.",
 }
+# The spoken word in the fixed outro is "the front page this morning"; the WRITTEN name in the
+# feed and on the site is "Morning Edition". Not `edition` in the makers/ai/frontpage sense, which
+# is why this is keyed by slot and named for the title it produces.
+SLOT_TITLES = {MORNING: "Morning Edition", AFTERNOON: "Afternoon Edition"}
+
 _OUTRO_FRAMING = {
     None:      ("That's yesterday's front page.", "tomorrow"),
     MORNING:   ("That's the front page this morning.", "this afternoon"),
@@ -290,6 +295,11 @@ def run_panel(
         seg.order = i
 
     title = writer.episode_title() or _panel_title(edition, selected, top, win.content_date)
+    if win.slot:
+        # "Morning Edition: ..." / "Afternoon Edition: ...". The slot is the one thing a listener
+        # scanning a feed with two shows a day needs to see first, and the writer is told nothing
+        # about the slot when it picks a title, so the prefix is applied here rather than asked for.
+        title = f"{SLOT_TITLES[win.slot]}: {title}"
     summary = writer.episode_summary() or ""
     # `points` is recorded so later features can rank a past episode's stories against fresh ones.
     # Without it the custom-episode picker scored every cached story as 0 and always lost to live.

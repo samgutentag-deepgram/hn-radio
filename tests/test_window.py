@@ -176,6 +176,37 @@ def test_a_half_written_previous_episode_excludes_nothing(monkeypatch, tmp_path)
     assert pipeline._previously_covered("2026-09-05-pm") == set()
 
 
+def test_scheduled_titles_carry_the_slot_and_calendar_titles_do_not(monkeypatch, tmp_path):
+    """Two shows a day: the feed needs to say which is which before the headline."""
+    from hn_radio import sources, status
+    from hn_radio.models import Story
+    from hn_radio.writers import PanelWriter
+
+    monkeypatch.setattr(config, "active_voice_catalog", lambda: dict(config.VOICE_CATALOG))
+    monkeypatch.setattr(config, "EPISODES_DIR", tmp_path)
+    stories = [Story(id=1, title="A story", url="https://example.com", points=99, author="a",
+                     num_comments=1, rank=1, kids=[])]
+    monkeypatch.setattr(ingest, "fetch_stories_between", lambda s, e, n, label="": list(stories))
+    monkeypatch.setattr(ingest, "fetch_front_page_for_date", lambda d, n: list(stories))
+    monkeypatch.setattr(ingest, "populate_kids", lambda s: None)
+    monkeypatch.setattr(ingest, "pick_top_thread", lambda s: None)
+    monkeypatch.setattr(ingest, "fetch_top_comments", lambda t, n: [])
+    monkeypatch.setattr(sources, "enrich_story", lambda s: None)
+    monkeypatch.setattr(status, "begin", lambda *a, **k: None)
+    monkeypatch.setattr(status, "stage", lambda *a, **k: None)
+    monkeypatch.setattr(PanelWriter, "episode_title", lambda self: "Agents Colluding, 153M IDs")
+    seen = {}
+    monkeypatch.setattr(pipeline, "render_panel", lambda segments, **kw: seen.update(kw) or "ep")
+    quiet = lambda *a, **k: None
+
+    pipeline.run_panel(edition="frontpage", window=EpisodeWindow.ending_at(_at(2026, 9, 5, 3)), log=quiet)
+    assert seen["title"] == "Morning Edition: Agents Colluding, 153M IDs"
+    pipeline.run_panel(edition="frontpage", window=EpisodeWindow.ending_at(_at(2026, 9, 5, 15)), log=quiet)
+    assert seen["title"] == "Afternoon Edition: Agents Colluding, 153M IDs"
+    pipeline.run_panel(edition="frontpage", episode_date=date(2026, 8, 22), log=quiet)
+    assert seen["title"] == "Agents Colluding, 153M IDs", "a calendar-day episode keeps its plain title"
+
+
 def test_run_panel_with_a_window_fetches_by_window_and_names_by_slot(monkeypatch, tmp_path):
     """The wiring: a rolling window uses the between-fetch, drops covered stories, and the id
     carries the slot all the way to the cast seed and the render."""
