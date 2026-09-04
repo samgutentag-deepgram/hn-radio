@@ -114,8 +114,12 @@ trusting the command, same as with deploys.
   no export, no replica, and nothing reconstructs it, because the events are only ever written at
   the moment they happen. If the numbers ever start mattering, `fly ssh console -C 'cat
   /data/episodes/plays.jsonl'` is the whole backup procedure.
-- **The source WAV is not shipped.** `.dockerignore` excludes `episodes/**/episode.wav`; the
-  chaptered MP3 and the per-segment PCM cache are what the runtime needs.
+- **Only the chaptered MP3 is kept per episode.** `pipeline._finalize` deletes the WAV and the
+  per-segment PCM once the MP3 is written, and `.dockerignore` excludes both from the image. A
+  five-minute episode is about 5.5 MB on the volume this way, against 40 MB when all three were
+  kept, which is what filled the original 1 GB volume at 35 episodes. The volume is 5 GB now;
+  `scripts/daily.py` refuses to render with under `config.MIN_FREE_DISK_BYTES` free and alerts
+  instead, before any TTS is bought.
 - **Keys are Fly secrets**, read at runtime by `hn_radio.config`; no secrets in the image.
 - **Music can be turned off without a deploy.** `fly secrets set HN_RADIO_MUSIC=0` restarts the
   machine and the next render picks it up. Setting it in `fly.toml`'s `[env]` works too but needs a

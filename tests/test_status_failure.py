@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import shutil
 import sys
 from datetime import datetime, timedelta, timezone
 
@@ -358,6 +359,33 @@ def test_a_crash_is_not_retried(monkeypatch, tmp_path):
     monkeypatch.setattr(daily.alerts, "notify", lambda text, **k: True)
     assert daily.main() == 1
     assert n["calls"] == 1
+
+
+# --- the full-disk path -------------------------------------------------------------------------
+#
+# Found the expensive way: 35 episodes filled the 1 GB volume, all 26 Flux calls for the next take
+# succeeded, and the first write after them raised ENOSPC. The check now runs before any spend.
+
+def test_a_nearly_full_disk_alerts_before_any_render(monkeypatch, tmp_path):
+    daily = _load_daily()
+    monkeypatch.setattr(daily.status.config, "EPISODES_DIR", tmp_path)
+    monkeypatch.setattr(daily.config, "MIN_FREE_DISK_BYTES", 10 ** 18, raising=True)
+    rendered = []
+    monkeypatch.setattr(daily.pipeline, "run_panel", lambda **kw: rendered.append(1))
+    sent = []
+    monkeypatch.setattr(daily.alerts, "notify", lambda text, **k: sent.append(text) or True)
+
+    assert daily.main() == 1
+    assert rendered == [], "no TTS is bought on a disk that cannot hold the result"
+    assert status.read()["state"] == "error"
+    assert "disk full before render" in status.read()["last_error"]
+    assert len(sent) == 1 and "NOT attempted" in sent[0] and "No TTS was spent" in sent[0]
+
+
+def test_require_free_disk_measures_the_nearest_existing_ancestor(tmp_path):
+    daily = _load_daily()
+    missing = tmp_path / "not" / "yet" / "episodes"
+    assert daily._require_free_disk(missing, floor=0) == shutil.disk_usage(tmp_path).free
 
 
 def test_the_scheduled_run_asks_for_a_rolling_window_ending_now(monkeypatch, tmp_path):

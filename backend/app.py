@@ -66,7 +66,7 @@ def api_recast(req: RecastReq):
     except Exception as e:  # Flux/render error, etc.
         raise HTTPException(500, str(e))
     _rebuild_static()
-    return {"id": episode.id, "audio_url": f"/episodes/{episode.id}/episode.wav"}
+    return {"id": episode.id, "audio_url": f"/episodes/{episode.id}/episode.mp3"}
 
 
 # `POST /api/generate` was deleted. Zero callers anywhere: no frontend fetch, no test,

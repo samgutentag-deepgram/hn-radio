@@ -388,15 +388,24 @@ def _space_cold_open(segments, pcm, log=print):
 def _finalize(segments, pcm, *, episode_id, title, source_items, edition, summary="",
               with_music: Optional[bool] = None, min_seconds: Optional[float] = None,
               log=print) -> Episode:
-    """Shared tail: cache per-segment audio, set start times, stitch, chapter + MP3, publish.
+    """Shared tail: stage per-segment audio, set start times, stitch, chapter + MP3, publish, then
+    drop everything but the MP3.
 
     `with_music=None` means "ask `config.music_enabled()`", which is how the deploy switch
     reaches the pipeline: every production caller leaves it None, so a Fly secret decides. Pass
     True or False to override the environment for one run (`--music` / `--no-music`).
 
     `min_seconds`, when set, is checked right after the stitch and BEFORE chapters and publish.
-    A too-short take raises `verify.VerificationError` with the WAV and the segment cache already on
-    disk (they are the archive) and nothing in the feed or the manifest (they are the show).
+    A too-short take raises `verify.VerificationError` with nothing in the feed or the manifest, and
+    its WAV and segment audio removed on the way out.
+
+    Only `episode.mp3` survives a finished run. The WAV is ffmpeg's input for the chaptered MP3 and
+    the per-segment PCM is a mid-run safety net; both are deleted once the MP3 exists. They used to
+    stay as an archive so recasts and pacing experiments could reuse the raw audio, and that
+    archive is what filled the 1 GB volume at 35 episodes: a five-minute show is 17 MB of WAV plus
+    16 MB of PCM against a 5.5 MB MP3. Recasts are rare enough that re-rendering the whole episode
+    on the day one is asked for costs less than storing every episode three times. `render_recast`
+    and `render_custom` already fall back to a fresh render when the cache is missing.
     """
     from . import chapters as chapters_mod
 
@@ -406,17 +415,11 @@ def _finalize(segments, pcm, *, episode_id, title, source_items, edition, summar
     out_dir = config.EPISODES_DIR / episode_id
     story_ids = pacing.story_ids_from(source_items)
 
-    # Cache each segment's RAW PCM, not the paced copy, so a later recast can reuse the voices
-    # that did not change. Raw is what makes the cache a real archive: it is exactly what the
-    # renderer returned, so a future pacing change can be re-evaluated against old episodes for
-    # free (that is how the current policy was chosen). Re-pacing on rebuild is cheap; an
-    # un-rendering is impossible.
-    #
-    # FIRST, before pacing and music, and that ordering is the point. This write used to sit
-    # after both of them with nothing wrapped in between, so a single exception in `music.apply`
-    # threw away every TTS call in the episode -- the one irreplaceable thing in the run, since
-    # pacing and music are pure functions of it and can be redone for free. Writing here means the
-    # worst a later crash costs is the stitch, not the spend.
+    # Stage each segment's RAW PCM to disk FIRST, before pacing and music. The TTS calls are the
+    # one irreplaceable thing in the run; pacing and music are pure functions of them. If
+    # `music.apply` or the stitch crashes, the audio is on disk for `scripts/add_chapters.py` to
+    # rebuild from, instead of being re-bought. It is a safety net for THIS run only: a finished
+    # run deletes it below, and a rejected take deletes it on the way out.
     seg_dir = out_dir / "segments"
     seg_dir.mkdir(parents=True, exist_ok=True)
     for seg, p in zip(segments, pcm):
@@ -450,11 +453,18 @@ def _finalize(segments, pcm, *, episode_id, title, source_items, edition, summar
     if min_seconds is not None:
         # Before chapters, MP3, feed and manifest: a take that fails here has never been published.
         status.stage("verifying", f"checking the {duration:.0f}s take against the {min_seconds:.0f}s floor")
-        verify.gate_duration(duration, min_seconds)
+        try:
+            verify.gate_duration(duration, min_seconds)
+        except verify.VerificationError:
+            # The script stays for the log to point at; the 30-odd MB of audio does not. The retry
+            # renders into this same directory and a second rejection would otherwise leave two
+            # takes' worth of orphaned PCM on the volume.
+            discard_render_intermediates(out_dir)
+            raise
 
     episode = Episode(
         id=episode_id, title=title, generated_at=_now_iso(), segments=segments,
-        audio_path=str(out_dir / "episode.wav"), source_items=source_items,
+        audio_path=str(out_dir / "episode.mp3"), source_items=source_items,
         duration_seconds=duration, edition=edition, summary=summary,
     )
 
@@ -468,9 +478,32 @@ def _finalize(segments, pcm, *, episode_id, title, source_items, edition, summar
     from . import publish
     (out_dir / "transcript.vtt").write_text(publish.build_vtt(episode))
     publish.publish(episode, out_dir)
+    # The MP3 is the show. Everything else was scaffolding for making it.
+    freed = discard_render_intermediates(out_dir)
+    log(f"[cleanup] removed the WAV and segment PCM ({freed / 1e6:.0f} MB); episode.mp3 is what stays")
     status.done(episode_id, duration)
     log(f"[done] {episode_id}: {title} ({duration:.0f}s, {len({s.voice_id for s in segments})} voices)")
     return episode
+
+
+def discard_render_intermediates(out_dir: Path) -> int:
+    """Delete `episode.wav` and `segments/` under `out_dir`. Returns the bytes freed.
+
+    Tolerant of either being absent already: a rejected take cleaned up on its way out, an
+    episode seeded from the image without a WAV, a hand-tidied directory. Anything else in the
+    directory (script, manifest, chapters, transcript, MP3) is untouched.
+    """
+    import shutil
+    freed = 0
+    wav = out_dir / "episode.wav"
+    if wav.exists():
+        freed += wav.stat().st_size
+        wav.unlink()
+    seg_dir = out_dir / "segments"
+    if seg_dir.is_dir():
+        freed += sum(p.stat().st_size for p in seg_dir.iterdir() if p.is_file())
+        shutil.rmtree(seg_dir)
+    return freed
 
 
 def render_recast(segments, *, original_id, episode_id, title, source_items, cast, edition="", summary="", log=print) -> Episode:

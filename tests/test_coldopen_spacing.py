@@ -251,14 +251,16 @@ needs_ffmpeg = pytest.mark.skipif(not shutil.which("ffmpeg"), reason="needs ffmp
 @needs_ffmpeg
 def test_finalize_publishes_the_spaced_cold_open_and_archives_the_raw_one(tmp_path, monkeypatch):
     """The seam, end to end. Two things have to be true at once, and they pull against each other:
-    the audio that ships is spaced, and the per-segment cache still holds exactly what Flux
-    returned. The cache is the archive every later re-pace and recast starts from, so a spaced
-    render baked into it could never be undone."""
+    the audio that ships is spaced, and the per-segment PCM staged during the run still holds
+    exactly what Flux returned. A mid-run rebuild starts from that staging, so a spaced render
+    baked into it could never be undone. (The staging is deleted at the end of a real run; the
+    cleanup is stubbed here so the test can read it.)"""
     from hn_radio import config as cfg, status
 
     monkeypatch.setattr(cfg, "EPISODES_DIR", tmp_path)
     for name in ("begin", "stage", "done"):
         monkeypatch.setattr(status, name, lambda *a, **k: None)
+    monkeypatch.setattr(pipeline, "discard_render_intermediates", lambda d: 0)
 
     segs = _script()
     for s in segs:

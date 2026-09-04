@@ -78,6 +78,8 @@ def _fresh_render(tmp_path, monkeypatch):
     fresh_dir = tmp_path / "fresh"
     monkeypatch.setattr(hn_config, "EPISODES_DIR", fresh_dir)
     _silence_status(monkeypatch)
+    # Keep the WAV and PCM this once: the test reads them to check what _finalize wrote.
+    monkeypatch.setattr(pipeline, "discard_render_intermediates", lambda d: 0)
     segs = _segments()
     pcm = _raw_pcm(segs)
     episode = pipeline._finalize(

@@ -147,7 +147,7 @@ API cost.
 | **Recast** | Re-rendering an existing episode with different voices, reusing the cached script. Two roles, **Showrunner** (the `anchor` slot, plus any quote pinned to that voice) and **Guest host** (everything else, including the archive's themed desks), and one voice cannot take both. |
 | **Custom / build-your-own edition** | A listener-configured episode: their desks, their voices. The one surface where a themed desk is still a real seat, because picking one both casts a voice and filters the topic. |
 | **Chapter** | A podcast chapter marker. One per story, at its first mention. |
-| **The cache** | Per-line raw PCM under `episodes/<id>/segments/`. Holds exactly what the renderer returned, which is why pacing and music can be re-evaluated against past episodes for free. |
+| **The cache** | Per-line raw PCM under `episodes/<id>/segments/`, staged during a render and deleted once the MP3 exists. The content-addressed cache `scripts/local_episode.py` keeps under `.render-cache/` is the one that persists. |
 | **Dry** | Audio without pacing or music applied. What the raw cache sounds like. |
 
 ---

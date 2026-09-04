@@ -33,8 +33,11 @@ fly.toml
 .superseded-local-episodes
 .superseded-samples
 
-# ship the chaptered MP3 + per-segment PCM cache; the source WAV is not needed at runtime
+# Ship only the chaptered MP3 per episode. The WAV is ffmpeg's input and the per-segment PCM is a
+# mid-run safety net; `pipeline._finalize` deletes both once the MP3 exists, and a recast of an old
+# episode re-renders it in full rather than reading a cache.
 episodes/**/episode.wav
+episodes/**/segments/
 
 # The play counter's log. It is per-DEPLOYMENT data that belongs to the volume, and a developer's
 # local copy baked into the image would be copied onto an empty volume by the entrypoint on first

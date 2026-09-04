@@ -36,6 +36,11 @@ LOOKBACK_HOURS = 18
 # writer failed and `PanelWriter` covered has come in under 180s; every Claude episode over 320s.
 # Five minutes sits in the gap with room on both sides. `hn_radio/verify.py` explains the gate.
 MIN_EPISODE_SECONDS = 300
+# Free space the scheduled run insists on BEFORE it spends anything on Flux. A render stages about
+# 35 MB of WAV and PCM on the volume before the MP3 exists; the first time the disk filled, all 26
+# TTS calls succeeded and the very next line (the PCM write) raised ENOSPC. This is generous on
+# purpose: the point is an alert with days of warning, not one with minutes.
+MIN_FREE_DISK_BYTES = 200 * 1024 * 1024
 HTTP_RETRIES = 3
 HTTP_BACKOFF_SECONDS = 0.6
 HTTP_TIMEOUT_SECONDS = 20

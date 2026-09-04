@@ -577,6 +577,8 @@ def _finalize_episode(tmp_path, monkeypatch, **kw):
     monkeypatch.setattr(status, "begin", lambda *a, **k: None)
     monkeypatch.setattr(status, "stage", lambda *a, **k: None)
     monkeypatch.setattr(status, "done", lambda *a, **k: None)
+    # Keep the WAV and PCM this once: the test reads them to check what _finalize wrote.
+    monkeypatch.setattr(pipeline, "discard_render_intermediates", lambda d: 0)
     segs = _episode()
     for s in segs:
         s.voice_id = "flux-haley-en"

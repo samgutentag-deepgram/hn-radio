@@ -60,9 +60,9 @@ that renders a preview is safe to cast.
 
 If `make episode` fails partway through, use `scripts/local_episode.py` instead. It caches the
 written script and every rendered segment keyed by `(voice, sha256(text))`, so a re-run pays only
-for what is genuinely missing. That matters because `_finalize` writes the per-segment cache only
-after every segment has rendered, so one failed call late in an episode currently discards every
-successful call before it.
+for what is genuinely missing. That matters because `_finalize` stages the per-segment PCM only
+after every segment has rendered, so one failed call late in an episode discards every successful
+call before it.
 
 `scripts/make_cover.py` writes `episodes/cover.png`, the image every podcast player shows for the
 show. It is the only thing here that imports Pillow, so Pillow sits in the `dev` dependency group:
@@ -137,8 +137,9 @@ Two writers. `panel` is deterministic and offline, built from extractive summari
 sources. `claude` is the LLM version, Opus 5 by default, which produces actual banter and is what
 the daily cron uses.
 
-Output lands in `episodes/<episode-id>/`: `episode.mp3` (chaptered), `episode.wav`, `chapters.json`,
-`episode.json`, `script.json`, `transcript.vtt`, and per-segment PCM under `segments/`. Every run
+Output lands in `episodes/<episode-id>/`: `episode.mp3` (chaptered), `chapters.json`,
+`episode.json`, `script.json` and `transcript.vtt`. The WAV and the per-segment PCM under
+`segments/` exist during the render and are deleted once the MP3 is written. Every run
 then rebuilds the three site-wide files beside them, `feed.xml`, `index.json` and `voices.json`,
 because an episode no feed and no page can see is not published. There is no generated HTML per
 episode; `web/episode.html` renders one from the JSON, which is the only implementation.
@@ -212,9 +213,10 @@ render -> [cache] -> pace -> music -> stitch -> chapters -> publish
 | `transcript.py` | WebVTT, built from the start times `pacing` and `music` computed |
 | `jsonio.py` | The one way a JSON artifact gets written, so `episode.json` reads the same whichever tool touched it last |
 
-Every segment's raw PCM is cached on disk. Recasting an episode into different voices, or building
-a custom one out of past episodes, re-renders only the lines whose words or voice actually changed
-and byte-copies the rest.
+Recasting an episode into different voices, or building a custom one out of past episodes, reuses
+a segment's PCM when it is still on disk and the words and voice are unchanged, and re-renders
+everything else. Since only the MP3 is kept after a render, that means a full re-render in
+practice. Recasts are rare enough that this costs less than storing every episode three times.
 
 ## The web app
 
@@ -420,10 +422,12 @@ A few conventions that are load-bearing rather than stylistic:
 - **Comments explain WHY, not what.** Several read like a paragraph because they record a decision
   and what it cost. If a comment tells you a rule and the rule looks wrong, read the whole comment
   before deleting either.
-- **The per-line PCM cache is an archive.** `episodes/<id>/segments/*.pcm` holds exactly what the
-  renderer returned. That is why pacing, music and sting placement could each be A/B'd against past
-  episodes for **zero API calls**, and why the cache stores raw audio rather than the finished mix.
-  If you are about to evaluate anything about timing or music, rebuild from cache; do not re-render.
+- **Only the MP3 survives a render.** `episodes/<id>/segments/*.pcm` and `episode.wav` are
+  staged during `_finalize` and deleted once the MP3 exists. The per-line PCM used to be kept as an
+  archive, which is how pacing, music and sting placement were A/B'd against past episodes for
+  zero API calls, and it is also how 35 episodes filled a 1 GB volume. To run that kind of
+  experiment again, render a handful of episodes locally with `scripts/local_episode.py`, whose
+  content-addressed cache is the surviving archive.
 - **The catalog is data, not an assumption.** `config.VOICE_CATALOG` is the castable set and
   `config.RETIRED_VOICES` is the by-ear veto on top of it. Nothing downstream hardcodes a voice
   id: `resolve_role` walks a preference list against whatever the catalog currently holds and

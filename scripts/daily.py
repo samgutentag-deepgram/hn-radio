@@ -23,12 +23,17 @@ on the way out, and each covers a hole the others do not:
      again with a fresh writer, `ATTEMPTS` times in all. If every attempt fails, nothing is
      published: the feed keeps serving the previous episode and the alert says why. A short show
      that reads URLs at listeners is worse than a missed slot.
+  5. The disk is checked BEFORE the render, not discovered by it. The volume filled once with 35
+     episodes on it; every Flux call for the take succeeded and the first write after them raised
+     ENOSPC, which is the most expensive possible order to find out in. A full disk is now an
+     alert with the money still in the account.
 
 Exit code is non-zero on failure so supercronic logs a failed job rather than a clean one.
 """
 
 import argparse
 import pathlib
+import shutil
 import sys
 import traceback
 from datetime import date, datetime
@@ -67,6 +72,27 @@ def _report_a_previous_run_that_never_finished() -> None:
         f"({previous.get('note') or 'no note'}) and went quiet for {quiet_note}. No exception was "
         f"recorded, so it hung rather than crashed. This run is starting now."
     )
+
+
+class DiskFull(RuntimeError):
+    """Raised by `_require_free_disk` so `main` can alert with the numbers instead of a traceback."""
+
+
+def _require_free_disk(path=None, floor=None) -> int:
+    """Return the free bytes on the episodes volume, or raise `DiskFull` if under `floor`.
+
+    Walks up to the nearest existing ancestor so a fresh volume with no `episodes/` yet still
+    measures the right filesystem.
+    """
+    path = pathlib.Path(path or config.EPISODES_DIR)
+    floor = config.MIN_FREE_DISK_BYTES if floor is None else floor
+    probe = path
+    while not probe.exists() and probe != probe.parent:
+        probe = probe.parent
+    free = shutil.disk_usage(probe).free
+    if free < floor:
+        raise DiskFull(f"{free / 1e6:.0f} MB free on {probe}, floor is {floor / 1e6:.0f} MB")
+    return free
 
 
 def generate(window: EpisodeWindow, *, attempts: int = ATTEMPTS, log=print):
@@ -125,8 +151,18 @@ def main(argv=()) -> int:
     window = _window_from_argv(argv)
     episode_id = window.episode_id("frontpage")
     try:
+        _require_free_disk()
         generate(window)
         publish.rebuild_site(config.EPISODES_DIR)
+    except DiskFull as e:
+        # Nothing was spent and nothing was written. Say what to do, since the fix is one command.
+        status.error(f"disk full before render: {e}")
+        alerts.notify(
+            f"HN Radio: the {episode_id} episode was NOT attempted. The episodes volume is nearly "
+            f"full ({e}). No TTS was spent. The feed still serves the previous episode. Free space "
+            f"or extend the volume (`fly volumes extend`), then re-run scripts/daily.py."
+        )
+        return 1
     except VerificationError as e:
         # Every take rendered and every take was rejected. Nothing was published, so the feed is
         # still serving the previous episode; say that, and say what was wrong with the takes.

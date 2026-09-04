@@ -126,14 +126,39 @@ def test_a_short_take_is_rejected_before_anything_is_published(monkeypatch, tmp_
         _finalize_with(monkeypatch, tmp_path, 172.6, min_seconds=300)
     assert not (tmp_path / "2026-09-05-am" / "episode.json").exists()
     assert not (tmp_path / "feed.xml").exists()
-    # The archive IS written: the segment cache is what a re-render would start from.
-    assert (tmp_path / "2026-09-05-am" / "segments" / "0.pcm").exists()
+    # And its audio is gone: only the MP3 of a published episode is kept, and a rejected take has
+    # no MP3. The retry renders into this same directory, so leftovers would compound.
+    assert not (tmp_path / "2026-09-05-am" / "segments").exists()
+    assert not (tmp_path / "2026-09-05-am" / "episode.wav").exists()
 
 
 def test_a_long_enough_take_publishes(monkeypatch, tmp_path):
     result, published = _finalize_with(monkeypatch, tmp_path, 361.0, min_seconds=300)
     assert published["episode"] is result
     assert result.duration_seconds == 361.0
+
+
+def test_a_published_take_keeps_only_the_mp3(monkeypatch, tmp_path):
+    """The WAV and the per-segment PCM are scaffolding. 35 episodes of them filled a 1 GB volume."""
+    result, _ = _finalize_with(monkeypatch, tmp_path, 361.0, min_seconds=300)
+    d = tmp_path / "2026-09-05-am"
+    assert not (d / "segments").exists()
+    assert not (d / "episode.wav").exists()
+    assert result.audio_path.endswith("episode.mp3")
+
+
+def test_discard_render_intermediates_leaves_the_rest_alone(tmp_path):
+    d = tmp_path / "ep"
+    (d / "segments").mkdir(parents=True)
+    (d / "segments" / "0.pcm").write_bytes(b"\x00" * 100)
+    (d / "episode.wav").write_bytes(b"\x00" * 50)
+    (d / "episode.mp3").write_bytes(b"\x00" * 10)
+    (d / "script.json").write_text("[]")
+    freed = pipeline.discard_render_intermediates(d)
+    assert freed == 150
+    assert not (d / "segments").exists() and not (d / "episode.wav").exists()
+    assert (d / "episode.mp3").exists() and (d / "script.json").exists()
+    assert pipeline.discard_render_intermediates(d) == 0, "idempotent on an already-clean directory"
 
 
 def test_no_floor_means_no_gate(monkeypatch, tmp_path):
