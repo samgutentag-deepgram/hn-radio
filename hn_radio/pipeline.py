@@ -33,6 +33,7 @@ from .writers import (ClaudeWriter, PanelWriter, ScriptWriter, cold_open_index,
                       cold_open_pause_count)
 
 SELECTION_POOL = 30  # stories pulled before an edition narrows to n
+WRITER_ATTEMPTS = 2  # tries an LLM writer gets before PanelWriter covers; see run_panel
 
 
 def _now_iso() -> str:
@@ -251,13 +252,30 @@ def run_panel(
 
     log(f"[4/6] Write: {type(writer).__name__} assembling the panel script...")
     status.stage("writing", "writing the panel script")
-    try:
-        segments = writer.write(selected, top, comments, cast, edition, win)
-        deslop.gate(segments)  # AI-tells caught here never reach a paid Flux render
-    except Exception as e:  # LLM writer refusal / API / parse / de-slop failure -> keep the show on air
-        if isinstance(writer, PanelWriter):
-            raise
-        log(f"      [warn] {type(writer).__name__} failed ({e}); falling back to PanelWriter")
+    segments = None
+    # An LLM writer gets WRITER_ATTEMPTS tries before the show falls back to PanelWriter. Added
+    # after the 2026-09-03 replay showed what the fallback was covering for: not an API outage but
+    # the de-slop gate, which rejected a perfectly good Claude script for three "it's not X, it's Y"
+    # constructions and handed the show to canned copy that read a README's markdown aloud. Half
+    # the Claude episodes since the gate landed went that way. A second sample from the same
+    # writer is one LLM call and no render; a fallback episode costs a full render and a re-run.
+    # `PanelWriter` is deterministic, so retrying it would just fail the same way; it gets one go.
+    attempts = 1 if isinstance(writer, PanelWriter) else WRITER_ATTEMPTS
+    for attempt in range(1, attempts + 1):
+        try:
+            segments = writer.write(selected, top, comments, cast, edition, win)
+            deslop.gate(segments)  # AI-tells caught here never reach a paid Flux render
+            break
+        except Exception as e:  # LLM writer refusal / API / parse / de-slop failure
+            if isinstance(writer, PanelWriter):
+                raise
+            segments = None
+            if attempt < attempts:
+                log(f"      [warn] {type(writer).__name__} failed ({e}); trying it once more")
+            else:
+                log(f"      [warn] {type(writer).__name__} failed again ({e}); "
+                    f"falling back to PanelWriter to keep the show on air")
+    if segments is None:
         segments = PanelWriter().write(selected, top, comments, cast, edition, win)
         deslop.gate(segments)  # canned copy, should always pass; raises for real if it somehow doesn't
     # Whichever writer produced it, nothing unspeakable goes to the renderer. This is the gate the
