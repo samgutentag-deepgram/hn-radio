@@ -146,6 +146,45 @@ episode; `web/episode.html` renders one from the JSON, which is the only impleme
 Three stories per episode, not four. Each gets a take plus one real follow-up, which is worth more
 than a fourth story skimmed.
 
+### The scheduled show, and replacing a bad episode
+
+The cron runs `scripts/daily.py` at 3am and 3pm Pacific. Each run covers the 18 hours before it
+started (`config.LOOKBACK_HOURS`), so consecutive shows overlap by six hours on purpose; stories the
+previous episode actually covered are dropped from the pool, so the overlap never airs the same lead
+twice. Scheduled episodes are named by air date and slot, `2026-09-05-am` and `2026-09-05-pm`; the
+bare-date ids from before the change stay as they are.
+
+Every scheduled take is verified before it is published (`hn_radio/verify.py`). Unspeakable text in
+the script, meaning URLs, markdown or HTML, fails the take before the Flux render is paid for. A
+stitched episode under `config.MIN_EPISODE_SECONDS` (five minutes) fails it after the stitch and
+before publish, so a short take never reaches the feed. A rejected take is re-run once with a fresh
+writer. If both takes fail, nothing is published, the feed keeps serving the previous episode, and
+the alert says why. This exists because the 2026-09-03 episode shipped at 173 seconds: the Claude
+writer had failed, `PanelWriter` covered as designed, and the fallback read a markdown image tag and
+an S3 URL aloud. Every stage had succeeded and nothing had asked whether the result was a show.
+
+To replace an episode that is already on the feed, run the same script against that day. It uses
+the Claude writer, the same floor and the same re-run, and writes over the same id, so the rebuilt
+feed carries the new audio under the same guid:
+
+```bash
+# locally, into episodes/
+uv run python scripts/daily.py --date 2026-09-03
+
+# on the deployed machine, into the Fly volume (about four minutes)
+fly ssh console -a dg-devrel-hn-radio -C "sh -c 'cd /app && /app/.venv/bin/python scripts/daily.py --date 2026-09-03'"
+```
+
+Two things to know. Podcast apps that already downloaded the old file may keep it, because the guid
+did not change; the website and new subscribers get the new audio at once. And the re-made episode
+gets a fresh `generated_at`, which the feed reads as `pubDate`, so it sorts to the top until the
+next scheduled episode lands. The co-host is the same as the original render, because the rotation
+is seeded by the episode id. Do not use `scripts/backfill.py` for this: it uses the deterministic
+`panel` writer with no verification, which is the show that needed replacing.
+
+Running `scripts/daily.py` with no arguments makes the scheduled episode for right now, which is
+how to get one without waiting for the cron.
+
 ## The pipeline
 
 ```
@@ -213,6 +252,8 @@ silence on read, `/api/status` reports `stalled` as derived rather than stored, 
 "Run stalled" with a square marker rather than a coloured dot. The next scheduled run also reports a
 previous run that never reached `done` or `error`, which is the only active notice a hang ever gets,
 because a daily job has no process alive in between to hold a watchdog.
+A **bad take** is the third shape: every stage succeeds and the result is still not a show. That one
+is caught by the verification pass described under "Making an episode" and re-run once.
 
 Set `HN_RADIO_ALERT_WEBHOOK` in the process environment to be told rather than having to look. It is
 read with a bare `os.environ.get`, unlike the keys, so a Fly secret or a shell export reaches it and
