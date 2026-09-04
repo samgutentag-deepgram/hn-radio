@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Where the episodes live</title>
+<style>
+  :root {
+    --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6b66; --line: #d9d7d0; --card: #ffffff;
+    --wav: #c96a3a; --pcm: #d9a441; --mp3: #2f7d5a; --bad: #b9392f; --good: #2f7d5a; --shelf: #8a7b6a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #15161a; --fg: #ececea; --muted: #9c9c96; --line: #34363c; --card: #1d1f25;
+      --wav: #e0805a; --pcm: #e6b95a; --mp3: #4fb083; --bad: #e0574b; --good: #4fb083; --shelf: #a3927e;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); }
+  body { font: 18px/1.45 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+  main { max-width: 900px; margin: 0 auto; padding: 48px 24px 96px; }
+  h1 { font-size: 44px; line-height: 1.1; margin: 0 0 8px; letter-spacing: -0.02em; }
+  .lede { color: var(--muted); margin: 0 0 40px; font-size: 20px; }
+  h2 { font-size: 26px; margin: 56px 0 8px; letter-spacing: -0.01em; }
+  h2 small { display: block; font-size: 16px; font-weight: 400; color: var(--muted); margin-top: 4px; }
+  p { max-width: 62ch; }
+  figure { margin: 20px 0 0; padding: 20px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; break-inside: avoid; }
+  figcaption { font-size: 15px; color: var(--muted); margin-top: 10px; }
+  svg { width: 100%; height: auto; display: block; }
+  svg text { font-family: inherit; fill: var(--fg); }
+  .muted { fill: var(--muted); }
+  .mini { font-size: 13px; }
+  .label { font-size: 15px; font-weight: 600; }
+  .big { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; }
+  .wav { fill: var(--wav); } .pcm { fill: var(--pcm); } .mp3 { fill: var(--mp3); }
+  .bad { fill: var(--bad); } .good { fill: var(--good); }
+  .shelf { stroke: var(--shelf); fill: none; stroke-width: 3; }
+  .line { stroke: var(--line); }
+  .ink { stroke: var(--fg); }
+  table { border-collapse: collapse; margin-top: 16px; font-size: 16px; }
+  td, th { text-align: left; padding: 8px 18px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 14px; }
+  .foot { color: var(--muted); font-size: 15px; margin-top: 48px; border-top: 1px solid var(--line); padding-top: 16px; }
+  @media print {
+    :root { --bg: #fff; --fg: #000; --card: #fff; --line: #bbb; }
+    body { font-size: 15px; }
+    main { padding: 0; max-width: none; }
+    h2 { page-break-after: avoid; }
+  }
+</style>
+</head>
+<body>
+<main>
+
+<h1>Where the episodes live</h1>
+<p class="lede">HN Radio keeps its shows on one small disk. On September 4, 2026 that disk filled up and an episode did not go out. This is what was taking up the room, and what changed.</p>
+
+<h2>One episode used to be three files<small>Only one of them was ever played</small></h2>
+<figure>
+<svg viewBox="0 0 860 300" role="img" aria-label="Before: three boxes sized 17, 16 and 5.5 megabytes. After: one box of 5.5 megabytes.">
+  <text x="0" y="24" class="label">BEFORE</text>
+  <text x="0" y="46" class="mini muted">about 40 MB per episode</text>
+  <rect x="0" y="62" width="340" height="56" rx="8" class="wav"/>
+  <text x="14" y="97" class="label" style="fill:#fff">episode.wav</text>
+  <text x="326" y="97" class="label" text-anchor="end" style="fill:#fff">17 MB</text>
+  <rect x="0" y="126" width="320" height="56" rx="8" class="pcm"/>
+  <text x="14" y="161" class="label" style="fill:#1d1d1b">segments/*.pcm</text>
+  <text x="306" y="161" class="label" text-anchor="end" style="fill:#1d1d1b">16 MB</text>
+  <rect x="0" y="190" width="110" height="56" rx="8" class="mp3"/>
+  <text x="14" y="225" class="label" style="fill:#fff">episode.mp3</text>
+  <text x="122" y="225" class="label">5.5 MB</text>
+  <text x="0" y="280" class="mini muted">The WAV was the working copy. The PCM was a spare set of parts. The MP3 is the show.</text>
+
+  <line x1="430" y1="20" x2="430" y2="280" class="line" stroke-width="1"/>
+
+  <text x="480" y="24" class="label">AFTER</text>
+  <text x="480" y="46" class="mini muted">5.5 MB per episode</text>
+  <rect x="480" y="190" width="110" height="56" rx="8" class="mp3"/>
+  <text x="494" y="225" class="label" style="fill:#fff">episode.mp3</text>
+  <text x="602" y="225" class="label">5.5 MB</text>
+  <text x="480" y="130" class="big">7x smaller</text>
+  <text x="480" y="280" class="mini muted">The WAV and the PCM are still made, then thrown away once the MP3 exists.</text>
+</svg>
+<figcaption>The feed, the website and every podcast app only ever asked for the MP3. The other two files sat on the disk for a rainy day that came about once a month.</figcaption>
+</figure>
+
+<h2>The shelf was full<small>35 episodes on a 1 GB disk</small></h2>
+<figure>
+<svg viewBox="0 0 860 330" role="img" aria-label="Before: a 1 gigabyte shelf packed edge to edge with fat boxes and a no room sign. After: a 5 gigabyte shelf with a short row of thin boxes and lots of empty space.">
+  <text x="0" y="24" class="label">BEFORE</text>
+  <text x="0" y="46" class="mini muted">1 GB shelf, 100% full</text>
+  <path d="M0 140 v-70 M0 140 h360 M360 140 v-70" class="shelf"/>
+  <g class="wav">
+    <rect x="4" y="82" width="9" height="56"/><rect x="15" y="82" width="9" height="56"/><rect x="26" y="82" width="9" height="56"/><rect x="37" y="82" width="9" height="56"/><rect x="48" y="82" width="9" height="56"/><rect x="59" y="82" width="9" height="56"/><rect x="70" y="82" width="9" height="56"/><rect x="81" y="82" width="9" height="56"/><rect x="92" y="82" width="9" height="56"/><rect x="103" y="82" width="9" height="56"/><rect x="114" y="82" width="9" height="56"/><rect x="125" y="82" width="9" height="56"/><rect x="136" y="82" width="9" height="56"/><rect x="147" y="82" width="9" height="56"/><rect x="158" y="82" width="9" height="56"/><rect x="169" y="82" width="9" height="56"/><rect x="180" y="82" width="9" height="56"/><rect x="191" y="82" width="9" height="56"/><rect x="202" y="82" width="9" height="56"/><rect x="213" y="82" width="9" height="56"/><rect x="224" y="82" width="9" height="56"/><rect x="235" y="82" width="9" height="56"/><rect x="246" y="82" width="9" height="56"/><rect x="257" y="82" width="9" height="56"/><rect x="268" y="82" width="9" height="56"/><rect x="279" y="82" width="9" height="56"/><rect x="290" y="82" width="9" height="56"/><rect x="301" y="82" width="9" height="56"/><rect x="312" y="82" width="9" height="56"/><rect x="323" y="82" width="9" height="56"/><rect x="334" y="82" width="9" height="56"/><rect x="345" y="82" width="9" height="56"/>
+  </g>
+  <rect x="150" y="160" width="60" height="26" rx="4" class="bad"/>
+  <text x="180" y="178" class="mini" text-anchor="middle" style="fill:#fff; font-weight:700">FULL</text>
+  <text x="0" y="230" class="mini muted">958 MB used of 974 MB. The next episode rendered all 26 lines of</text>
+  <text x="0" y="250" class="mini muted">speech, then had nowhere to put them. That is the worst order to fail in:</text>
+  <text x="0" y="270" class="mini muted">all of the cost, none of the show.</text>
+
+  <line x1="430" y1="20" x2="430" y2="300" class="line" stroke-width="1"/>
+
+  <text x="480" y="24" class="label">AFTER</text>
+  <text x="480" y="46" class="mini muted">5 GB shelf, 5% full</text>
+  <path d="M480 140 v-70 M480 140 h360 M840 140 v-70" class="shelf"/>
+  <g class="mp3">
+    <rect x="484" y="118" width="2" height="20"/><rect x="487" y="118" width="2" height="20"/><rect x="490" y="118" width="2" height="20"/><rect x="493" y="118" width="2" height="20"/><rect x="496" y="118" width="2" height="20"/><rect x="499" y="118" width="2" height="20"/><rect x="502" y="118" width="2" height="20"/><rect x="505" y="118" width="2" height="20"/><rect x="508" y="118" width="2" height="20"/><rect x="511" y="118" width="2" height="20"/><rect x="514" y="118" width="2" height="20"/><rect x="517" y="118" width="2" height="20"/><rect x="520" y="118" width="2" height="20"/><rect x="523" y="118" width="2" height="20"/><rect x="526" y="118" width="2" height="20"/><rect x="529" y="118" width="2" height="20"/><rect x="532" y="118" width="2" height="20"/><rect x="535" y="118" width="2" height="20"/><rect x="538" y="118" width="2" height="20"/><rect x="541" y="118" width="2" height="20"/><rect x="544" y="118" width="2" height="20"/><rect x="547" y="118" width="2" height="20"/><rect x="550" y="118" width="2" height="20"/><rect x="553" y="118" width="2" height="20"/><rect x="556" y="118" width="2" height="20"/><rect x="559" y="118" width="2" height="20"/><rect x="562" y="118" width="2" height="20"/><rect x="565" y="118" width="2" height="20"/><rect x="568" y="118" width="2" height="20"/><rect x="571" y="118" width="2" height="20"/><rect x="574" y="118" width="2" height="20"/><rect x="577" y="118" width="2" height="20"/><rect x="580" y="118" width="2" height="20"/><rect x="583" y="118" width="2" height="20"/><rect x="586" y="118" width="2" height="20"/><rect x="589" y="118" width="2" height="20"/>
+  </g>
+  <text x="600" y="134" class="mini muted">the same 36 episodes</text>
+  <text x="480" y="230" class="mini muted">196 MB used of 4.9 GB. The shelf is five times longer and each box</text>
+  <text x="480" y="250" class="mini muted">is a seventh of the size. Same shows, same sound, same feed.</text>
+</svg>
+<figcaption>The same catalog, drawn to scale on both shelves. The WAVs and PCM were deleted from the disk by hand; the code now never leaves them behind.</figcaption>
+</figure>
+
+<h2>Runway<small>How long until the shelf is full again, at two shows a day</small></h2>
+<figure>
+<svg viewBox="0 0 860 220" role="img" aria-label="Before: a short bar labeled about 12 days per gigabyte. After: a long bar labeled about 14 months on 5 gigabytes.">
+  <text x="0" y="24" class="label">BEFORE</text>
+  <rect x="0" y="40" width="34" height="34" rx="6" class="bad"/>
+  <text x="48" y="64" class="label">~12 days per GB</text>
+  <text x="48" y="86" class="mini muted">80 MB a day. A 1 GB disk is a two-week disk.</text>
+
+  <text x="0" y="140" class="label">AFTER</text>
+  <rect x="0" y="156" width="840" height="34" rx="6" class="good"/>
+  <text x="14" y="180" class="label" style="fill:#fff">~14 months on the 5 GB disk, about 820 more episodes</text>
+  <text x="0" y="212" class="mini muted">11 MB a day. Bars are to scale: the top one would need to be 34x longer to match.</text>
+</svg>
+<figcaption>When it does fill again, extending the disk is one command and no downtime. It took under a minute this time.</figcaption>
+</figure>
+
+<h2>And a guard at the door<small>Look at the shelf before buying anything</small></h2>
+<figure>
+<svg viewBox="0 0 860 260" role="img" aria-label="Before: render 26 lines of speech, then try to save, then crash. After: check free space first; if under 200 megabytes, send a phone alert and stop with nothing spent.">
+  <text x="0" y="24" class="label">BEFORE</text>
+  <g class="mini">
+    <rect x="0" y="44" width="150" height="44" rx="8" class="line" fill="none" stroke-width="2"/>
+    <text x="75" y="71" text-anchor="middle">write the script</text>
+    <path d="M150 66 h28" class="ink" stroke-width="2"/><path d="M172 60 l8 6 l-8 6" class="ink" stroke-width="2" fill="none"/>
+    <rect x="182" y="44" width="170" height="44" rx="8" class="line" fill="none" stroke-width="2"/>
+    <text x="267" y="65" text-anchor="middle">render 26 lines</text>
+    <text x="267" y="81" text-anchor="middle" class="muted">(the part that costs money)</text>
+    <path d="M352 66 h28" class="ink" stroke-width="2"/><path d="M374 60 l8 6 l-8 6" class="ink" stroke-width="2" fill="none"/>
+    <rect x="384" y="44" width="120" height="44" rx="8" class="line" fill="none" stroke-width="2"/>
+    <text x="444" y="71" text-anchor="middle">save to disk</text>
+    <path d="M504 66 h28" class="ink" stroke-width="2"/><path d="M526 60 l8 6 l-8 6" class="ink" stroke-width="2" fill="none"/>
+    <rect x="536" y="44" width="160" height="44" rx="8" class="bad"/>
+    <text x="616" y="71" text-anchor="middle" style="fill:#fff; font-weight:700">no space left</text>
+  </g>
+  <text x="0" y="118" class="mini muted">Paid for everything, published nothing.</text>
+
+  <text x="0" y="164" class="label">AFTER</text>
+  <g class="mini">
+    <rect x="0" y="184" width="150" height="44" rx="8" class="line" fill="none" stroke-width="2"/>
+    <text x="75" y="211" text-anchor="middle">is there 200 MB free?</text>
+    <path d="M150 206 h28" class="ink" stroke-width="2"/><path d="M172 200 l8 6 l-8 6" class="ink" stroke-width="2" fill="none"/>
+    <rect x="182" y="184" width="130" height="44" rx="8" class="good"/>
+    <text x="247" y="211" text-anchor="middle" style="fill:#fff; font-weight:700">yes: make the show</text>
+    <path d="M75 228 v14 h107" class="ink" stroke-width="2" fill="none"/><path d="M176 236 l8 6 l-8 6" class="ink" stroke-width="2" fill="none"/>
+    <rect x="182" y="232" width="330" height="26" rx="6" class="bad"/>
+    <text x="347" y="250" text-anchor="middle" style="fill:#fff; font-weight:700">no: send a phone alert, spend nothing, stop</text>
+  </g>
+</svg>
+<figcaption>The check runs before the writer and before the voices. A full disk is now a warning with days of notice, not a bill.</figcaption>
+</figure>
+
+<h2>The numbers<small>For anyone who wants them</small></h2>
+<table>
+  <tr><th></th><th>Before</th><th>After</th></tr>
+  <tr><td>Files kept per episode</td><td>WAV, per-line PCM, MP3</td><td>MP3</td></tr>
+  <tr><td>Disk per episode</td><td>about 40 MB</td><td>about 5.5 MB</td></tr>
+  <tr><td>Volume size</td><td>1 GB</td><td>5 GB</td></tr>
+  <tr><td>Used on Sept 4, 2026</td><td>958 MB (full)</td><td>196 MB</td></tr>
+  <tr><td>Runway at two shows a day</td><td>about 12 days per GB</td><td>about 14 months</td></tr>
+  <tr><td>Full-disk failure</td><td>after the render, alert after the fact</td><td>before the render, alert with nothing spent</td></tr>
+</table>
+
+<p class="foot">What we gave up: the spare PCM parts made it free to re-mix an old episode with new pacing or new music, and to swap one voice without re-recording the others. Those happen rarely enough that re-recording the whole episode on the day it is asked for costs less than storing every episode three times, forever. Code: <code>hn_radio/pipeline.py</code> (<code>_finalize</code>, <code>discard_render_intermediates</code>) and <code>scripts/daily.py</code> (<code>_require_free_disk</code>).</p>
+
+</main>
+</body>
+</html>

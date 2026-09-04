@@ -119,7 +119,8 @@ trusting the command, same as with deploys.
   five-minute episode is about 5.5 MB on the volume this way, against 40 MB when all three were
   kept, which is what filled the original 1 GB volume at 35 episodes. The volume is 5 GB now;
   `scripts/daily.py` refuses to render with under `config.MIN_FREE_DISK_BYTES` free and alerts
-  instead, before any TTS is bought.
+  instead, before any TTS is bought. The picture version of this change is
+  [`docs/eli5/episode-storage.html`](docs/eli5/episode-storage.html).
 - **Keys are Fly secrets**, read at runtime by `hn_radio.config`; no secrets in the image.
 - **Music can be turned off without a deploy.** `fly secrets set HN_RADIO_MUSIC=0` restarts the
   machine and the next render picks it up. Setting it in `fly.toml`'s `[env]` works too but needs a
