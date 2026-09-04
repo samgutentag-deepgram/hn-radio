@@ -8,11 +8,14 @@
   :root {
     --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6b66; --line: #d9d7d0; --card: #ffffff;
     --wav: #c96a3a; --pcm: #d9a441; --mp3: #2f7d5a; --bad: #b9392f; --good: #2f7d5a; --shelf: #8a7b6a;
+    /* Donut slices: categorical slots 1-3 of the validated reference palette (CVD dE 9.2, normal 27.6). */
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --track: #e3e1da;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #15161a; --fg: #ececea; --muted: #9c9c96; --line: #34363c; --card: #1d1f25;
       --wav: #e0805a; --pcm: #e6b95a; --mp3: #4fb083; --bad: #e0574b; --good: #4fb083; --shelf: #a3927e;
+      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --track: #33353b;
     }
   }
   * { box-sizing: border-box; }
@@ -33,6 +36,9 @@
   .label { font-size: 15px; font-weight: 600; }
   .big { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; }
   .wav { fill: var(--wav); } .pcm { fill: var(--pcm); } .mp3 { fill: var(--mp3); }
+  .s1 { fill: var(--s1); } .s2 { fill: var(--s2); } .s3 { fill: var(--s3); } .track { fill: var(--track); }
+  .slice { stroke: var(--card); stroke-width: 2; }   /* 2px surface gap between slices */
+  .leader { stroke: var(--muted); stroke-width: 1; }
   .bad { fill: var(--bad); } .good { fill: var(--good); }
   .shelf { stroke: var(--shelf); fill: none; stroke-width: 3; }
   .line { stroke: var(--line); }
@@ -57,61 +63,60 @@
 
 <h2>One episode used to be three files<small>Only one of them was ever played</small></h2>
 <figure>
-<svg viewBox="0 0 860 300" role="img" aria-label="Before: three boxes sized 17, 16 and 5.5 megabytes. After: one box of 5.5 megabytes.">
-  <text x="0" y="24" class="label">BEFORE</text>
-  <text x="0" y="46" class="mini muted">about 40 MB per episode</text>
-  <rect x="0" y="62" width="340" height="56" rx="8" class="wav"/>
-  <text x="14" y="97" class="label" style="fill:#fff">episode.wav</text>
-  <text x="326" y="97" class="label" text-anchor="end" style="fill:#fff">17 MB</text>
-  <rect x="0" y="126" width="320" height="56" rx="8" class="pcm"/>
-  <text x="14" y="161" class="label" style="fill:#1d1d1b">segments/*.pcm</text>
-  <text x="306" y="161" class="label" text-anchor="end" style="fill:#1d1d1b">16 MB</text>
-  <rect x="0" y="190" width="110" height="56" rx="8" class="mp3"/>
-  <text x="14" y="225" class="label" style="fill:#fff">episode.mp3</text>
-  <text x="122" y="225" class="label">5.5 MB</text>
-  <text x="0" y="280" class="mini muted">The WAV was the working copy. The PCM was a spare set of parts. The MP3 is the show.</text>
+<svg viewBox="-44 0 904 360" role="img" aria-label="Before: a donut split into WAV 44 percent, PCM 42 percent and MP3 14 percent, about 40 megabytes in all. After: a donut one seventh the area, all MP3, 5.5 megabytes.">
+  <text x="200" y="24" class="label" text-anchor="middle">BEFORE</text>
+  <path d="M200.0 50.0 A120 120 0 0 1 243.1 282.0 L225.1 235.3 A70 70 0 0 0 200.0 100.0 Z" class="s1 slice"><title>episode.wav: 17 MB (44%)</title></path><path d="M243.1 282.0 A120 120 0 0 1 106.2 95.2 L145.3 126.4 A70 70 0 0 0 225.1 235.3 Z" class="s2 slice"><title>segments/*.pcm: 16 MB (42%)</title></path><path d="M106.2 95.2 A120 120 0 0 1 200.0 50.0 L200.0 100.0 A70 70 0 0 0 145.3 126.4 Z" class="s3 slice"><title>episode.mp3: 5.5 MB (14%)</title></path>
+  <line x1="331.7" y1="145.5" x2="343.5" y2="143.3" class="leader"/><text x="349.5" y="141.3" class="mini" text-anchor="start">episode.wav</text><text x="349.5" y="157.3" class="mini muted" text-anchor="start">17 MB, 44%</text><line x1="91.9" y1="249.2" x2="82.2" y2="256.3" class="leader"/><text x="76.2" y="254.3" class="mini" text-anchor="end">segments/*.pcm</text><text x="76.2" y="270.3" class="mini muted" text-anchor="end">16 MB, 42%</text><line x1="141.9" y1="49.3" x2="136.7" y2="38.5" class="leader"/><text x="130.7" y="36.5" class="mini" text-anchor="end">episode.mp3</text><text x="130.7" y="52.5" class="mini muted" text-anchor="end">5.5 MB, 14%</text>
+  <text x="200" y="166" class="big" text-anchor="middle">40 MB</text>
+  <text x="200" y="190" class="mini muted" text-anchor="middle">per episode</text>
 
-  <line x1="430" y1="20" x2="430" y2="280" class="line" stroke-width="1"/>
+  <line x1="430" y1="20" x2="430" y2="330" class="line" stroke-width="1"/>
 
-  <text x="480" y="24" class="label">AFTER</text>
-  <text x="480" y="46" class="mini muted">5.5 MB per episode</text>
-  <rect x="480" y="190" width="110" height="56" rx="8" class="mp3"/>
-  <text x="494" y="225" class="label" style="fill:#fff">episode.mp3</text>
-  <text x="602" y="225" class="label">5.5 MB</text>
-  <text x="480" y="130" class="big">7x smaller</text>
-  <text x="480" y="280" class="mini muted">The WAV and the PCM are still made, then thrown away once the MP3 exists.</text>
+  <text x="640" y="24" class="label" text-anchor="middle">AFTER</text>
+  <path d="M640 124.6 A45.4 45.4 0 1 1 640 215.4 A45.4 45.4 0 1 1 640 124.6 Z M640 143.5 A26.5 26.5 0 1 0 640 196.5 A26.5 26.5 0 1 0 640 143.5 Z" class="s3 slice" fill-rule="evenodd"><title>episode.mp3: 5.5 MB (100%)</title></path>
+  <text x="640" y="176" class="label" text-anchor="middle">5.5 MB</text>
+  <text x="640" y="245" class="mini" text-anchor="middle">episode.mp3, 100%</text>
+  <text x="640" y="265" class="mini muted" text-anchor="middle">drawn to the same scale: one seventh the area</text>
+
+  <g class="mini" transform="translate(0,338)">
+    <rect x="0" y="-10" width="12" height="12" rx="2" class="s1"/><text x="18" y="0">episode.wav, the working copy</text>
+    <rect x="250" y="-10" width="12" height="12" rx="2" class="s2"/><text x="268" y="0">segments/*.pcm, spare parts</text>
+    <rect x="490" y="-10" width="12" height="12" rx="2" class="s3"/><text x="508" y="0">episode.mp3, the show</text>
+  </g>
 </svg>
-<figcaption>The feed, the website and every podcast app only ever asked for the MP3. The other two files sat on the disk for a rainy day that came about once a month.</figcaption>
+<figcaption>The feed, the website and every podcast app only ever asked for the MP3. The other 86 percent sat on the disk for a rainy day that came about once a month.</figcaption>
 </figure>
 
-<h2>The shelf was full<small>35 episodes on a 1 GB disk</small></h2>
+<h2>The disk was full<small>35 episodes on a 1 GB disk</small></h2>
 <figure>
-<svg viewBox="0 0 860 330" role="img" aria-label="Before: a 1 gigabyte shelf packed edge to edge with fat boxes and a no room sign. After: a 5 gigabyte shelf with a short row of thin boxes and lots of empty space.">
-  <text x="0" y="24" class="label">BEFORE</text>
-  <text x="0" y="46" class="mini muted">1 GB shelf, 100% full</text>
-  <path d="M0 140 v-70 M0 140 h360 M360 140 v-70" class="shelf"/>
-  <g class="wav">
-    <rect x="4" y="82" width="9" height="56"/><rect x="15" y="82" width="9" height="56"/><rect x="26" y="82" width="9" height="56"/><rect x="37" y="82" width="9" height="56"/><rect x="48" y="82" width="9" height="56"/><rect x="59" y="82" width="9" height="56"/><rect x="70" y="82" width="9" height="56"/><rect x="81" y="82" width="9" height="56"/><rect x="92" y="82" width="9" height="56"/><rect x="103" y="82" width="9" height="56"/><rect x="114" y="82" width="9" height="56"/><rect x="125" y="82" width="9" height="56"/><rect x="136" y="82" width="9" height="56"/><rect x="147" y="82" width="9" height="56"/><rect x="158" y="82" width="9" height="56"/><rect x="169" y="82" width="9" height="56"/><rect x="180" y="82" width="9" height="56"/><rect x="191" y="82" width="9" height="56"/><rect x="202" y="82" width="9" height="56"/><rect x="213" y="82" width="9" height="56"/><rect x="224" y="82" width="9" height="56"/><rect x="235" y="82" width="9" height="56"/><rect x="246" y="82" width="9" height="56"/><rect x="257" y="82" width="9" height="56"/><rect x="268" y="82" width="9" height="56"/><rect x="279" y="82" width="9" height="56"/><rect x="290" y="82" width="9" height="56"/><rect x="301" y="82" width="9" height="56"/><rect x="312" y="82" width="9" height="56"/><rect x="323" y="82" width="9" height="56"/><rect x="334" y="82" width="9" height="56"/><rect x="345" y="82" width="9" height="56"/>
-  </g>
-  <rect x="150" y="160" width="60" height="26" rx="4" class="bad"/>
-  <text x="180" y="178" class="mini" text-anchor="middle" style="fill:#fff; font-weight:700">FULL</text>
-  <text x="0" y="230" class="mini muted">958 MB used of 974 MB. The next episode rendered all 26 lines of</text>
-  <text x="0" y="250" class="mini muted">speech, then had nowhere to put them. That is the worst order to fail in:</text>
-  <text x="0" y="270" class="mini muted">all of the cost, none of the show.</text>
+<svg viewBox="0 0 860 400" role="img" aria-label="Before: a small donut for a 1 gigabyte disk, 98 percent filled. After: a donut more than twice the diameter for a 5 gigabyte disk, 4 percent filled.">
+  <text x="200" y="24" class="label" text-anchor="middle">BEFORE</text>
+  <text x="200" y="44" class="mini muted" text-anchor="middle">1 GB disk</text>
+  <path d="M200.0 126.0 A64 64 0 1 1 193.4 126.3 L196.0 151.8 A38.4 38.4 0 1 0 200.0 151.6 Z" class="s1 slice"><title>used: 958 MB</title></path>
+  <path d="M193.4 126.3 A64 64 0 0 1 200.0 126.0 L200.0 151.6 A38.4 38.4 0 0 0 196.0 151.8 Z" class="track slice"><title>free: 16 MB</title></path>
+  <text x="200" y="192" class="label" text-anchor="middle">98%</text>
+  <text x="200" y="208" class="mini muted" text-anchor="middle">full</text>
+  <text x="200" y="288" class="mini" text-anchor="middle">used 958 MB, free 16 MB</text>
+  <text x="200" y="312" class="mini muted" text-anchor="middle">35 episodes at about 40 MB each.</text>
+  <text x="200" y="330" class="mini muted" text-anchor="middle">The 36th rendered, then had nowhere to go.</text>
 
-  <line x1="430" y1="20" x2="430" y2="300" class="line" stroke-width="1"/>
+  <line x1="430" y1="20" x2="430" y2="380" class="line" stroke-width="1"/>
 
-  <text x="480" y="24" class="label">AFTER</text>
-  <text x="480" y="46" class="mini muted">5 GB shelf, 5% full</text>
-  <path d="M480 140 v-70 M480 140 h360 M840 140 v-70" class="shelf"/>
-  <g class="mp3">
-    <rect x="484" y="118" width="2" height="20"/><rect x="487" y="118" width="2" height="20"/><rect x="490" y="118" width="2" height="20"/><rect x="493" y="118" width="2" height="20"/><rect x="496" y="118" width="2" height="20"/><rect x="499" y="118" width="2" height="20"/><rect x="502" y="118" width="2" height="20"/><rect x="505" y="118" width="2" height="20"/><rect x="508" y="118" width="2" height="20"/><rect x="511" y="118" width="2" height="20"/><rect x="514" y="118" width="2" height="20"/><rect x="517" y="118" width="2" height="20"/><rect x="520" y="118" width="2" height="20"/><rect x="523" y="118" width="2" height="20"/><rect x="526" y="118" width="2" height="20"/><rect x="529" y="118" width="2" height="20"/><rect x="532" y="118" width="2" height="20"/><rect x="535" y="118" width="2" height="20"/><rect x="538" y="118" width="2" height="20"/><rect x="541" y="118" width="2" height="20"/><rect x="544" y="118" width="2" height="20"/><rect x="547" y="118" width="2" height="20"/><rect x="550" y="118" width="2" height="20"/><rect x="553" y="118" width="2" height="20"/><rect x="556" y="118" width="2" height="20"/><rect x="559" y="118" width="2" height="20"/><rect x="562" y="118" width="2" height="20"/><rect x="565" y="118" width="2" height="20"/><rect x="568" y="118" width="2" height="20"/><rect x="571" y="118" width="2" height="20"/><rect x="574" y="118" width="2" height="20"/><rect x="577" y="118" width="2" height="20"/><rect x="580" y="118" width="2" height="20"/><rect x="583" y="118" width="2" height="20"/><rect x="586" y="118" width="2" height="20"/><rect x="589" y="118" width="2" height="20"/>
+  <text x="640" y="24" class="label" text-anchor="middle">AFTER</text>
+  <text x="640" y="44" class="mini muted" text-anchor="middle">5 GB disk, drawn to scale</text>
+  <path d="M640.0 46.5 A143.5 143.5 0 0 1 675.7 51.0 L661.4 106.6 A86.1 86.1 0 0 0 640.0 103.9 Z" class="s1 slice"><title>used: 196 MB</title></path>
+  <path d="M675.7 51.0 A143.5 143.5 0 1 1 640.0 46.5 L640.0 103.9 A86.1 86.1 0 1 0 661.4 106.6 Z" class="track slice"><title>free: 4704 MB</title></path>
+  <text x="640" y="188" class="big" text-anchor="middle">4%</text>
+  <text x="640" y="212" class="mini muted" text-anchor="middle">full</text>
+  <text x="640" y="368" class="mini" text-anchor="middle">used 196 MB, free 4.5 GB</text>
+  <text x="640" y="392" class="mini muted" text-anchor="middle">the same 36 episodes at 5.5 MB each</text>
+
+  <g class="mini" transform="translate(0,392)">
+    <rect x="0" y="-10" width="12" height="12" rx="2" class="s1"/><text x="18" y="0">used</text>
+    <rect x="80" y="-10" width="12" height="12" rx="2" class="track"/><text x="98" y="0">free</text>
   </g>
-  <text x="600" y="134" class="mini muted">the same 36 episodes</text>
-  <text x="480" y="230" class="mini muted">196 MB used of 4.9 GB. The shelf is five times longer and each box</text>
-  <text x="480" y="250" class="mini muted">is a seventh of the size. Same shows, same sound, same feed.</text>
 </svg>
-<figcaption>The same catalog, drawn to scale on both shelves. The WAVs and PCM were deleted from the disk by hand; the code now never leaves them behind.</figcaption>
+<figcaption>Both disks drawn with area proportional to capacity. The WAVs and PCM were deleted from the disk by hand; the code now never leaves them behind.</figcaption>
 </figure>
 
 <h2>Runway<small>How long until the shelf is full again, at two shows a day</small></h2>
