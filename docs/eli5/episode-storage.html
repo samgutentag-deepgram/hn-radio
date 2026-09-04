@@ -39,6 +39,7 @@
   .s1 { fill: var(--s1); } .s2 { fill: var(--s2); } .s3 { fill: var(--s3); } .track { fill: var(--track); }
   .slice { stroke: var(--card); stroke-width: 2; }   /* 2px surface gap between slices */
   .leader { stroke: var(--muted); stroke-width: 1; }
+  .ghost { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
   .bad { fill: var(--bad); } .good { fill: var(--good); }
   .shelf { stroke: var(--shelf); fill: none; stroke-width: 3; }
   .line { stroke: var(--line); }
@@ -63,28 +64,37 @@
 
 <h2>One episode used to be three files<small>Only one of them was ever played</small></h2>
 <figure>
-<svg viewBox="-44 0 904 360" role="img" aria-label="Before: a donut split into WAV 44 percent, PCM 42 percent and MP3 14 percent, about 40 megabytes in all. After: a donut one seventh the area, all MP3, 5.5 megabytes.">
+<svg viewBox="-44 0 960 360" role="img" aria-label="Before: a donut split into WAV 44 percent, PCM 42 percent and MP3 14 percent, about 40 megabytes in all. After: the same donut, with the WAV and PCM slices drawn as dashed outlines marked no longer saved and only the MP3 slice filled, 5.5 megabytes.">
   <text x="200" y="24" class="label" text-anchor="middle">BEFORE</text>
-  <path d="M200.0 50.0 A120 120 0 0 1 243.1 282.0 L225.1 235.3 A70 70 0 0 0 200.0 100.0 Z" class="s1 slice"><title>episode.wav: 17 MB (44%)</title></path><path d="M243.1 282.0 A120 120 0 0 1 106.2 95.2 L145.3 126.4 A70 70 0 0 0 225.1 235.3 Z" class="s2 slice"><title>segments/*.pcm: 16 MB (42%)</title></path><path d="M106.2 95.2 A120 120 0 0 1 200.0 50.0 L200.0 100.0 A70 70 0 0 0 145.3 126.4 Z" class="s3 slice"><title>episode.mp3: 5.5 MB (14%)</title></path>
-  <line x1="331.7" y1="145.5" x2="343.5" y2="143.3" class="leader"/><text x="349.5" y="141.3" class="mini" text-anchor="start">episode.wav</text><text x="349.5" y="157.3" class="mini muted" text-anchor="start">17 MB, 44%</text><line x1="91.9" y1="249.2" x2="82.2" y2="256.3" class="leader"/><text x="76.2" y="254.3" class="mini" text-anchor="end">segments/*.pcm</text><text x="76.2" y="270.3" class="mini muted" text-anchor="end">16 MB, 42%</text><line x1="141.9" y1="49.3" x2="136.7" y2="38.5" class="leader"/><text x="130.7" y="36.5" class="mini" text-anchor="end">episode.mp3</text><text x="130.7" y="52.5" class="mini muted" text-anchor="end">5.5 MB, 14%</text>
+  <path d="M200.0 50.0 A120 120 0 0 1 243.1 282.0 L225.1 235.3 A70 70 0 0 0 200.0 100.0 Z" class="s1 slice"><title>episode.wav: 17 MB (44%)</title></path>
+  <line x1="331.7" y1="145.5" x2="343.5" y2="143.3" class="leader"/><text x="349.5" y="141.3" class="mini" text-anchor="start">episode.wav</text><text x="349.5" y="157.3" class="mini muted" text-anchor="start">17 MB, 44%</text>
+  <path d="M243.1 282.0 A120 120 0 0 1 106.2 95.2 L145.3 126.4 A70 70 0 0 0 225.1 235.3 Z" class="s2 slice"><title>segments/*.pcm: 16 MB (42%)</title></path>
+  <line x1="91.9" y1="249.2" x2="82.2" y2="256.3" class="leader"/><text x="76.2" y="254.3" class="mini" text-anchor="end">segments/*.pcm</text><text x="76.2" y="270.3" class="mini muted" text-anchor="end">16 MB, 42%</text>
+  <path d="M106.2 95.2 A120 120 0 0 1 200.0 50.0 L200.0 100.0 A70 70 0 0 0 145.3 126.4 Z" class="s3 slice"><title>episode.mp3: 5.5 MB (14%)</title></path>
+  <line x1="141.9" y1="49.3" x2="136.7" y2="38.5" class="leader"/><text x="130.7" y="36.5" class="mini" text-anchor="end">episode.mp3</text><text x="130.7" y="52.5" class="mini muted" text-anchor="end">5.5 MB, 14%</text>
   <text x="200" y="166" class="big" text-anchor="middle">40 MB</text>
   <text x="200" y="190" class="mini muted" text-anchor="middle">per episode</text>
 
   <line x1="430" y1="20" x2="430" y2="330" class="line" stroke-width="1"/>
 
   <text x="640" y="24" class="label" text-anchor="middle">AFTER</text>
-  <path d="M640 124.6 A45.4 45.4 0 1 1 640 215.4 A45.4 45.4 0 1 1 640 124.6 Z M640 143.5 A26.5 26.5 0 1 0 640 196.5 A26.5 26.5 0 1 0 640 143.5 Z" class="s3 slice" fill-rule="evenodd"><title>episode.mp3: 5.5 MB (100%)</title></path>
-  <text x="640" y="176" class="label" text-anchor="middle">5.5 MB</text>
-  <text x="640" y="245" class="mini" text-anchor="middle">episode.mp3, 100%</text>
-  <text x="640" y="265" class="mini muted" text-anchor="middle">drawn to the same scale: one seventh the area</text>
+  <path d="M640.0 50.0 A120 120 0 0 1 683.1 282.0 L665.1 235.3 A70 70 0 0 0 640.0 100.0 Z" class="ghost"><title>episode.wav: no longer saved</title></path>
+  <line x1="771.7" y1="145.5" x2="783.5" y2="143.3" class="leader"/><text x="789.5" y="141.3" class="mini muted" text-anchor="start">episode.wav</text><text x="789.5" y="157.3" class="mini muted" text-anchor="start">no longer saved</text>
+  <path d="M683.1 282.0 A120 120 0 0 1 546.2 95.2 L585.3 126.4 A70 70 0 0 0 665.1 235.3 Z" class="ghost"><title>segments/*.pcm: no longer saved</title></path>
+  <line x1="531.9" y1="249.2" x2="522.2" y2="256.3" class="leader"/><text x="516.2" y="254.3" class="mini muted" text-anchor="end">segments/*.pcm</text><text x="516.2" y="270.3" class="mini muted" text-anchor="end">no longer saved</text>
+  <path d="M546.2 95.2 A120 120 0 0 1 640.0 50.0 L640.0 100.0 A70 70 0 0 0 585.3 126.4 Z" class="s3 slice"><title>episode.mp3: 5.5 MB (14%)</title></path>
+  <line x1="581.9" y1="49.3" x2="576.7" y2="38.5" class="leader"/><text x="570.7" y="36.5" class="mini" text-anchor="end">episode.mp3</text><text x="570.7" y="52.5" class="mini muted" text-anchor="end">5.5 MB, 14%</text>
+  <text x="640" y="166" class="big" text-anchor="middle">5.5 MB</text>
+  <text x="640" y="190" class="mini muted" text-anchor="middle">per episode</text>
 
-  <g class="mini" transform="translate(0,338)">
+  <g class="mini" transform="translate(-30,338)">
     <rect x="0" y="-10" width="12" height="12" rx="2" class="s1"/><text x="18" y="0">episode.wav, the working copy</text>
-    <rect x="250" y="-10" width="12" height="12" rx="2" class="s2"/><text x="268" y="0">segments/*.pcm, spare parts</text>
-    <rect x="490" y="-10" width="12" height="12" rx="2" class="s3"/><text x="508" y="0">episode.mp3, the show</text>
+    <rect x="230" y="-10" width="12" height="12" rx="2" class="s2"/><text x="248" y="0">segments/*.pcm, spare parts</text>
+    <rect x="450" y="-10" width="12" height="12" rx="2" class="s3"/><text x="468" y="0">episode.mp3, the show</text>
+    <rect x="640" y="-10" width="12" height="12" rx="2" class="ghost"/><text x="658" y="0">no longer saved</text>
   </g>
 </svg>
-<figcaption>The feed, the website and every podcast app only ever asked for the MP3. The other 86 percent sat on the disk for a rainy day that came about once a month.</figcaption>
+<figcaption>Same episode, same slices. The two dashed ones are still made during the render and deleted the moment the MP3 exists. The feed, the website and every podcast app only ever asked for the MP3.</figcaption>
 </figure>
 
 <h2>The disk was full<small>35 episodes on a 1 GB disk</small></h2>
