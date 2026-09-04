@@ -10,7 +10,7 @@ confirmed subscribable in Overcast. A cron job on the Fly volume builds an episo
 18 hours of the front page at 3am and 3pm Pacific, and re-runs a take that fails verification.
 
 Each episode is a two-person show. Alexis hosts every episode; the second chair goes to a different
-voice from the Flux catalog every episode, with a fourteen-episode no-repeat window. The two of them
+voice from the Flux catalog every episode, with a twenty-episode no-repeat window. The two of them
 cover every story together and read the Hacker News comments themselves, naming the commenter first,
 inside the story the comment belongs to. It opens with a ten-word headline per story, covers three
 stories with a real follow-up question on each, and carries a music theme with a sting at every
@@ -255,11 +255,13 @@ because a daily job has no process alive in between to hold a watchdog.
 A **bad take** is the third shape: every stage succeeds and the result is still not a show. That one
 is caught by the verification pass described under "Making an episode" and re-run once.
 
-Set `HN_RADIO_ALERT_WEBHOOK` in the process environment to be told rather than having to look. It is
-read with a bare `os.environ.get`, unlike the keys, so a Fly secret or a shell export reaches it and
-a line in `.env` does not. The payload is `{"text": "..."}`,
-which Slack and Discord incoming webhooks accept as-is, so setup is one secret and no dependency.
-With it unset, alerting is a logged no-op, which is the right default for a repo strangers clone.
+Two alert channels, both optional, both read with a bare `os.environ.get` (unlike the keys), so a
+Fly secret or a shell export reaches them and a line in `.env` does not. `HN_RADIO_ALERT_WEBHOOK`
+posts `{"text": "..."}`, which Slack and Discord incoming webhooks accept as-is.
+`HN_RADIO_PUSHOVER_TOKEN` plus `HN_RADIO_PUSHOVER_USER` (the application token and the user key,
+both required) posts to Pushover's `messages.json` with the title "HN Radio". Every configured
+channel gets every alert. With nothing set, alerting is a logged no-op, which is the right default
+for a repo strangers clone; with half a Pushover pair set, the log names the missing half.
 `HN_RADIO_STALL_SECONDS` tunes the stall threshold, default 900; it is generous because the Claude
 writer and the MP3 transcode are both legitimately silent for a while.
 

@@ -25,8 +25,18 @@ from .models import ScriptSegment
 
 # (name, pattern, why, max allowed before it flags).
 RULES: List[Tuple[str, "re.Pattern[str]", str, int]] = [
+    # The construct, not the negation. This used to match every "is not <word>" and every ", not
+    # <word>", which is ordinary speech ("he is not entirely sure", "specified down to the disks,
+    # not rented capacity"), and on the 32 Claude scripts then on the feed it flagged two that a
+    # listener would never have noticed while knocking two of four live episodes into the fallback.
+    # What reads as machine-written is the SHAPE: a negated clause, a break, then a clause that
+    # supplies the replacement ("is not a bug, it's a feature"; "not the accuracy, it is the price
+    # tag"; "not X, but Y"). Measured on the same 32 scripts this matches 0 to 2 per script, and
+    # every match is the real thing.
     ("digiorno",
-     re.compile(r"\b(is not|are not)\s+[a-z]|,\s*not\s+[a-z]", re.I),
+     re.compile(r"\b(?:is|are|was|were|it's|that's|this is|there's)\s+not\s+[^.,;?!]{1,60}[.,;]\s*"
+                r"(?:it|that|this|they|these|those|what)(?:'s|'re| is| are| was)\b"
+                r"|\bnot\s+[^.,;?!]{1,40},\s*(?:but|it's|it is|that's)\b", re.I),
      "the 'it's not X, it's Y' construct -- the single most reliable AI tell", 2),
     ("worth-ing",
      re.compile(r"\bworth\s+[a-z]+ing\b|\bis worth\b", re.I),

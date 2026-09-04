@@ -213,13 +213,14 @@ def active_cast() -> Cast:
 # would let a voice come back twice a week and the show would still sound like a tiny rotation --
 # the exact failure the desks were deleted to escape.
 #
-# Fourteen is two weeks of daily shows before anyone returns (one week now that the cron runs
-# twice a day; the count is in episodes, not days), while still leaving 19 of 33 voices
-# free on any given day, so the walk in `cohost_candidates` almost never runs out of fresh
-# options and the rotation never has to visibly strain. Deliberately not "the whole pool": a
-# strict round-robin over 33 voices would make the second chair a fixed 33-day cycle, which is
-# both predictable and, at that length, indistinguishable from random anyway.
-COHOST_RECENCY_WINDOW = 14
+# It was fourteen while the show ran once a day: two weeks before anyone returned, with 19 of 33
+# voices free on any given day. The count is in EPISODES, not days, so when the cron went to two
+# shows a day fourteen silently became one week. Twenty is ten days at two a day and still leaves
+# 13 of 33 free, so the walk in `cohost_candidates` almost never runs out of fresh options and the
+# rotation never has to visibly strain. Not the full two weeks (28), on purpose: that would leave
+# five free and turn the second chair into a near strict round-robin, which is both predictable
+# and, at that length, indistinguishable from random anyway.
+COHOST_RECENCY_WINDOW = 20
 
 # A bare date (the original once-a-day show) or a date plus `-am`/`-pm` (the twice-daily show).
 # Both are canonical episodes and both count toward recency. Edition suffixes and `-recast` are
