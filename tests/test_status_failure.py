@@ -325,3 +325,27 @@ def test_the_scheduled_run_asks_for_a_rolling_window_ending_now(monkeypatch, tmp
     assert (w.end - w.start).total_seconds() == daily.config.LOOKBACK_HOURS * 3600
     assert seen["min_seconds"] == daily.config.MIN_EPISODE_SECONDS
     assert seen["edition"] == "frontpage"
+
+
+def test_dash_dash_date_remakes_that_calendar_episode_in_place_with_the_same_gate(monkeypatch, tmp_path):
+    """How a bad episode already on the feed gets replaced: same id, same writer, same floor."""
+    daily = _load_daily()
+    monkeypatch.setattr(daily.status.config, "EPISODES_DIR", tmp_path)
+    seen = {}
+    monkeypatch.setattr(daily.pipeline, "run_panel", lambda **kw: seen.update(kw) or "ep")
+    monkeypatch.setattr(daily.publish, "rebuild_site", lambda *a, **k: {})
+    assert daily.main(["--date", "2026-09-03"]) == 0
+    w = seen["window"]
+    assert w.slot is None and w.episode_id("frontpage") == "2026-09-03", "lands on top of the old one"
+    assert seen["min_seconds"] == daily.config.MIN_EPISODE_SECONDS
+    assert type(seen["writer"]).__name__ == "ClaudeWriter"
+
+
+def test_no_arguments_is_still_the_scheduled_rolling_window(monkeypatch, tmp_path):
+    daily = _load_daily()
+    monkeypatch.setattr(daily.status.config, "EPISODES_DIR", tmp_path)
+    seen = {}
+    monkeypatch.setattr(daily.pipeline, "run_panel", lambda **kw: seen.update(kw) or "ep")
+    monkeypatch.setattr(daily.publish, "rebuild_site", lambda *a, **k: {})
+    assert daily.main([]) == 0
+    assert seen["window"].slot in ("am", "pm")

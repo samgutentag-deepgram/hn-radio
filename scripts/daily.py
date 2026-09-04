@@ -27,10 +27,11 @@ on the way out, and each covers a hole the others do not:
 Exit code is non-zero on failure so supercronic logs a failed job rather than a clean one.
 """
 
+import argparse
 import pathlib
 import sys
 import traceback
-from datetime import datetime
+from datetime import date, datetime
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
@@ -97,10 +98,31 @@ def generate(window: EpisodeWindow, *, attempts: int = ATTEMPTS, log=print):
     raise last
 
 
-def main() -> int:
+def _window_from_argv(argv) -> EpisodeWindow:
+    """No arguments: the scheduled shape, the last `LOOKBACK_HOURS` ending now.
+
+    `--date YYYY-MM-DD`: re-make that day's calendar episode in place, with the same writer, the
+    same verification and the same re-run the cron gets. This is how a bad episode already on the
+    feed is replaced: the id is the bare date, so the render lands on top of the old one and the
+    rebuilt feed carries the new audio under the same guid. `scripts/backfill.py` is NOT this: it
+    uses `PanelWriter` and has no gate, which is the show that needed replacing in the first place.
+    """
+    parser = argparse.ArgumentParser(prog="daily.py", description=__doc__.splitlines()[0])
+    parser.add_argument("--date", help="re-make the calendar-day episode for YYYY-MM-DD instead "
+                                       "of the scheduled rolling window")
+    args = parser.parse_args(argv)
+    if args.date:
+        return EpisodeWindow.calendar_day(date.fromisoformat(args.date))
+    return EpisodeWindow.ending_at(datetime.now(config.PACIFIC))
+
+
+def main(argv=()) -> int:
+    """`argv` is the command line WITHOUT the program name. Defaults to none, not `sys.argv`, so a
+    test or a caller that imports this gets the scheduled window and never argparse's view of the
+    host process's arguments."""
     _report_a_previous_run_that_never_finished()
 
-    window = EpisodeWindow.ending_at(datetime.now(config.PACIFIC))
+    window = _window_from_argv(argv)
     episode_id = window.episode_id("frontpage")
     try:
         generate(window)
@@ -130,4 +152,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(sys.argv[1:]))
