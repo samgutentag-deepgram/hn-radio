@@ -213,14 +213,18 @@ def active_cast() -> Cast:
 # would let a voice come back twice a week and the show would still sound like a tiny rotation --
 # the exact failure the desks were deleted to escape.
 #
-# Fourteen is two weeks of daily shows before anyone returns, while still leaving 19 of 33 voices
+# Fourteen is two weeks of daily shows before anyone returns (one week now that the cron runs
+# twice a day; the count is in episodes, not days), while still leaving 19 of 33 voices
 # free on any given day, so the walk in `cohost_candidates` almost never runs out of fresh
 # options and the rotation never has to visibly strain. Deliberately not "the whole pool": a
 # strict round-robin over 33 voices would make the second chair a fixed 33-day cycle, which is
 # both predictable and, at that length, indistinguishable from random anyway.
 COHOST_RECENCY_WINDOW = 14
 
-_EPISODE_ID = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+# A bare date (the original once-a-day show) or a date plus `-am`/`-pm` (the twice-daily show).
+# Both are canonical episodes and both count toward recency. Edition suffixes and `-recast` are
+# excluded by not matching, same as before.
+_EPISODE_ID = re.compile(r"^\d{4}-\d{2}-\d{2}(-(am|pm))?$")
 
 
 def _recent_episode_ids(limit: int, before: Optional[str]) -> List[str]:

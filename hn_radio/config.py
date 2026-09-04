@@ -24,6 +24,18 @@ HN_API_BASE = "https://hacker-news.firebaseio.com/v0"
 N_STORIES = 3          # stories covered per episode. Three, so each gets a real exchange
                        # instead of a single take; see the 2026-08-08 script spec.
 N_COMMENTS = 2         # comments performed from the top thread
+# How far back a scheduled run reaches for stories, in hours. The cron runs twice a day, twelve
+# hours apart, so eighteen gives each show a six-hour overlap with the one before it. The overlap
+# is deliberate: a story that broke at 2am should be eligible for the morning show AND still be
+# eligible for the afternoon one if the morning show did not pick it. Stories the previous episode
+# DID cover are excluded in `pipeline.run_panel`, so the overlap never reads the same lead twice.
+LOOKBACK_HOURS = 18
+
+# --- Verification ---
+# The shortest stitched episode the scheduled run will publish. Every episode where the Claude
+# writer failed and `PanelWriter` covered has come in under 180s; every Claude episode over 320s.
+# Five minutes sits in the gap with room on both sides. `hn_radio/verify.py` explains the gate.
+MIN_EPISODE_SECONDS = 300
 HTTP_RETRIES = 3
 HTTP_BACKOFF_SECONDS = 0.6
 HTTP_TIMEOUT_SECONDS = 20
@@ -165,7 +177,7 @@ def site_app_url() -> str:
     base = site_base_url()
     return base[: -len("/episodes")] if base.endswith("/episodes") else base
 SITE_TITLE = "HN Radio"
-SITE_DESCRIPTION = "The Hacker News front page, read to you every morning. Made with Deepgram Flux TTS."
+SITE_DESCRIPTION = "The Hacker News front page, read to you morning and afternoon. Made with Deepgram Flux TTS."
 # Podcast channel metadata (placeholder for the demo)
 SITE_AUTHOR = "Deepgram DevRel"
 SITE_OWNER_EMAIL = "devrel@deepgram.com"

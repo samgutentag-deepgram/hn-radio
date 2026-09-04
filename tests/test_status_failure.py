@@ -233,3 +233,95 @@ def _load_daily():
     if root not in sys.path:
         sys.path.insert(0, root)
     return importlib.import_module("daily")
+
+
+# --- the bad-take path (verification + re-run) --------------------------------------------------
+#
+# A third failure shape, found 2026-09-04: every stage SUCCEEDS and the result is still not a show.
+# The Claude writer failed, PanelWriter covered, and a 173-second episode that read a markdown image
+# tag aloud went out on the public feed. `hn_radio/verify.py` raises on it; this is what daily.py
+# does with the raise.
+
+def _rolling_window():
+    from hn_radio.window import EpisodeWindow
+    return EpisodeWindow.ending_at(datetime(2026, 9, 5, 3, tzinfo=status.config.PACIFIC))
+
+
+def test_a_rejected_take_is_re_run_with_a_fresh_writer_and_the_good_one_ships(monkeypatch, tmp_path):
+    from hn_radio.verify import VerificationError
+    daily = _load_daily()
+    monkeypatch.setattr(daily.status.config, "EPISODES_DIR", tmp_path)
+    calls = []
+
+    def run_panel(**kw):
+        calls.append(kw)
+        if len(calls) == 1:
+            raise VerificationError(["episode is 173s, under the 300s minimum"])
+        return "episode"
+    monkeypatch.setattr(daily.pipeline, "run_panel", run_panel)
+
+    assert daily.generate(_rolling_window(), log=lambda *a, **k: None) == "episode"
+    assert len(calls) == 2
+    assert calls[0]["writer"] is not calls[1]["writer"], "a retry must not reuse the failed writer"
+    assert all(kw["min_seconds"] == daily.config.MIN_EPISODE_SECONDS for kw in calls)
+    assert all(kw["window"].episode_id("frontpage") == "2026-09-05-am" for kw in calls)
+
+
+def test_when_every_take_is_rejected_nothing_ships_and_the_alert_says_so(monkeypatch, tmp_path):
+    from hn_radio.verify import VerificationError
+    daily = _load_daily()
+    monkeypatch.setattr(daily.status.config, "EPISODES_DIR", tmp_path)
+    n = {"calls": 0}
+
+    def always_short(**kw):
+        n["calls"] += 1
+        raise VerificationError([f"take {n['calls']} has url in spoken text"])
+    monkeypatch.setattr(daily.pipeline, "run_panel", always_short)
+    rebuilt = []
+    monkeypatch.setattr(daily.publish, "rebuild_site", lambda *a, **k: rebuilt.append(1))
+    sent = []
+    monkeypatch.setattr(daily.alerts, "notify", lambda text, **k: sent.append(text) or True)
+
+    assert daily.main() == 1
+    assert n["calls"] == daily.ATTEMPTS == 2
+    assert rebuilt == [], "nothing was published, so there is nothing to rebuild"
+    assert status.read()["state"] == "error"
+    assert "verification failed after 2 attempts" in status.read()["last_error"]
+    assert len(sent) == 1 and "NOT published" in sent[0] and "take 2" in sent[0]
+
+
+def test_a_crash_is_not_retried(monkeypatch, tmp_path):
+    """Re-running a crash spends a Claude call and a Flux render on the same crash."""
+    daily = _load_daily()
+    monkeypatch.setattr(daily.status.config, "EPISODES_DIR", tmp_path)
+    n = {"calls": 0}
+
+    def boom(**kw):
+        n["calls"] += 1
+        raise RuntimeError("Deepgram refused")
+    monkeypatch.setattr(daily.pipeline, "run_panel", boom)
+    monkeypatch.setattr(daily.alerts, "notify", lambda text, **k: True)
+    assert daily.main() == 1
+    assert n["calls"] == 1
+
+
+def test_the_scheduled_run_asks_for_a_rolling_window_ending_now(monkeypatch, tmp_path):
+    """3am asks for the 18 hours before 3am; the id carries the slot; the floor is on."""
+    daily = _load_daily()
+    monkeypatch.setattr(daily.status.config, "EPISODES_DIR", tmp_path)
+    seen = {}
+    monkeypatch.setattr(daily.pipeline, "run_panel", lambda **kw: seen.update(kw) or "ep")
+    monkeypatch.setattr(daily.publish, "rebuild_site", lambda *a, **k: {})
+
+    class _Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 9, 5, 15, 0, 7, tzinfo=status.config.PACIFIC)
+    monkeypatch.setattr(daily, "datetime", _Clock)
+
+    assert daily.main() == 0
+    w = seen["window"]
+    assert w.episode_id("frontpage") == "2026-09-05-pm"
+    assert (w.end - w.start).total_seconds() == daily.config.LOOKBACK_HOURS * 3600
+    assert seen["min_seconds"] == daily.config.MIN_EPISODE_SECONDS
+    assert seen["edition"] == "frontpage"

@@ -2,7 +2,7 @@
 
 HN Radio is a single **FastAPI service** (uvicorn) that serves the app plus the episode data, holds
 the Deepgram key server-side for one-click recast, and runs its own in-container cron that generates
-an episode every morning. Deploying means building the Docker image and running it on Fly.
+an episode twice a day, at 3am and 3pm Pacific. Deploying means building the Docker image and running it on Fly.
 
 ## What's in the repo for this
 - `Dockerfile` - `python:3.12-slim` with ffmpeg, tzdata, supercronic and the uv binary, running
@@ -10,7 +10,7 @@ an episode every morning. Deploying means building the Docker image and running 
   the build instead of quietly re-resolving, and pytest never ships.
 - `fly.toml` - Fly config: `internal_port = 8000`, a `hn_radio_data` volume mounted at `/data`, and
   `auto_stop_machines = "off"` with `min_machines_running = 1`.
-- `crontab` - one entry, `CRON_TZ=America/Los_Angeles`, running `scripts/daily.py` at 3am Pacific.
+- `crontab` - one entry, `CRON_TZ=America/Los_Angeles`, running `scripts/daily.py` at 3am and 3pm Pacific.
 - `docker-entrypoint.sh` - seeds the volume from the image on first boot, then starts supercronic in
   the background and uvicorn in the foreground.
 - `backend/`, `web/`, `hn_radio/`, `scripts/`, `episodes/`, `assets/` - copied into the image. The
@@ -19,7 +19,7 @@ an episode every morning. Deploying means building the Docker image and running 
 
 **The machine never scales to zero, on purpose.** Scale-to-zero and an in-container cron are
 incompatible: a machine asleep at 3am Pacific does not generate an episode, and nothing wakes it,
-because nobody is requesting anything at 3am. The cost of a `shared-cpu-1x` staying up is the price
+because nobody is requesting anything at 3am (3pm is busier, but the point stands). The cost of a `shared-cpu-1x` staying up is the price
 of the show existing.
 
 ## One-time setup
@@ -58,10 +58,10 @@ the name first.
    fly apps open
    ```
    `ANTHROPIC_API_KEY` is **not** optional on a machine that runs the cron. `scripts/daily.py`
-   imports `ClaudeWriter` at module scope, so without the key the nightly job dies rather than
+   imports `ClaudeWriter` at module scope, so without the key the scheduled job dies rather than
    falling back, and the only symptom is a feed that stops moving.
 
-Optionally also `fly secrets set HN_RADIO_ALERT_WEBHOOK=...` to be told when a nightly run fails
+Optionally also `fly secrets set HN_RADIO_ALERT_WEBHOOK=...` to be told when a scheduled run fails or a take is rejected by verification
 instead of having to look. A Slack or Discord incoming webhook URL is enough; unset, alerting is a
 logged no-op.
 
@@ -84,7 +84,7 @@ to play.
 
 ## Rotating the Deepgram key
 `.env` is local only. Updating it changes nothing about the deployed app, and the failure is
-quiet: local renders start using the new key while the nightly cron on Fly keeps using the old
+quiet: local renders start using the new key while the scheduled cron on Fly keeps using the old
 one. If the two keys have different model access, local and production silently render from
 different voice catalogs.
 
@@ -98,7 +98,7 @@ trusting the command, same as with deploys.
 
 ## Notes
 - **Episodes live on the volume, not in the image.** `HN_RADIO_EPISODES_DIR=/data/episodes` points
-  the app and the cron at the mount, so nightly episodes survive a restart and a deploy. The image
+  the app and the cron at the mount, so generated episodes survive a restart and a deploy. The image
   still carries whatever `episodes/` held at build time, and the entrypoint copies that in once on a
   first boot, when the empty volume would otherwise shadow it.
 - **Play counts live on the volume and are not backed up.** `episodes/plays.jsonl` and its rotated

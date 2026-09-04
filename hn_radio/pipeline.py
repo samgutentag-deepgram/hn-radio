@@ -24,10 +24,11 @@ from pathlib import Path
 from typing import List, Optional
 
 from . import (config, deslop, editions, ingest, music, normalize, pacing, render, sources,
-               status, stitch, voices)
+               status, stitch, verify, voices)
 from .cast import episode_cast as episode_cast_for
 from .editions import DEFAULT_EDITION, EDITION_TITLES
 from .models import Episode, ScriptSegment
+from .window import AFTERNOON, MORNING, EpisodeWindow, WindowLike, coerce as _window
 from .writers import (ClaudeWriter, PanelWriter, ScriptWriter, cold_open_index,
                       cold_open_pause_count)
 
@@ -69,10 +70,24 @@ def _panel_title(edition: str, stories, top_story, episode_date: date) -> str:
 # hearing it a week later still hears an internally consistent episode, which is what an archive
 # needs.
 _INTRO = ("Hi, this is {host}. You're listening to Hacker News Radio, read by Deepgram Flux. "
-          "It's {date}, and I have {cohost} with me. Here's what happened on Hacker News "
-          "yesterday.")
-_OUTRO = ("That's yesterday's front page. From me and {cohost}, on Deepgram Flux, we'll talk "
-          "to you tomorrow.")
+          "It's {date}, and I have {cohost} with me. {framing}")
+_OUTRO = ("{framing} From me and {cohost}, on Deepgram Flux, we'll talk to you {next}.")
+
+# The framing depends on the WINDOW SHAPE, not the clock. A calendar-day episode covers all of
+# yesterday and says so. A scheduled run covers the eighteen hours before it started, which is
+# neither "yesterday" nor "today", so each slot gets the loosest true phrase: the 3am show reads
+# what came in overnight, the 3pm show what came in today, and the six-hour overlap between them
+# is covered by neither word claiming to be exact. Keyed by slot; None is the calendar shape.
+_INTRO_FRAMING = {
+    None:      "Here's what happened on Hacker News yesterday.",
+    MORNING:   "Here's what happened on Hacker News overnight.",
+    AFTERNOON: "Here's what's been happening on Hacker News today.",
+}
+_OUTRO_FRAMING = {
+    None:      ("That's yesterday's front page.", "tomorrow"),
+    MORNING:   ("That's the front page this morning.", "this afternoon"),
+    AFTERNOON: ("That's the front page this afternoon.", "tomorrow morning"),
+}
 
 
 # THE SOLO-EPISODE VARIANTS ARE GONE. There used to be a `_cohost_name`
@@ -113,16 +128,48 @@ def air_date_for(episode_date: date) -> date:
     return episode_date + timedelta(days=1)
 
 
-def _intro_segments(cast, episode_date: date) -> List[ScriptSegment]:
+def _intro_segments(cast, when: WindowLike) -> List[ScriptSegment]:
+    """`when` is a `date` (the calendar-day episode for that date) or an `EpisodeWindow`."""
+    win = _window(when)
     text = _INTRO.format(host=cast.anchor.name, cohost=cast.cohost.name,
-                         date=air_date_for(episode_date).strftime("%A, %B %-d"))
+                         date=win.air_date.strftime("%A, %B %-d"),
+                         framing=_INTRO_FRAMING[win.slot])
     return [ScriptSegment(order=0, role="anchor", speaker_key=cast.anchor.name, desk="anchor",
                           text=text)]
 
 
-def _outro_segments(cast) -> List[ScriptSegment]:
+def _outro_segments(cast, when: Optional[WindowLike] = None) -> List[ScriptSegment]:
+    """`when=None` is the calendar-day framing, which is what every pre-window caller meant."""
+    slot = _window(when).slot if when is not None else None
+    framing, nxt = _OUTRO_FRAMING[slot]
     return [ScriptSegment(order=0, role="anchor", speaker_key=cast.anchor.name, desk="anchor",
-                          text=_OUTRO.format(cohost=cast.cohost.name))]
+                          text=_OUTRO.format(framing=framing, cohost=cast.cohost.name, next=nxt))]
+
+
+def _previously_covered(before_id: str) -> set:
+    """HN ids the most recent canonical episode before `before_id` covered.
+
+    The twice-daily windows overlap by six hours on purpose (see `config.LOOKBACK_HOURS`), so the
+    afternoon pool will usually contain the morning's lead. Excluding what the LAST episode
+    actually covered is enough: the episode before that ended a full window ago, so nothing in its
+    pool can still be in this one. Reads `episode.json` because `source_items` is the record of
+    what aired; the pool it was picked from is not kept.
+
+    Best-effort. A missing or half-written file means nothing is excluded, which is the
+    pre-window behavior and never worse than it.
+    """
+    import json
+    from .cast import _EPISODE_ID  # the same "is this a canonical episode" rule casting uses
+    candidates = sorted((p.name for p in config.EPISODES_DIR.glob("*")
+                         if p.is_dir() and _EPISODE_ID.match(p.name) and p.name < before_id),
+                        reverse=True)
+    for ep_id in candidates[:1]:
+        try:
+            data = json.loads((config.EPISODES_DIR / ep_id / "episode.json").read_text())
+            return {int(s["hn_id"]) for s in data.get("source_items", []) if s.get("hn_id")}
+        except (OSError, ValueError, TypeError, KeyError):
+            return set()
+    return set()
 
 
 def run_panel(
@@ -133,18 +180,42 @@ def run_panel(
     writer: Optional[ScriptWriter] = None,
     with_music: Optional[bool] = None,
     log=print,
+    window: Optional[EpisodeWindow] = None,
+    min_seconds: Optional[float] = None,
 ) -> Episode:
     """The automated panel pipeline: fetch -> select by edition -> source -> write -> render.
 
     `with_music=None` defers to `config.music_enabled()`; True or False overrides it for this run.
-    """
-    episode_date = episode_date or date.today()
-    writer = writer or PanelWriter()
-    status.begin(episode_date.isoformat(), edition)
 
-    log(f"[1/6] Fetch: {SELECTION_POOL} stories for {episode_date.isoformat()} ({edition})...")
+    `window` is what the episode covers and when it airs (see `window.py`). `episode_date` is the
+    older way of saying the same thing -- the calendar-day episode for that date -- and is kept
+    because the CLI, the backfill and the experiment scripts all speak it. Pass one or the other;
+    `window` wins if both are given.
+
+    `min_seconds` turns on the duration gate in `_finalize`: a stitched episode shorter than this
+    raises `verify.VerificationError` before anything is published. The scheduled run passes
+    `config.MIN_EPISODE_SECONDS`; interactive runs leave it None because a one-story preview is
+    legitimately short.
+    """
+    win = window or _window(episode_date or date.today())
+    episode_id = win.episode_id(edition)
+    writer = writer or PanelWriter()
+    status.begin(episode_id, edition)
+
+    log(f"[1/6] Fetch: {SELECTION_POOL} stories for {episode_id} ({edition}, "
+        f"{win.hours:.0f}h ending {win.end.isoformat(timespec='minutes')})...")
     status.stage("fetching", "pulling the front page")
-    pool = ingest.fetch_front_page_for_date(episode_date, SELECTION_POOL)
+    if win.slot is None:
+        # The calendar shape keeps its own fetch: it knows to use the LIVE front page for today.
+        pool = ingest.fetch_front_page_for_date(win.start.date(), SELECTION_POOL)
+    else:
+        pool = ingest.fetch_stories_between(win.start, win.end, SELECTION_POOL, label=episode_id)
+        # The windows overlap on purpose; the shows must not. Drop what the last one covered.
+        covered = _previously_covered(episode_id)
+        if covered:
+            before = len(pool)
+            pool = [s for s in pool if s.id not in covered]
+            log(f"      dropped {before - len(pool)} already covered by the previous episode")
     # Selection no longer needs a cast. It used to build one just to reach `cast.score_for` for
     # the edition keyword match; those keywords live in `editions` now, and the episode cast no
     # longer reads the stories either, so the two stages are finally independent.
@@ -158,7 +229,7 @@ def run_panel(
     # being generated (a backfill must not treat later episodes as recent, and a re-render of
     # today must not read its own previous script), and it seeds the co-host rotation, so the
     # same date always casts the same co-host.
-    cast, substitutions = episode_cast_for(before=episode_date.isoformat())
+    cast, substitutions = episode_cast_for(before=episode_id)
     names = ", ".join(d.name for d in [cast.anchor] + list(cast.desks))
     log(f"      cast: {names}"
         + (f" (covering for {', '.join(substitutions.values())})" if substitutions else ""))
@@ -181,22 +252,26 @@ def run_panel(
     log(f"[4/6] Write: {type(writer).__name__} assembling the panel script...")
     status.stage("writing", "writing the panel script")
     try:
-        segments = writer.write(selected, top, comments, cast, edition, episode_date)
+        segments = writer.write(selected, top, comments, cast, edition, win)
         deslop.gate(segments)  # AI-tells caught here never reach a paid Flux render
     except Exception as e:  # LLM writer refusal / API / parse / de-slop failure -> keep the show on air
         if isinstance(writer, PanelWriter):
             raise
         log(f"      [warn] {type(writer).__name__} failed ({e}); falling back to PanelWriter")
-        segments = PanelWriter().write(selected, top, comments, cast, edition, episode_date)
+        segments = PanelWriter().write(selected, top, comments, cast, edition, win)
         deslop.gate(segments)  # canned copy, should always pass; raises for real if it somehow doesn't
+    # Whichever writer produced it, nothing unspeakable goes to the renderer. This is the gate the
+    # 2026-09-03 fallback episode needed: it read a markdown image tag and an S3 URL aloud. Raises
+    # `verify.VerificationError`; the scheduled run treats that as "try again", not as a crash.
+    verify.gate_script(segments)
     log(f"      {len(segments)} segments")
 
     # Wrap the writer's content in the fixed show intro + outro, then renumber.
-    segments = _intro_segments(cast, episode_date) + segments + _outro_segments(cast)
+    segments = _intro_segments(cast, win) + segments + _outro_segments(cast, win)
     for i, seg in enumerate(segments):
         seg.order = i
 
-    title = writer.episode_title() or _panel_title(edition, selected, top, episode_date)
+    title = writer.episode_title() or _panel_title(edition, selected, top, win.content_date)
     summary = writer.episode_summary() or ""
     # `points` is recorded so later features can rank a past episode's stories against fresh ones.
     # Without it the custom-episode picker scored every cached story as 0 and always lost to live.
@@ -206,11 +281,12 @@ def run_panel(
     source_items = [{"hn_id": s.id, "title": s.title, "url": s.url, "points": s.points,
                      "author": s.author}
                     for s in selected]
-    # 1-per-day naming: the daily front-page episode is just YYYY-MM-DD; other editions keep a suffix.
-    episode_id = episode_date.isoformat() if edition == "frontpage" else f"{episode_date.isoformat()}-{edition}"
+    # Naming is the window's job (`EpisodeWindow.episode_id`): a calendar-day frontpage episode is
+    # the bare YYYY-MM-DD it always was, a scheduled run adds -am/-pm, other editions add a suffix.
     log(f"[5/6] Render + [6/6] Publish: {episode_id}")
     return render_panel(segments, episode_id=episode_id, title=title, source_items=source_items,
-                        cast=cast, edition=edition, summary=summary, with_music=with_music, log=log)
+                        cast=cast, edition=edition, summary=summary, with_music=with_music,
+                        min_seconds=min_seconds, log=log)
 
 
 def render_panel(
@@ -223,12 +299,15 @@ def render_panel(
     edition: str = "makers",
     summary: str = "",
     with_music: Optional[bool] = None,
+    min_seconds: Optional[float] = None,
     log=print,
 ) -> Episode:
     """Reusable back-half: voices -> render -> stitch -> publish for a pre-written script.
 
     Fed by the in-session writer today and the Claude writer once the key lands. The script
     (segments) already exists; this turns it into a rendered, published episode.
+
+    `min_seconds` is threaded through to `_finalize` untouched; see `run_panel`.
     """
     normalize.normalize_segments(segments)  # HN -> Hacker News, etc. (display == audio; idempotent)
 
@@ -242,7 +321,7 @@ def render_panel(
 
     return _finalize(segments, pcm, episode_id=episode_id, title=title,
                      source_items=source_items, edition=edition, summary=summary,
-                     with_music=with_music, log=log)
+                     with_music=with_music, min_seconds=min_seconds, log=log)
 
 
 def _space_cold_open(segments, pcm, log=print):
@@ -279,12 +358,17 @@ def _space_cold_open(segments, pcm, log=print):
 
 
 def _finalize(segments, pcm, *, episode_id, title, source_items, edition, summary="",
-              with_music: Optional[bool] = None, log=print) -> Episode:
+              with_music: Optional[bool] = None, min_seconds: Optional[float] = None,
+              log=print) -> Episode:
     """Shared tail: cache per-segment audio, set start times, stitch, chapter + MP3, publish.
 
     `with_music=None` means "ask `config.music_enabled()`", which is how the deploy switch
     reaches the pipeline: every production caller leaves it None, so a Fly secret decides. Pass
     True or False to override the environment for one run (`--music` / `--no-music`).
+
+    `min_seconds`, when set, is checked right after the stitch and BEFORE chapters and publish.
+    A too-short take raises `verify.VerificationError` with the WAV and the segment cache already on
+    disk (they are the archive) and nothing in the feed or the manifest (they are the show).
     """
     from . import chapters as chapters_mod
 
@@ -335,6 +419,10 @@ def _finalize(segments, pcm, *, episode_id, title, source_items, edition, summar
     log(f"[stitch] concatenating into one episode file ({pacing.SHOW_POLICY.name} pacing"
         f"{', with music' if with_music else ''})...")
     duration = stitch.stitch(pieces, out_dir / "episode.wav", gaps)
+    if min_seconds is not None:
+        # Before chapters, MP3, feed and manifest: a take that fails here has never been published.
+        status.stage("verifying", f"checking the {duration:.0f}s take against the {min_seconds:.0f}s floor")
+        verify.gate_duration(duration, min_seconds)
 
     episode = Episode(
         id=episode_id, title=title, generated_at=_now_iso(), segments=segments,

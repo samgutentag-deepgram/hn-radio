@@ -100,10 +100,29 @@ def fetch_front_page_for_date(day: date, pool: int = config.N_STORIES) -> List[S
 
     # Window to exactly the Pacific calendar day [midnight, next midnight), so each day's episode
     # covers only posts submitted that Pacific day (no day-to-day overlap).
-    start = int(datetime.combine(day, time.min, tzinfo=config.PACIFIC).timestamp())
-    end = int(datetime.combine(day + timedelta(days=1), time.min, tzinfo=config.PACIFIC).timestamp())
-    # top stories of that day by points (a solid front-page proxy; the front_page tag is too sparse)
-    hits = _algolia_search(start, end, "story")
+    start = datetime.combine(day, time.min, tzinfo=config.PACIFIC)
+    return fetch_stories_between(start, start + timedelta(days=1), pool, label=day.isoformat())
+
+
+def fetch_stories_between(start: datetime, end: datetime, pool: int = config.N_STORIES,
+                          label: str = "") -> List[Story]:
+    """The top `pool` stories by points submitted in [start, end), via Algolia.
+
+    The primitive under `fetch_front_page_for_date`, split out for the scheduled show: it runs
+    twice a day and reaches back `config.LOOKBACK_HOURS` from the moment it starts, which is not a
+    calendar day and so cannot be asked for as one. Both datetimes must be tz-aware; Algolia takes
+    Unix seconds, so the zone only has to be right, not Pacific.
+
+    Ranked by points at query time. Algolia's `points` is a snapshot, not a live front-page rank,
+    which is the same approximation the per-day fetch has always made.
+    """
+    if start.tzinfo is None or end.tzinfo is None:
+        raise ValueError("fetch_stories_between needs timezone-aware datetimes")
+    if end <= start:
+        raise ValueError(f"empty story window: {start.isoformat()} to {end.isoformat()}")
+    label = label or f"{start.isoformat(timespec='minutes')} to {end.isoformat(timespec='minutes')}"
+    # top stories of the window by points (a solid front-page proxy; the front_page tag is too sparse)
+    hits = _algolia_search(int(start.timestamp()), int(end.timestamp()), "story")
 
     seen, ranked = set(), []
     for h in hits:
@@ -131,7 +150,7 @@ def fetch_front_page_for_date(day: date, pool: int = config.N_STORIES) -> List[S
             kids=[],  # filled lazily by the caller (only the selected top thread needs them)
         ))
     if not stories:
-        raise RuntimeError(f"No stories found for {day.isoformat()} via Algolia.")
+        raise RuntimeError(f"No stories found for {label} via Algolia.")
     return stories
 
 

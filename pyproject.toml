@@ -1,7 +1,7 @@
 [project]
 name = "hn-radio"
 version = "3.0.0"
-description = "The Hacker News front page, read aloud every morning by Deepgram Flux text to speech."
+description = "The Hacker News front page, read aloud morning and afternoon by Deepgram Flux text to speech."
 readme = "README.md"
 # Exact minor, not a floor. This must match the Dockerfile's base image (python:3.12-slim) and
 # .python-version, or a green local suite proves nothing about production. `>=3.12` would let a

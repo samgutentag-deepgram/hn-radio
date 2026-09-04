@@ -25,13 +25,13 @@ from __future__ import annotations
 import json
 import re
 from abc import ABC, abstractmethod
-from datetime import date, timedelta
 from typing import List, Optional
 
 from . import config
 from .cast import COHOST_ROLE, Cast
 from .models import Comment, ScriptSegment, Story
 from .script_assembly import _trim_to_sentence, clean_comment_html, is_safe
+from .window import MORNING, WindowLike, coerce as _window
 
 MAX_TAKE_CHARS = 320       # keep a take listenable
 MAX_COMMENT_CHARS = 320
@@ -108,7 +108,12 @@ def cold_open_pause_count(text: str) -> int:
 class ScriptWriter(ABC):
     @abstractmethod
     def write(self, stories: List[Story], top_story: Optional[Story], comments: List[Comment],
-              cast: Cast, edition: str, episode_date: date) -> List[ScriptSegment]:
+              cast: Cast, edition: str, episode_date: WindowLike) -> List[ScriptSegment]:
+        """`episode_date` is a `date` (that day's calendar episode) or an `EpisodeWindow`.
+
+        The name is historical: every caller passed a date until the show went twice-daily. A
+        writer that cares about the dates goes through `window.coerce` and reads the window.
+        """
         ...
 
     def episode_title(self) -> Optional[str]:
@@ -470,191 +475,153 @@ class ClaudeWriter(ScriptWriter):
             "News front page as a produced show. You write the full spoken script.\n\n"
             f"It is a TWO-HANDER: {anchor.name} hosts ({anchor.persona}), and "
             f"{cohost.name} is in the second chair with her today.\n{regulars}\n"
-            "They are two colleagues covering the same stories together, equals in the room. "
-            f"{cohost.name} is not a beat reporter being handed a topic and is never introduced "
-            "as one: both of them read, react, disagree and follow up on everything. The show "
-            "has no specialist desks, so never write a line that assigns a subject to one of "
-            f"them, and never have {anchor.name} thank {cohost.name} for a report.\n"
+            "They are equals covering the same stories together. There are no specialist "
+            "desks: both of them read, react, disagree, and follow up on everything. Never "
+            f"assign a subject to one of them, never introduce {cohost.name} as a beat "
+            f"reporter, and never have {anchor.name} thank {cohost.name} for a report.\n"
             f"{sub_line}\n"
             "STRUCTURE, in this order:\n"
             f"1. COLD OPEN: {anchor.name} gives ONE sentence per story, all {n_stories}, each "
             "TEN WORDS OR FEWER. That cap is hard. These are HEADLINES, roughly the title of "
             "the article and nothing else: name the thing and what happened to it, then stop. "
-            "No context, no numbers, no figures, no analysis, no verdict, and NO SUBORDINATE "
-            "CLAUSES. If the sentence needs a comma it is already too long; cut it rather than "
-            "rephrase it. The story's own coverage carries every detail, so anything you are "
-            "tempted to add here already has a home later. Example of the RIGHT length: "
-            "\"A court fined Meta another half a billion dollars.\" Example of TOO LONG: "
-            "\"A New Mexico court has ordered Meta to pay another five hundred and sixty-seven "
-            "million dollars over harms to kids' mental health, pushing the total past nine "
-            "hundred million.\"\n"
-            "   Return the WHOLE cold open as a SINGLE segment: one 'anchor' entry whose text "
-            "contains all of those sentences, not one entry per headline. This is an audio "
-            "requirement, not a formatting preference. Each segment is rendered by a separate "
-            "text-to-speech call, so splitting the cold open puts a pause between every headline "
-            "that no punctuation asked for, and gives each one its own falling ending. Measured "
-            "on a real episode: about 2.9 seconds of silence between two headlines that are 3.5 "
-            "seconds of speech. Let the full stops between the sentences do the pacing.\n"
-            "   Give the cold-open segment source_hn_id 0: it previews the stories, it is not "
-            "any one story's coverage, and tagging it with a story id opens that chapter marker "
-            "in the wrong place.\n"
-            "   The FINAL cold-open sentence must start with \"And\": a run of headline "
-            "sentences that just stops reads as cut off, and \"And\" is what tells the ear "
-            "this is the last one, so the preview resolves as a list instead of trailing off. "
-            "\"And\" counts toward that story's own ten-word cap, so trim the rest of the "
-            "sentence to fit it in.\n"
-            "   Read the cold open as MATTER-OF-FACT as possible. It is reporting information, "
-            "not selling the episode: no build-up, no teasing what is coming, no verdict on any "
-            "of it. The reactions belong in the coverage.\n"
+            "No context, no numbers, no analysis, no verdict, and NO SUBORDINATE CLAUSES. If "
+            "the sentence needs a comma it is already too long; cut it rather than rephrase "
+            "it. Every detail you are tempted to add has a home in that story's own coverage. "
+            "Example of the RIGHT length: \"A court fined Meta another half a billion "
+            "dollars.\" Example of TOO LONG: \"A New Mexico court has ordered Meta to pay "
+            "another five hundred and sixty-seven million dollars over harms to kids' mental "
+            "health.\"\n"
+            "   Return the WHOLE cold open as a SINGLE 'anchor' segment containing all of "
+            "those sentences. Each segment is a separate text-to-speech render, so splitting "
+            "the cold open puts seconds of dead air between headlines; let the full stops do "
+            "the pacing. Give the segment source_hn_id 0: it previews the stories, it is not "
+            "any one story's coverage.\n"
+            "   The FINAL cold-open sentence must start with \"And\", so the preview resolves "
+            "as a list instead of trailing off. \"And\" counts toward that story's own "
+            "ten-word cap, so trim the rest of the sentence to fit it in.\n"
+            "   Read the cold open MATTER-OF-FACT: it is reporting, not selling the episode. "
+            "No build-up, no teasing, no verdicts; the reactions belong in the coverage.\n"
             f"2. Then cover each story properly, {anchor.name} and {cohost.name} together.\n"
-            # The handoff block. Added after the first native two-person episode, where the
-            # diagnosis from the actual script was narrow: mid-story exchanges were
-            # good, and every story's FIRST co-host turn had no invitation in front of it at all.
-            # Names appeared twice in twenty-five segments. So this adds a beat per STORY and
-            # says so, rather than a rule per exchange, which is the thing this show already
-            # tried and cut (HARD RULE 2, which is left standing and pointed at from here).
-            #
-            # Variety is asked for STRUCTURALLY, by enumerating three different forms and
-            # forbidding a repeat, because "vary the wording" reliably returns one question
-            # rephrased three ways. Naming a form the model has to abandon is a constraint it can
-            # actually check itself against; naming an aspiration is not. The explicit "it does
-            # not have to be a question" is there because two of the three forms are statements
-            # and a model reading "invitation" will otherwise write three questions.
-            "   HAND EACH STORY OVER. The second person to speak on a story does not just start "
-            "talking: the line right before their first turn on it is an invitation that says "
-            "their name and leaves them something to answer. Without it the episode cuts from "
-            "voice to voice at the top of every story, which is what the last one did and is the "
-            "first thing a listener notices.\n"
-            "   ONE per story, and that is the whole quota. It is a fixed beat of the show, not "
-            "a license to name each other again inside the story. Everything after the handoff "
-            "is governed by HARD RULE 2 below, and inside a story a bare follow-up with no name "
-            "in it is usually the better line. The handoff is also NOT the follow-up in HARD "
-            "RULE 3: that one lands after their take, in reply to something the take raised. "
-            "Every story needs both.\n"
-            "   USE A DIFFERENT SHAPE EACH TIME, and shapes, not synonyms: one question "
-            "rephrased three ways is still the same template three times. Three forms are on the "
-            "table:\n"
-            "     - a real question put to them about the substance of the story;\n"
-            "     - a lead-in they finish, where you say the setup and stop, so their first "
-            "words complete your sentence;\n"
-            "     - a framing they can argue with, where you say what you think the story is and "
-            "let them take the other side.\n"
-            "   It does not have to be a question. Never use the same form on two stories in a "
-            "row, and if this episode has more stories than there are forms, come back to a form "
-            "only with genuinely different words.\n"
+            "   HAND EACH STORY OVER: the line right before the second person's first turn "
+            "on a story is an invitation that says their name and leaves them something to "
+            "answer. Without it the episode cuts from voice to voice at the top of every "
+            "story.\n"
+            "   ONE per story, and that is the whole quota, not a license to name each other "
+            "again inside the story: everything after the handoff is governed by HARD RULE 2 "
+            "below. The handoff is also NOT the follow-up in HARD RULE 3; every story needs "
+            "both.\n"
+            "   USE A DIFFERENT SHAPE EACH TIME, and shapes, not synonyms. Three forms: a "
+            "real question put to them about the substance of the story; a lead-in they "
+            "finish, where you say the setup and stop so their first words complete your "
+            "sentence; a framing they can argue with, where they take the other side. It "
+            "does not have to be a question. Never use the same form on two stories in a "
+            "row; with more stories than forms, reuse one only with genuinely different "
+            "words.\n"
             f"   The FIRST story gets the question, and give it the most room: it is where a "
-            f"listener decides whether this is two people or two recordings, so have "
-            f"{anchor.name} actually ask {cohost.name} something, and have {cohost.name} open by "
-            "answering the thing that was asked rather than starting a prepared take.\n"
+            f"listener decides whether this is two people or two recordings, so {anchor.name} "
+            f"actually asks {cohost.name} something and {cohost.name} opens by answering it, "
+            "not with a prepared take.\n"
             "3. THE COMMENT SEGMENT PLAYS INSIDE THAT STORY'S COVERAGE. The source material "
             "marks ONE story as the busiest thread and gives you its real comments. Run them "
-            f"as soon as that story's coverage is finished, with {anchor.name} and "
-            f"{cohost.name} reading the comments THEMSELVES and taking turns, and only then "
-            "move on to the next story. Nobody else is on the show, so whichever of them is "
-            "about to read a comment must SAY THE COMMENTER'S USERNAME first, in their own "
-            "words, before the quoted line. Their voice does not change for a quote, so the "
-            "name is the only thing telling a listener these are somebody else's words.\n"
-            "   Do NOT hold them until the end of the show: by then the listener heard that "
-            "story minutes ago, so "
-            "coming back to it reads as jumping backwards through the episode. The other "
-            "stories have no comments and get no comment segment, which makes the show "
-            "deliberately lopsided; that is intended, so do not invent reactions to even it "
-            "out.\n"
-            "The show already has a FIXED intro and outro added automatically, so do NOT write "
-            "a greeting or a sign-off.\n\n"
+            f"as soon as that story's coverage is finished, {anchor.name} and {cohost.name} "
+            "reading the comments THEMSELVES and taking turns, and only then move on to the "
+            "next story. Whoever is about to read a comment must SAY THE COMMENTER'S "
+            "USERNAME first, in their own words: the voice does not change for a quote, so "
+            "the name is the only cue these are somebody else's words.\n"
+            "   Do NOT hold them until the end of the show. The other stories have no "
+            "comments and get no comment segment; that lopsidedness is intended, so do not "
+            "invent reactions to even it out.\n"
+            "The show has a FIXED intro and outro added automatically, so do NOT write a "
+            "greeting or a sign-off.\n\n"
             "HARD RULES:\n"
-            "1. Output PLAIN SPOKEN TEXT only. No markdown, no headings, no stage directions, "
-            "no emoji, no SSML, no bracketed cues. Every character is spoken aloud by a TTS "
+            "1. Output PLAIN SPOKEN TEXT only. No markdown, headings, stage directions, "
+            "emoji, SSML, or bracketed cues. Every character is spoken aloud by a TTS "
             "voice.\n"
             "2. WRITE HOW PEOPLE ACTUALLY TALK. Do NOT use a formal hand-off on every "
-            "exchange. Real colleagues do not say each other's names every turn, and a script "
-            "that does sounds like a relay rather than a conversation. This was tried on this "
-            "show and cut for exactly that reason, so do not reintroduce it. The named "
-            "handoff into each story, in STRUCTURE 2 above, is the one fixed exception, "
-            "and it is once per STORY, at the beat where the show changes direction, "
-            "not once per turn.\n"
-            "   The two of them ARE free to use each other's names, and it is good when they "
-            "do: it is what makes the show two people rather than a narrator with a second "
-            "audio track. Use a name when it feels natural to say one out loud -- a real "
-            "question put to the other person, a disagreement, a change of subject -- and leave "
-            "it out the rest of the time. There is no target and no minimum. Read the line back "
-            "and ask whether a person would say the name there; if the answer is no, cut it. "
-            "Judge each one on its own rather than spacing them out to look varied.\n"
-            "   Never have anyone introduce themselves. The show's fixed opening already names "
-            "both of them before your first line, so a written introduction is the second one "
-            "in twenty seconds.\n"
+            "exchange: a script that says the other person's name every turn sounds like a "
+            "relay, was tried on this show, and was cut. The once-per-story handoff in "
+            "STRUCTURE 2 is the one fixed exception. Otherwise use a name when it feels "
+            "natural to say one out loud -- a real question, a disagreement, a change of "
+            "subject -- and leave it out the rest of the time. No target, no minimum; judge "
+            "each on its own. Never have anyone introduce themselves: the fixed opening "
+            "already names both of them.\n"
             "3. Each story gets ONE real follow-up: one of them asks something specific that "
             "the other's take raised and did not answer, and gets an answer. A real question "
-            "about the substance, never a prompt to keep talking. Either of them can be the one "
-            "asking; the host is not the only one allowed to be curious.\n"
-            "4. You MAY use a callback: a later story referring to something from an earlier "
-            "one in this episode. Use at most one, and only if the connection is real. A forced "
-            "callback is worse than none.\n"
+            "about the substance, never a prompt to keep talking. Either of them can ask.\n"
+            "4. You MAY use a callback: a later story referring to an earlier one in this "
+            "episode. Use at most one, and only if the connection is real; a forced callback "
+            "is worse than none.\n"
             "5. Ground every claim in the SOURCE MATERIAL provided. Do not invent facts, "
-            "numbers, or quotes. ATTRIBUTE freely and by name, the way a real reporter "
-            "does: \"the piece argues\", \"Berger writes\", \"Mistral's own claim is\". That "
-            "is how the show carries a claim it did not verify itself.\n"
+            "numbers, or quotes. ATTRIBUTE freely and by name (\"the piece argues\", "
+            "\"Berger writes\", \"Mistral's own claim is\"); that is how the show carries a "
+            "claim it did not verify itself.\n"
             "6. NEVER ASSESS THE SOURCE ITSELF. In the world of this show there are no "
-            "sources, pages, write-ups, fetches, links or research: there are two people "
-            "who know things. Never say how much material you had, that something was "
-            "missing, short or thin, that you would rather not guess, or that this is all "
-            "there is. When a story is thin, SAY LESS ABOUT IT and move on to the next one. "
-            "A listener cannot hear the difference between a short take and a thin source, "
+            "sources, pages, write-ups, fetches, links or research: there are two people who "
+            "know things. Never say material was missing, short, or thin, or that you would "
+            "rather not guess. When a story is thin, SAY LESS ABOUT IT and move on; a "
+            "listener cannot hear the difference between a short take and a thin source, "
             "and must never be told there is one. Banned outright, in any wording: \"that's "
             "all the page gives us\", \"no fetched page\", \"just the headline\", \"not much "
             "beyond the headline\", \"I'd rather not speculate\", \"I'll leave it there\".\n"
-            "7. Perform comments faithfully: you may lightly trim a real comment for length, "
-            "but do not fabricate comments or change their meaning. Use the commenter's "
-            "username as the speaker for those lines, exactly as given, including for a comment "
-            "one of the regulars reads aloud. That username is the show's record of who said "
-            "it.\n"
+            "7. Perform comments faithfully: you may lightly trim one for length, but do not "
+            "fabricate comments or change their meaning. Use the commenter's username as the "
+            "speaker for those lines, exactly as given, even when a regular reads it aloud; "
+            "that username is the show's record of who said it.\n"
             "8. Lively, specific, fast. Warm and a little wry, never fawning. No AI cliches "
             "(no 'delve', 'leverage', 'in today's fast-paced world', 'buckle up').\n"
             f"9. LENGTH (strict): aim for about {words} words and DO NOT exceed {ceiling} "
             f"words (~{self.target_minutes} minutes read aloud). Cover exactly {n_stories} "
-            f"{story_word}, every one you are given. Do not drop any, and do not pad.\n"
-            "10. NEVER HAVE ONE OF THEM RESTATE WHAT THE OTHER JUST SAID. A reply must add a new "
-            "fact, a new angle, or push back on something specific -- not paraphrase the "
-            "previous line back in different words. This happens most on an easy story, where "
-            "both of them independently land on the same obvious reaction. If they genuinely "
-            "agree, one of them says so in a single beat and the conversation moves forward; it "
-            "does not make the same point twice in a row.\n\n"
+            f"{story_word}, every one you are given. Drop none, pad nothing.\n"
+            "10. NEVER HAVE ONE OF THEM RESTATE WHAT THE OTHER JUST SAID. A reply adds a new "
+            "fact, a new angle, or pushes back on something specific -- it never "
+            "paraphrases the previous line. If they genuinely agree, one says so in a "
+            "single beat and the conversation moves forward.\n\n"
             f"Return the script as segments. Each: role ('anchor' for {anchor.name}'s lines, "
             f"'desk' for {cohost.name}'s, 'commenter' for a quoted HN comment); "
             f"desk ({desk_enum} for 'desk' lines; 'anchor' for anchor lines; '' for "
-            "commenter lines); speaker_key (the commenter's username for 'commenter' lines, '' "
-            "otherwise); text (the spoken line); source_hn_id (the story or comment id this "
-            "line is about, or 0).\n\n"
-            "Also return a 'title': a short, punchy quick-hits headline for the episode that "
-            "names two to four of the day's standout items (or one standout line if it is stronger). No "
-            "show name, no date, under about 12 words.\n"
-            "And a 'summary': one or two sentences for the show notes describing what this episode "
-            "covers, in the show's warm, wry voice."
+            "commenter lines); speaker_key (the commenter's username for 'commenter' lines, "
+            "'' otherwise); text (the spoken line); source_hn_id (the story or comment id "
+            "this line is about, or 0).\n\n"
+            "Also return a 'title': a short, punchy quick-hits headline naming two to four "
+            "of the day's standout items (or one standout line if it is stronger). No show "
+            "name, no date, under about 12 words.\n"
+            "And a 'summary': one or two sentences for the show notes describing what this "
+            "episode covers, in the show's warm, wry voice."
         )
 
         edition_name = EDITION_TITLES.get(edition, "Front Page")
-        # Both dates, spelled out, because handing over one invites the model to call the story day
-        # "today" -- the exact off-by-one the fixed intro used to have (see `pipeline._INTRO`).
-        # The episode covers one day and airs the next morning.
-        air = episode_date + timedelta(days=1)
-        lines = [f"Edition: {edition_name}.",
-                 f"These stories are the front page of {episode_date.strftime('%A, %B %-d, %Y')}.",
-                 f"This episode airs the next morning, {air.strftime('%A, %B %-d, %Y')}. So when a "
-                 f"line says 'today' it means the air date, and the stories are YESTERDAY's. Do not "
-                 f"call the story day 'today', and do not state either date outright: the host "
-                 f"already says the date in the fixed intro.",
-                 "", "STORIES (front-page order):"]
+        win = _window(episode_date)
+        air = win.air_date.strftime('%A, %B %-d, %Y')
+        if win.slot is None:
+            # Both dates, spelled out, because handing over one invites the model to call the story
+            # day "today" -- the exact off-by-one the fixed intro used to have (see
+            # `pipeline._INTRO`). The calendar episode covers one day and airs the next morning.
+            when = [f"These stories are the front page of "
+                    f"{win.start.strftime('%A, %B %-d, %Y')}.",
+                    f"This episode airs the next morning, {air}. So when a line says 'today' it "
+                    f"means the air date, and the stories are YESTERDAY's. Do not call the story "
+                    f"day 'today', and do not state either date outright: the host already says "
+                    f"the date in the fixed intro."]
+        else:
+            # The scheduled show. The window straddles two calendar days and is neither "today"
+            # nor "yesterday", so the prompt says what it is and asks for time words that stay
+            # true across the whole window.
+            slot = "morning" if win.slot == MORNING else "afternoon"
+            when = [f"These stories are what reached the Hacker News front page in the "
+                    f"{win.hours:.0f} hours before this {slot} show, which airs {air} at about "
+                    f"{win.end.strftime('%-I %p').lower()} Pacific.",
+                    f"The window crosses midnight, so do not call the stories 'today's' or "
+                    f"'yesterday's'; 'overnight', 'this morning', 'since the last show' and "
+                    f"'this week' are all safe. Do not state the date outright: the host already "
+                    f"says it in the fixed intro."]
+        lines = [f"Edition: {edition_name}.", *when, "", "STORIES (front-page order):"]
         for s in stories:
             pts = "1 point" if s.points == 1 else f"{s.points} points"
-            # The placeholder is an INSTRUCTION, not a description. It used to read "(no page
-            # fetched; headline only)", and the model quoted that framing straight back on air
-            # ("We have a title and a link, and no fetched page"). Handing the
-            # writer the pipeline's vocabulary is handing it the words to break the frame with.
+            # The placeholder is an instruction, not a description: "(no page fetched; headline
+            # only)" got quoted straight back on air, so never hand the writer the pipeline's
+            # vocabulary.
             src = ((s.source_text or "").strip()[:SOURCE_CHARS]
                    or "(none - cover this one briefly from what the title tells you; rule 6 applies)")
-            # No "suggested desk" line any more: there are no beats to suggest one for, and both
-            # regulars cover every story. Leaving it in would have told the model to assign
-            # subjects to people, which is the exact shape the desks were deleted to remove.
             lines += [
                 f"\n[story {s.id}] {s.title} ({pts}) [{s.source_kind}]",
                 f"url: {s.url or '(none)'}",

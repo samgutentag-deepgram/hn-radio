@@ -1,9 +1,11 @@
-# Daily HN Radio job: 3:00 AM Pacific (DST-aware via CRON_TZ), generate yesterday's episode
-# straight onto the volume. daily.py rebuilds the feed; the running server serves it immediately.
+# HN Radio job, twice a day: 3:00 AM and 3:00 PM Pacific (DST-aware via CRON_TZ). Each run
+# generates an episode from the last 18 hours of the front page (config.LOOKBACK_HOURS) straight
+# onto the volume, verifies it, and re-runs a bad take once. daily.py rebuilds the feed; the
+# running server serves it immediately.
 CRON_TZ=America/Los_Angeles
 #
 # The interpreter is the synced venv's, spelled absolutely. supercronic does pass the container's
-# PATH down, so a bare `python` would resolve too -- but this job runs unattended at 3am, and the
+# PATH down, so a bare `python` would resolve too -- but this job runs unattended, and the
 # failure mode of picking up the image's bare /usr/local/bin/python is an ImportError in a log
 # nobody reads until the feed is a day stale.
-0 3 * * * cd /app && /app/.venv/bin/python scripts/daily.py >> /data/cron.log 2>&1
+0 3,15 * * * cd /app && /app/.venv/bin/python scripts/daily.py >> /data/cron.log 2>&1

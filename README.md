@@ -1,15 +1,15 @@
 # HN Radio
 
-The Hacker News front page, turned into a produced daily podcast. Plain text goes in, a
+The Hacker News front page, turned into a produced twice-daily podcast. Plain text goes in, a
 multi-voice news show comes out, every word rendered by Deepgram Flux TTS with no markup and no
 per-word tuning.
 
 Live at [dg-devrel-hn-radio.fly.dev](https://dg-devrel-hn-radio.fly.dev). The feed at
 [`/episodes/feed.xml`](https://dg-devrel-hn-radio.fly.dev/episodes/feed.xml) is a real RSS feed,
-confirmed subscribable in Overcast. A cron job on the Fly volume builds yesterday's episode every
-morning at 3am Pacific.
+confirmed subscribable in Overcast. A cron job on the Fly volume builds an episode from the last
+18 hours of the front page at 3am and 3pm Pacific, and re-runs a take that fails verification.
 
-Each episode is a two-person show. Alexis hosts every morning; the second chair goes to a different
+Each episode is a two-person show. Alexis hosts every episode; the second chair goes to a different
 voice from the Flux catalog every episode, with a fourteen-episode no-repeat window. The two of them
 cover every story together and read the Hacker News comments themselves, naming the commenter first,
 inside the story the comment belongs to. It opens with a ten-word headline per story, covers three
@@ -37,7 +37,7 @@ and three words used to mean two things each until that document settled them.
   API on 2026-08-12, so a normal project key works. Self-hosted Flux is still Early Access, and
   this project only talks to the cloud API.
 - **An Anthropic API key**, only if you want the Claude writer. Optional locally, because the
-  `panel` writer is deterministic and offline. Not optional on a machine running the nightly cron:
+  `panel` writer is deterministic and offline. Not optional on a machine running the scheduled cron:
   `scripts/daily.py` imports `ClaudeWriter` at module scope.
 
 To hear a voice before casting it, `scripts/voice_preview.py` renders one line in every catalog
@@ -203,14 +203,14 @@ The rest of the API is `POST /api/recast`, `GET /api/status`, `GET /api/trending
 2026-08-22: no caller anywhere, and `make episode` and `scripts/daily.py` already reach the same
 pipeline.)
 
-When the nightly run fails you find out, which was not previously true: `status.error()` existed and
+When a scheduled run fails you find out, which was not previously true: `status.error()` existed and
 nothing called it, and `scripts/daily.py` had no exception handling, so a run that died mid-render left
 `{"state": "rendering"}` on disk and the page showed a spinner forever. Two failure shapes need
 different machinery. A **crash** raises, so `daily.py` catches it, records it with `status.error`,
 pushes an alert, and exits non-zero. A **hang** raises nothing -- a socket with no timeout, a wedged
 ffmpeg -- so nothing can catch it; all it leaves is silence. `status.is_stalled` infers it from that
 silence on read, `/api/status` reports `stalled` as derived rather than stored, and the board says
-"Run stalled" with a square marker rather than a coloured dot. The next nightly run also reports a
+"Run stalled" with a square marker rather than a coloured dot. The next scheduled run also reports a
 previous run that never reached `done` or `error`, which is the only active notice a hang ever gets,
 because a daily job has no process alive in between to hold a watchdog.
 
@@ -356,7 +356,7 @@ An unread golden update is worse than no test, because it launders a change into
 See [`DEPLOY.md`](DEPLOY.md). Short version: it is a `python:3.12-slim` image with the uv binary
 copied in, dependencies installed by `uv sync --frozen --no-dev` from the committed lock, running
 uvicorn on Fly, with the Deepgram key as a Fly secret, episodes on a mounted volume, and a
-`CRON_TZ`-aware cron entry that runs `scripts/daily.py` at 3am Pacific year-round.
+`CRON_TZ`-aware cron entry that runs `scripts/daily.py` at 3am and 3pm Pacific year-round.
 
 ## Working on it
 
@@ -368,7 +368,7 @@ A few conventions that are load-bearing rather than stylistic:
 - **`hn_radio/` is stdlib-only**, apart from a lazy `anthropic` import inside `ClaudeWriter.write`.
   ffmpeg is a subprocess. The web layer adds FastAPI and uvicorn; the pipeline itself does not.
   That lazy import makes `anthropic` look optional and it is not: `scripts/daily.py` imports
-  `ClaudeWriter` at module scope and the 3am cron runs it, so `anthropic` is a declared **runtime**
+  `ClaudeWriter` at module scope and the 3am/3pm cron runs it, so `anthropic` is a declared **runtime**
   dependency. Filing it under the dev group would build a healthy-looking image whose only symptom
   is that the podcast stops appearing overnight.
 - **`web/` has no build step.** No bundler, no `package.json`, no framework. Pages load native ES
