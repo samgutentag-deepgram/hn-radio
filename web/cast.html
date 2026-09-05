@@ -23,9 +23,9 @@
   </div>
 </header>
 <h1>The Cast</h1>
-<p class="lede">Every voice in the published Flux TTS catalog, on one grid. HN Radio is two people
-each morning: the same host, and a co-host drawn from this page. Press any card to hear that voice
-open the show. Each carries its own palette, and it is the same palette you see beside that
+<p class="lede">Every voice in the published Flux TTS catalog, on one grid. HN Radio is two people,
+twice a day: Alexis hosts the Morning Edition, Cole hosts the Afternoon Edition, and each of them has
+a co-host drawn from this page. Press any card to hear that voice open the show. Each carries its own palette, and it is the same palette you see beside that
 speaker in an episode script.</p>
 
 <!--
@@ -85,7 +85,8 @@ speaker in an episode script.</p>
   // DOM, so a keystroke never triggers layout just to decide what to hide.
   var cards = [];
 
-  function card(v, hostVoice) {
+  // `hosts` maps a voice id to the badge text for that host ("Host, Morning Edition"). Two entries.
+  function card(v, hosts) {
     var el = document.createElement('button');
     el.className = 'cast-card';
     el.type = 'button';
@@ -116,7 +117,7 @@ speaker in an episode script.</p>
     // other 33, and they are not in that rotation. `cohost_candidates` excludes them. The page is
     // a catalog of what Flux sounds like rather than a casting sheet, and that is the reading it
     // now commits to. If it ever needs to be a casting sheet again, the flag is still in the data.
-    if (v.id === hostVoice) { r.textContent = 'Host, every episode'; el.classList.add('is-host'); }
+    if (hosts[v.id]) { r.textContent = hosts[v.id]; el.classList.add('is-host'); }
     else { r.textContent = 'Co-host rotation'; }
     nm.appendChild(n); nm.appendChild(r);
     top.appendChild(ico); top.appendChild(nm);
@@ -212,10 +213,21 @@ speaker in an episode script.</p>
     // `seating` answers "who would be cast on THIS endpoint right now", which can resolve to an
     // id this grid does not contain. Keyed off seating the badge matched no card at all and the
     // host went unlabelled. Seating is the fallback for an older published voices.json.
-    var anchorSeat = (d.seating || []).filter(function (s) { return s.role === 'anchor'; })[0];
-    var hostVoice = d.host_voice || (anchorSeat ? anchorSeat.voice : '');
+    // Two hosts since 2026-09-04, one per edition, published under `hosts`. An older voices.json
+    // has only `host_voice`, which was the one host of the once-a-day show; label it plainly.
+    var hosts = {};
+    if (d.hosts) {
+      Object.keys(d.hosts).forEach(function (slot) {
+        var h = d.hosts[slot];
+        if (h && h.voice) hosts[h.voice] = 'Host, ' + (h.edition || slot);
+      });
+    } else {
+      var anchorSeat = (d.seating || []).filter(function (s) { return s.role === 'anchor'; })[0];
+      var hostVoice = d.host_voice || (anchorSeat ? anchorSeat.voice : '');
+      if (hostVoice) hosts[hostVoice] = 'Host, every episode';
+    }
 
-    list.forEach(function (v) { grid.appendChild(card(v, hostVoice)); });
+    list.forEach(function (v) { grid.appendChild(card(v, hosts)); });
     filter();
 
     // Say plainly what these samples are. The line every card reads is dated on purpose;

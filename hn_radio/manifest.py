@@ -185,6 +185,15 @@ def build_voices_json(episodes_dir: Path) -> Path:
     # grid was built from; the cast page grids the published catalog, so a badge keyed off
     # seating matched no card there and the host went unlabelled.
     host_voice = config.HOST_VOICE
+    # Both hosts, by edition, for the cast page's badges. `host_voice` above is kept as the morning
+    # host for any older reader; this key is the one that knows there are two shows a day. The
+    # names come off the catalog rather than a literal so a renamed voice cannot leave the page
+    # calling Cole something else.
+    hosts = {
+        slot: {"voice": vid, "name": config.voice_name(vid) or vid, "edition": edition}
+        for slot, vid, edition in (("am", config.HOST_VOICE, "Morning Edition"),
+                                   ("pm", config.AFTERNOON_HOST_VOICE, "Afternoon Edition"))
+    }
     # The BUILD page's starting cast, gated on `buildable` rather than on `selectable_voices()`.
     #
     # `presets.flux` above belongs to the recast picker and follows the configured host, so on
@@ -209,6 +218,7 @@ def build_voices_json(episodes_dir: Path) -> Path:
         "catalog": catalog,
         "buildable": buildable,
         "host_voice": host_voice,
+        "hosts": hosts,
         "build_preset": build_preset,
         "seating": seating,
         "host": config.api_host(),

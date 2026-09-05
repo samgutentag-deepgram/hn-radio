@@ -272,6 +272,18 @@
     "flux-cole-en"
   ],
   "host_voice": "flux-alexis-en",
+  "hosts": {
+    "am": {
+      "voice": "flux-alexis-en",
+      "name": "Alexis",
+      "edition": "Morning Edition"
+    },
+    "pm": {
+      "voice": "flux-cole-en",
+      "name": "Cole",
+      "edition": "Afternoon Edition"
+    }
+  },
   "build_preset": {
     "anchor": "flux-alexis-en",
     "drama": "flux-cole-en"

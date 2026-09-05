@@ -2134,7 +2134,8 @@ audio { width: 100%; margin: 0.6rem 0 0.4rem; }
 
 /* THE ONE SPECIAL STATE IS A SHAPE. The host card gets a THICKER left rule, so it
    differs by edge treatment before it differs by ink, and .cast-role prints
-   "Host, every episode" which is the actual answer. Do not swap it for a hue.
+   "Host, Morning Edition" / "Host, Afternoon Edition" which is the actual answer. Do not swap it
+   for a hue.
 
    There was a second state here until 2026-08-21: retired cards took a dashed
    rule and 0.72 opacity. Removed on request. The page shows the catalog and does

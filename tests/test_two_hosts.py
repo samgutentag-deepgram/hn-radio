@@ -142,3 +142,21 @@ def test_the_calendar_shape_is_untouched(monkeypatch):
     outro = pipeline._outro_segments(ep_cast)[0].text
     assert "listening to Hacker News Radio, read by" in intro
     assert "Edition" not in intro and "Edition" not in outro
+
+
+# --- the cast page knows there are two hosts ------------------------------------------------------
+
+def test_voices_json_names_both_hosts_by_edition(tmp_path, monkeypatch):
+    import json
+    from hn_radio import manifest
+    _production(monkeypatch)
+    monkeypatch.setattr(config, "EPISODES_DIR", tmp_path)
+    data = json.loads(manifest.build_voices_json(tmp_path).read_text())
+    assert data["hosts"] == {
+        "am": {"voice": "flux-alexis-en", "name": "Alexis", "edition": "Morning Edition"},
+        "pm": {"voice": "flux-cole-en", "name": "Cole", "edition": "Afternoon Edition"},
+    }
+    assert data["host_voice"] == "flux-alexis-en", "the old key stays for older readers"
+    # Neither host is offered as the catalog view's co-host.
+    cohost = [s for s in data["seating"] if s["role"] == "cohost"][0]
+    assert cohost["voice"] not in {"flux-alexis-en", "flux-cole-en"}
