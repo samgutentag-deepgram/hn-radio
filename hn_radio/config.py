@@ -194,6 +194,11 @@ SITE_CATEGORY = "Technology"
 # Haley for weeks: the v1 legacy path (`voices.assign_voice`) read this and the panel path read
 # the cast, and the two disagreed with nothing to notice it. One host, one id, both paths.
 HOST_VOICE = "flux-alexis-en"
+# The afternoon has its own host. Alexis opens the Morning Edition and Cole opens the Afternoon
+# Edition, so a listener who hears both shows in a day hears two people, not one person twice.
+# `cast.host_candidates` reads this; `HOST_VOICE` above stays the morning and calendar-day host,
+# and the only one the v1 `--legacy` path knows about.
+AFTERNOON_HOST_VOICE = "flux-cole-en"
 # Contrasting voices so a multi-person thread is easy to follow by ear.
 COMMENTER_VOICES = [
     "flux-cole-en",

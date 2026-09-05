@@ -128,7 +128,9 @@ def test_the_rotation_reuses_a_recent_voice_rather_than_failing(monkeypatch):
     makes: a repeated co-host is a worse episode, no episode is worse than that.
     """
     monkeypatch.setattr(config, "active_voice_catalog", lambda: dict(config.VOICE_CATALOG))
-    everyone = [v for v in config.VOICE_CATALOG if v != config.HOST_VOICE]
+    # Every voice that can hold the second chair: the catalog minus BOTH hosts, since the
+    # afternoon host is kept out of the morning rotation and vice versa (see `host_voice_ids`).
+    everyone = [v for v in config.VOICE_CATALOG if v not in cast.host_voice_ids()]
     pool = cast.cohost_candidates(recent_voices=everyone, host_voice=config.HOST_VOICE)
     assert sorted(pool) == sorted(everyone), "a fully-recent pool must still offer everyone"
     ep_cast, _ = cast.episode_cast(before="2026-08-20", recent_voices=everyone)
@@ -138,7 +140,7 @@ def test_the_rotation_reuses_a_recent_voice_rather_than_failing(monkeypatch):
 def test_the_rotation_puts_fresh_voices_ahead_of_recent_ones(monkeypatch):
     """The ordering IS the rule, so assert on it directly rather than only on the outcome."""
     monkeypatch.setattr(config, "active_voice_catalog", lambda: dict(config.VOICE_CATALOG))
-    stale = ["flux-wade-en", "flux-cole-en", "flux-jack-en"]
+    stale = ["flux-wade-en", "flux-bree-en", "flux-jack-en"]  # not Cole: he hosts the afternoon now
     pool = cast.cohost_candidates(recent_voices=stale, host_voice=config.HOST_VOICE)
     first_stale = min(pool.index(v) for v in stale)
     assert first_stale == len(pool) - len(stale), (

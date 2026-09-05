@@ -25,7 +25,7 @@ from typing import List, Optional
 
 from . import (config, deslop, editions, ingest, music, normalize, pacing, render, sources,
                status, stitch, verify, voices)
-from .cast import episode_cast as episode_cast_for
+from .cast import RoleUnavailable, episode_cast as episode_cast_for, host_name_for
 from .editions import DEFAULT_EDITION, EDITION_TITLES
 from .models import Episode, ScriptSegment
 from .window import AFTERNOON, MORNING, EpisodeWindow, WindowLike, coerce as _window
@@ -70,9 +70,18 @@ def _panel_title(edition: str, stories, top_story, episode_date: date) -> str:
 # date is spoken outright, and the stories are framed as yesterday's relative to THAT. A listener
 # hearing it a week later still hears an internally consistent episode, which is what an archive
 # needs.
-_INTRO = ("Hi, this is {host}. You're listening to Hacker News Radio, read by Deepgram Flux. "
+_INTRO = ("Hi, this is {host}. You're listening to {show}, read by Deepgram Flux. "
           "It's {date}, and I have {cohost} with me. {framing}")
-_OUTRO = ("{framing} From me and {cohost}, on Deepgram Flux, we'll talk to you {next}.")
+_OUTRO = ("{framing}{handoff} From me and {cohost}, on Deepgram Flux, we'll talk to you {next}.")
+
+# What the host calls the show. The scheduled runs SAY their edition, so the spoken open matches
+# the "Morning Edition:" / "Afternoon Edition:" prefix on the title; the calendar shape is the
+# original once-a-day show and keeps its plain name.
+_INTRO_SHOW = {
+    None:      "Hacker News Radio",
+    MORNING:   "the Morning Edition of Hacker News Radio",
+    AFTERNOON: "the Afternoon Edition of Hacker News Radio",
+}
 
 # The framing depends on the WINDOW SHAPE, not the clock. A calendar-day episode covers all of
 # yesterday and says so. A scheduled run covers the eighteen hours before it started, which is
@@ -89,10 +98,20 @@ _INTRO_FRAMING = {
 # is why this is keyed by slot and named for the title it produces.
 SLOT_TITLES = {MORNING: "Morning Edition", AFTERNOON: "Afternoon Edition"}
 
+# Each host promises their OWN next show, not the next show. The two editions have different hosts,
+# so "we'll talk to you this afternoon" from the morning host would be a promise Cole keeps.
 _OUTRO_FRAMING = {
     None:      ("That's yesterday's front page.", "tomorrow"),
-    MORNING:   ("That's the front page this morning.", "this afternoon"),
-    AFTERNOON: ("That's the front page this afternoon.", "tomorrow morning"),
+    MORNING:   ("That's the Morning Edition.", "tomorrow morning"),
+    AFTERNOON: ("That's the Afternoon Edition.", "tomorrow afternoon"),
+}
+# The hand-off to the other edition, spoken by name. `_outro_segments` drops the sentence when the
+# other host cannot be resolved, or resolves to the same person (a catalog where both fallbacks
+# collapse onto one voice), because "Alexis has the afternoon" from Alexis is a line a listener
+# can hear.
+_OUTRO_HANDOFF = {
+    MORNING:   (AFTERNOON, "{other} has the Afternoon Edition for you later today."),
+    AFTERNOON: (MORNING, "{other} has the Morning Edition for you tomorrow."),
 }
 
 
@@ -138,6 +157,7 @@ def _intro_segments(cast, when: WindowLike) -> List[ScriptSegment]:
     """`when` is a `date` (the calendar-day episode for that date) or an `EpisodeWindow`."""
     win = _window(when)
     text = _INTRO.format(host=cast.anchor.name, cohost=cast.cohost.name,
+                         show=_INTRO_SHOW[win.slot],
                          date=win.air_date.strftime("%A, %B %-d"),
                          framing=_INTRO_FRAMING[win.slot])
     return [ScriptSegment(order=0, role="anchor", speaker_key=cast.anchor.name, desk="anchor",
@@ -148,8 +168,18 @@ def _outro_segments(cast, when: Optional[WindowLike] = None) -> List[ScriptSegme
     """`when=None` is the calendar-day framing, which is what every pre-window caller meant."""
     slot = _window(when).slot if when is not None else None
     framing, nxt = _OUTRO_FRAMING[slot]
+    handoff = ""
+    if slot in _OUTRO_HANDOFF:
+        other_slot, line = _OUTRO_HANDOFF[slot]
+        try:
+            other = host_name_for(other_slot)
+        except RoleUnavailable:
+            other = None
+        if other and other != cast.anchor.name:
+            handoff = " " + line.format(other=other)
     return [ScriptSegment(order=0, role="anchor", speaker_key=cast.anchor.name, desk="anchor",
-                          text=_OUTRO.format(framing=framing, cohost=cast.cohost.name, next=nxt))]
+                          text=_OUTRO.format(framing=framing, handoff=handoff,
+                                             cohost=cast.cohost.name, next=nxt))]
 
 
 def _previously_covered(before_id: str) -> set:
@@ -235,7 +265,7 @@ def run_panel(
     # being generated (a backfill must not treat later episodes as recent, and a re-render of
     # today must not read its own previous script), and it seeds the co-host rotation, so the
     # same date always casts the same co-host.
-    cast, substitutions = episode_cast_for(before=episode_id)
+    cast, substitutions = episode_cast_for(before=episode_id, slot=win.slot)
     names = ", ".join(d.name for d in [cast.anchor] + list(cast.desks))
     log(f"      cast: {names}"
         + (f" (covering for {', '.join(substitutions.values())})" if substitutions else ""))

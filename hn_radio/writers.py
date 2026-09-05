@@ -474,7 +474,7 @@ class ClaudeWriter(ScriptWriter):
             "You are the head writer for HN Radio, a short daily podcast that reads the Hacker "
             "News front page as a produced show. You write the full spoken script.\n\n"
             f"It is a TWO-HANDER: {anchor.name} hosts ({anchor.persona}), and "
-            f"{cohost.name} is in the second chair with her today.\n{regulars}\n"
+            f"{cohost.name} is in the second chair today.\n{regulars}\n"
             "They are equals covering the same stories together. There are no specialist "
             "desks: both of them read, react, disagree, and follow up on everything. Never "
             f"assign a subject to one of them, never introduce {cohost.name} as a beat "

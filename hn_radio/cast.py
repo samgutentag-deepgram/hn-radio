@@ -37,6 +37,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Sequence
 
 from . import config
+from .window import AFTERNOON
 
 COHOST_ROLE = "cohost"
 
@@ -111,7 +112,7 @@ DEFAULT_CAST = Cast(
     ),
     desks=[Desk(
         role=COHOST_ROLE, name="Wade", voice_id="flux-wade-en",
-        beat="Second chair. Takes every story with the host and reads the thread with her.",
+        beat="Second chair. Takes every story with the host and reads the thread with them.",
         persona="Curious and specific. Says the interesting part, not the whole page.",
     )],
 )
@@ -136,6 +137,41 @@ class RoleUnavailable(Exception):
 ROLE_VOICES = {
     "anchor":   ["flux-alexis-en", "flux-haley-en"],
 }
+
+# The Afternoon Edition's host, same shape: most-wanted first, a named fallback second. Cole is
+# the afternoon host by Sam's pick; Jack stands in if Cole ever leaves the catalog, and the show
+# says so the same way it says "Alexis is out today". `ROLE_VOICES["anchor"]` above remains the
+# morning and calendar-day list, unrenamed, because a row of tests and the archive re-render reach
+# it by that name.
+AFTERNOON_HOST_VOICES = [config.AFTERNOON_HOST_VOICE, "flux-jack-en"]
+
+# `-am`, `-pm`, or nothing, read off an episode id. `episode_cast` uses it when a caller hands over
+# an id but no slot, which is every caller that predates the two-host show.
+_SLOT_SUFFIX = re.compile(r"-(am|pm)$")
+
+
+def slot_of_episode_id(episode_id: Optional[str]) -> Optional[str]:
+    m = _SLOT_SUFFIX.search(episode_id or "")
+    return m.group(1) if m else None
+
+
+def host_candidates(slot: Optional[str]) -> List[str]:
+    """The ordered host preferences for a slot. Afternoon gets its own host; everything else Alexis."""
+    return AFTERNOON_HOST_VOICES if slot == AFTERNOON else ROLE_VOICES["anchor"]
+
+
+def host_voice_ids() -> set:
+    """Every voice that hosts SOME edition. Kept out of the co-host rotation in BOTH shows, so the
+    afternoon host is never the morning's second chair and vice versa: each of them is one
+    character with one job, and a listener hearing Cole at 3pm should not have heard him as
+    somebody's guest at 3am. Only the first preference per slot; a fallback host (Haley, Jack) is
+    an ordinary co-host candidate until the day it actually has to host."""
+    return {ROLE_VOICES["anchor"][0], AFTERNOON_HOST_VOICES[0]}
+
+
+def host_name_for(slot: Optional[str]) -> str:
+    """The display name of whoever would host `slot` today. For the outro's hand-off line."""
+    return resolve_role("anchor", candidates=host_candidates(slot))[0].name
 
 
 def resolve_role(role: str, exclude: Optional[set] = None,
@@ -298,8 +334,9 @@ def cohost_candidates(recent_voices: Sequence[str], host_voice: str,
     `sorted()` rather than catalog order: `active_voice_catalog` returns a dict whose order comes
     from a literal, and the rotation must not silently change meaning when someone adds a row.
     """
+    hosts = host_voice_ids() | {host_voice}
     pool = [v for v in sorted(config.active_voice_catalog())
-            if v != host_voice and v not in config.RETIRED_VOICES]
+            if v not in hosts and v not in config.RETIRED_VOICES]
     if not pool:
         return []
     start = int(hashlib.sha256((before or "").encode("utf-8")).hexdigest(), 16) % len(pool)
@@ -308,8 +345,13 @@ def cohost_candidates(recent_voices: Sequence[str], host_voice: str,
     return [v for v in rotated if v not in recent] + [v for v in rotated if v in recent]
 
 
-def episode_cast(recent_voices: Optional[List[str]] = None, before: Optional[str] = None):
+def episode_cast(recent_voices: Optional[List[str]] = None, before: Optional[str] = None,
+                 slot: Optional[str] = None):
     """The two regulars for ONE episode. Returns (Cast, {role: missing_preferred_name}).
+
+    `slot` picks the host: `AFTERNOON` seats Cole, anything else seats Alexis. Left None, it is
+    read off `before` (`-am` / `-pm`), so every caller that passes an episode id and nothing else
+    already casts the right host.
 
     Returns an ordinary Cast on purpose. Every downstream consumer already reads `cast.anchor`
     and `cast.desks`, so changing who sits in them needs no change in the writers, in
@@ -328,10 +370,12 @@ def episode_cast(recent_voices: Optional[List[str]] = None, before: Optional[str
     is what actually shipped before `exclude` existed.
     """
     substitutions = {}
+    if slot is None:
+        slot = slot_of_episode_id(before)
     # Each seat resolves independently, so without this nothing stops one voice taking both.
     taken: set = set()
 
-    anchor, anchor_sub = resolve_role("anchor", exclude=taken)
+    anchor, anchor_sub = resolve_role("anchor", exclude=taken, candidates=host_candidates(slot))
     if anchor_sub:
         substitutions["anchor"] = anchor_sub
     taken.add(anchor.voice_id)

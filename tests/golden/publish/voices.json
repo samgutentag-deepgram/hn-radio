@@ -283,13 +283,6 @@
       "voice": "flux-alexis-en",
       "beat": "Hosts. Opens the show, names the day's headlines, signs off.",
       "persona": "Warm, quick, lightly wry. Keeps the show moving."
-    },
-    {
-      "role": "cohost",
-      "name": "Cole",
-      "voice": "flux-cole-en",
-      "beat": "Second chair. Takes every story with the host and reads the thread with her.",
-      "persona": "Curious and specific. Says the interesting part, not the whole page."
     }
   ],
   "host": "api.deepgram.com",
@@ -312,7 +305,6 @@
   "presets": {
     "flux": {
       "anchor": "flux-alexis-en",
-      "cohost": "flux-cole-en",
       "guest": "flux-cole-en",
       "drama": "flux-cole-en"
     }

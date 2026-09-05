@@ -9,8 +9,9 @@ Live at [dg-devrel-hn-radio.fly.dev](https://dg-devrel-hn-radio.fly.dev). The fe
 confirmed subscribable in Overcast. A cron job on the Fly volume builds an episode from the last
 18 hours of the front page at 3am and 3pm Pacific, and re-runs a take that fails verification.
 
-Each episode is a two-person show. Alexis hosts every episode; the second chair goes to a different
-voice from the Flux catalog every episode, with a twenty-episode no-repeat window. The two of them
+Each episode is a two-person show. Alexis hosts the Morning Edition and Cole hosts the Afternoon
+Edition; the second chair goes to a different voice from the Flux catalog every episode, with a
+twenty-episode no-repeat window, and neither host ever sits in it. The two of them
 cover every story together and read the Hacker News comments themselves, naming the commenter first,
 inside the story the comment belongs to. It opens with a ten-word headline per story, covers three
 stories with a real follow-up question on each, and carries a music theme with a sting at every
@@ -197,7 +198,7 @@ render -> [cache] -> pace -> music -> stitch -> chapters -> publish
 |--------|--------------|
 | `ingest.py` | Top stories and comments from the HN Firebase API. Past dates come from Algolia HN Search instead |
 | `editions.py` | Reweights the pool by edition and picks the stories that make the show |
-| `cast.py` | Casting, two seats. The host resolves against an ordered list of **characters**, so an unavailable voice becomes an in-fiction line ("Alexis is out today") instead of a silent swap. The co-host has no such list on purpose: its candidates are computed per episode from the live catalog, rotated by a hash of the episode id, and held back for `COHOST_RECENCY_WINDOW` episodes after a turn. One voice cannot hold both seats |
+| `cast.py` | Casting, two seats. The host is picked by slot (Alexis mornings, Cole afternoons) and resolves against an ordered list of **characters**, so an unavailable voice becomes an in-fiction line ("Alexis is out today") instead of a silent swap. The co-host has no such list on purpose: its candidates are computed per episode from the live catalog, rotated by a hash of the episode id, and held back for `COHOST_RECENCY_WINDOW` episodes after a turn. One voice cannot hold both seats |
 | `sources.py` | Reads what each story actually links to (GitHub README via the API, otherwise the page text) and makes an extractive summary, so the two regulars have something real to say |
 | `writers.py` | `PanelWriter` (deterministic) or `ClaudeWriter` (Opus 5). An LLM failure falls back to the deterministic writer so the show still ships |
 | `normalize.py` | Abbreviation expansion on the input text (HN becomes Hacker News). Nothing phonetic |

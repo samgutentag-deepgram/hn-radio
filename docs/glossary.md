@@ -98,7 +98,7 @@ listener hears and the show says so rather than silently sounding different.
 
 | Term | Meaning |
 |---|---|
-| **Host** | The permanent first chair. Alexis every episode, `flux-alexis-en`. Role key `anchor`, which is not a rename waiting to happen: it is written into every `script.json` on disk and read by `custom.py`, `recast.py` and the site's segment colors. |
+| **Host** | The first chair, one per edition: Alexis (`flux-alexis-en`) for the Morning Edition and the calendar-day archive, Cole (`flux-cole-en`) for the Afternoon Edition. Neither is ever the other's co-host. Role key `anchor`, which is not a rename waiting to happen: it is written into every `script.json` on disk and read by `custom.py`, `recast.py` and the site's segment colors. |
 | **Co-host** | The second chair, re-cast every episode from the whole Flux catalog. Role key `cohost`. |
 | **Desk** | A seat plus its beat and persona. In the daily show there are two and neither is themed. A themed desk, with routing keywords attached, now exists only in a custom edition and in the archive. |
 | **Correspondent** | RETIRED. Named the one themed desk covering stories in an episode, chosen by how well the day's news matched its keywords. Nothing routes a story to a speaker any more. Say **co-host**. |

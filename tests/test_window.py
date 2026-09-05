@@ -108,16 +108,23 @@ def test_the_morning_show_says_overnight_and_hands_to_the_afternoon(monkeypatch)
     outro = pipeline._outro_segments(ep_cast, w)[0].text
     assert "Saturday, September 5" in intro, "the air date is the run's own date now"
     assert "overnight" in intro and "yesterday" not in intro
-    assert "this morning" in outro and "this afternoon" in outro
+    assert "the Morning Edition of Hacker News Radio" in intro
+    assert outro.startswith("That's the Morning Edition.")
+    assert "Cole has the Afternoon Edition for you later today" in outro
+    assert "tomorrow morning" in outro
 
 
 def test_the_afternoon_show_says_today_and_hands_to_tomorrow_morning(monkeypatch):
-    ep_cast = _cast(monkeypatch)
+    monkeypatch.setattr(config, "active_voice_catalog", lambda: dict(config.VOICE_CATALOG))
+    ep_cast = cast.episode_cast(before="2026-09-05-pm")[0]  # the afternoon cast, so Cole hosts
     w = EpisodeWindow.ending_at(_at(2026, 9, 5, 15))
     intro = pipeline._intro_segments(ep_cast, w)[0].text
     outro = pipeline._outro_segments(ep_cast, w)[0].text
     assert "today" in intro and "yesterday" not in intro
-    assert "this afternoon" in outro and "tomorrow morning" in outro
+    assert "the Afternoon Edition of Hacker News Radio" in intro
+    assert outro.startswith("That's the Afternoon Edition.")
+    assert "Alexis has the Morning Edition for you tomorrow" in outro
+    assert "tomorrow afternoon" in outro
 
 
 def test_the_claude_prompt_describes_the_window_not_a_calendar_day(monkeypatch):
