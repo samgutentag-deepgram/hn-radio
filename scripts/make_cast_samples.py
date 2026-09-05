@@ -6,14 +6,19 @@ with, from several different scripts and several different eras, so the grid cou
 compare voices: a voice reading a forum comment and a voice reading a show open do not sound
 comparable even when they are.
 
-So every card reads the SAME line, and the line is the show's own cold open dated 2026-08-12:
+So every card reads the SAME line, with one substitution: each voice says its own name.
 
-    From Deepgram, this is Hacker News Radio. It's Wednesday, August 12, and here's what's
-    happening today. Let's get you caught up.
+    Hello, this is Cole, being read to you on Deepgram Flux.
 
-That is Flux TTS GA day, and it is a Wednesday (verified, not assumed). Nothing in the app reads
-the date, so it is an easter egg for anyone who presses enough cards to notice that all 36 voices
-are introducing a show on a day that already happened. If you regenerate these, keep the date.
+Sam's call, 2026-09-04, when the cast page went hover-to-play: a hover sample has about three
+seconds to say who this is, and a voice saying its own name is the whole point of the grid. The
+line is otherwise identical across the catalog so the comparison stays fair. `{name}` in `--line`
+is the display name from the catalog.
+
+Until then the line was the show's own cold open dated 2026-08-12, Flux TTS GA day, kept as an
+easter egg. That read is gone from disk; the wording is here if anyone wants it back:
+"From Deepgram, this is Hacker News Radio. It's Wednesday, August 12, and here's what's happening
+today. Let's get you caught up."
 
 SUPERSEDES hn_radio.recast.build_samples, which was deleted. That function wrote
 the SAME episodes/samples/<voice_id>.wav paths this script does, with a different sample line, and
@@ -62,9 +67,8 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 from hn_radio import config, render, stitch  # noqa: E402
 
-# Keep the date. See the module docstring.
-CAST_LINE = ("From Deepgram, this is Hacker News Radio. It's Wednesday, August 12, "
-             "and here's what's happening today. Let's get you caught up.")
+# `{name}` is the voice's display name. See the module docstring.
+CAST_LINE = "Hello, this is {name}, being read to you on Deepgram Flux."
 
 OUT = config.EPISODES_DIR / "samples"
 
@@ -80,7 +84,8 @@ def voice_ids(catalog_only: bool) -> list:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="make_cast_samples")
-    ap.add_argument("--line", default=CAST_LINE, help="what every voice reads")
+    ap.add_argument("--line", default=CAST_LINE,
+                    help="what every voice reads; {name} is replaced with the voice's display name")
     ap.add_argument("--fresh", action="store_true", help="re-render voices already on disk")
     ap.add_argument("--catalog-only", action="store_true",
                     help="skip the retired ids the cast page labels rather than hides")
@@ -116,7 +121,8 @@ def main(argv=None) -> int:
             # stitch.stitch for a single segment: byte-identical to a hand-rolled wave.open
             # (verified by sha256, odd trailing sample included) and it is the one place in this
             # repo that knows how to write a WAV. A local copy was a second place to keep correct.
-            secs = stitch.stitch([render.render_segment(args.line, vid, key)], wav)
+            line = args.line.format(name=config.voice_name(vid) or vid)
+            secs = stitch.stitch([render.render_segment(line, vid, key)], wav)
             print(f"  [{i:2}/{len(wanted)}] ok      {vid} ({secs:.1f}s)")
             ok += 1
         except Exception as e:  # one dead id must not cost the other 35

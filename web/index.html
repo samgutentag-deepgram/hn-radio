@@ -450,9 +450,12 @@ from plain text with no markup or tuning.</p>
   // permanent host plus a co-host who changes every episode. The build page does still seat topic
   // desks (see hn_radio/custom.py, which is why the page itself still says so), but describing the
   // SHOW that way was wrong, and this line sits under the show's own headline.
+  //
+  // "Build your own edition" (build.html) is UNLISTED as of 2026-09-04, not removed: the page, the
+  // picker and POST /api/build all still work at their URLs. Sam's call: nobody is using it right
+  // now, so it earns no headline slot. Relink it here if that changes.
   document.getElementById('subscribe-note').innerHTML =
-    '<a href="cast.html">Meet the cast</a> &middot; '
-    + '<a href="build.html">Build your own edition</a> and cast every voice yourself.';
+    '<a href="cast.html">Meet the cast</a>: two hosts, and every voice in the Flux catalog.';
 
   fetch('/episodes/index.json').then(function (r) { return r.json(); }).then(function (d) {
     ul.innerHTML = '';

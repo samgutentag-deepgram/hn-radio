@@ -2142,6 +2142,27 @@ audio { width: 100%; margin: 0.6rem 0 0.4rem; }
    not mark which two voices the show has stopped casting; the `retired` flag is
    still in voices.json for anything that needs it. See the note in cast.html. */
 .cast-card.is-host { border-left-width: 5px; }
+/* AND THE HOSTS ARE DOUBLE WIDTH, 2026-09-04. Two hosts, two editions, so the two
+   host cards take the first row between them: Alexis at the left, Cole at the
+   right, each spanning two of the four columns. Inside, the card turns into a
+   row, orb and name on the left and the character note on the right, and the
+   orb grows to 4.4rem because here it is not competing with 34 neighbours for
+   the same first-row height. At three columns two double cards will not share a
+   row, so each takes the full row; at one column the span is meaningless and
+   the row layout goes back to a column. */
+.cast-card.is-host {
+  grid-column: span 2;
+  flex-direction: row;
+  align-items: center;
+  gap: 1.2rem;
+}
+.cast-card.is-host .cast-top { flex: 0 0 auto; }
+.cast-card.is-host .cast-play { --orb-size: 4.4rem; }
+.cast-card.is-host .cast-body { display: flex; flex-direction: column; gap: 0.35rem; }
+@media (max-width: 68rem) { .cast-card.is-host { grid-column: 1 / -1; } }
+@media (max-width: 34rem) {
+  .cast-card.is-host { grid-column: auto; flex-direction: column; align-items: stretch; gap: 0.35rem; }
+}
 /* A voice whose sample never rendered. The card stays pressable so the message can
    explain itself, and the strikethrough on the id says which file is missing.
    The message lives in .cast-err rather than in .cast-role: .cast-role is the

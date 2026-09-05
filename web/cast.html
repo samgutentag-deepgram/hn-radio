@@ -25,7 +25,7 @@
 <h1>The Cast</h1>
 <p class="lede">Every voice in the published Flux TTS catalog, on one grid. HN Radio is two people,
 twice a day: Alexis hosts the Morning Edition, Cole hosts the Afternoon Edition, and each of them has
-a co-host drawn from this page. Press any card to hear that voice open the show. Each carries its own palette, and it is the same palette you see beside that
+a co-host drawn from this page. Hover over a card, or press it, to hear that voice introduce itself. Each carries its own palette, and it is the same palette you see beside that
 speaker in an episode script.</p>
 
 <!--
@@ -59,6 +59,7 @@ speaker in an episode script.</p>
          placeholder="name, accent, or character (try: british, energetic)"
          aria-describedby="cast-count">
   <p class="cast-count" id="cast-count" role="status"></p>
+  <p class="cast-count" id="cast-hint" role="status"></p>
 </div>
 
 <div class="cast-grid" id="grid"></div>
@@ -80,6 +81,7 @@ speaker in an episode script.</p>
   var grid = document.getElementById('grid');
   var search = document.getElementById('cast-search');
   var count = document.getElementById('cast-count');
+  var hint = document.getElementById('cast-hint');
 
   // The card's searchable text, built once at creation. Filtering re-reads this rather than the
   // DOM, so a keystroke never triggers layout just to decide what to hide.
@@ -142,8 +144,7 @@ speaker in an episode script.</p>
     var err = document.createElement('p'); err.className = 'cast-err'; err.hidden = true;
     body.appendChild(err);
 
-    el.addEventListener('click', function () {
-      if (playing === v.id && !audio.paused) { audio.pause(); return; }
+    function start(fromHover) {
       if (playing !== v.id) { audio.src = '/episodes/samples/' + v.id + '.wav'; playing = v.id; }
       var started = audio.play();
       if (started && started.catch) started.catch(function (e) {
@@ -153,6 +154,15 @@ speaker in an episode script.</p>
         // interaction on a 36-card grid whose whole purpose is comparing voices back to back. The
         // bare catch struck through a voice id whose file was verified 200.
         if (e && e.name === 'AbortError') return;
+        // NOTALLOWEDERROR IS THE AUTOPLAY POLICY, not a missing file either. A hover is not a
+        // user gesture, so until the visitor has clicked somewhere on the page the browser refuses
+        // to start audio from mouseenter. Say so once and keep the card pressable; after the
+        // first press anywhere, hovering works for the rest of the visit.
+        if (e && e.name === 'NotAllowedError') {
+          playing = null;
+          if (fromHover) hint.textContent = 'Press any card once, then hovering plays.';
+          return;
+        }
         el.classList.add('is-silent');
         err.hidden = false;
         err.textContent = 'No sample rendered. Run scripts/make_cast_samples.py.';
@@ -160,6 +170,26 @@ speaker in an episode script.</p>
         // later press re-played the same dead src and re-failed, so one 404 was permanent.
         playing = null;
       });
+    }
+
+    el.addEventListener('click', function () {
+      if (playing === v.id && !audio.paused) { audio.pause(); return; }
+      hint.textContent = '';
+      start(false);
+    });
+
+    // HOVER PLAYS. The sample is one three-second sentence, so the cheapest way to compare two
+    // voices is to move the mouse between two cards. A short delay keeps a sweep across the grid
+    // from firing every card it crosses; leaving the card stops the sound. Touch devices have no
+    // hover and keep the press.
+    var hoverTimer = null;
+    el.addEventListener('mouseenter', function () {
+      clearTimeout(hoverTimer);
+      hoverTimer = setTimeout(function () { start(true); }, 140);
+    });
+    el.addEventListener('mouseleave', function () {
+      clearTimeout(hoverTimer);
+      if (playing === v.id && !audio.paused) audio.pause();
     });
 
     // A later success clears the mark. Without this the strike-through survives a working replay,
@@ -227,14 +257,26 @@ speaker in an episode script.</p>
       if (hostVoice) hosts[hostVoice] = 'Host, every episode';
     }
 
-    list.forEach(function (v) { grid.appendChild(card(v, hosts)); });
+    // THE HOSTS LEAD, double width, morning on the left and afternoon on the right; everyone
+    // else follows in catalog order in the four-across grid. The order is the slot order, not
+    // the alphabet, so Alexis then Cole is a rule and not a coincidence of their initials.
+    var hostOrder = [];
+    if (d.hosts) ['am', 'pm'].forEach(function (slot) {
+      if (d.hosts[slot] && d.hosts[slot].voice) hostOrder.push(d.hosts[slot].voice);
+    });
+    else if (Object.keys(hosts).length) hostOrder = Object.keys(hosts);
+    var leading = hostOrder.map(function (id) {
+      return list.filter(function (v) { return v.id === id; })[0];
+    }).filter(Boolean);
+    var rest = list.filter(function (v) { return hostOrder.indexOf(v.id) === -1; });
+    leading.concat(rest).forEach(function (v) { grid.appendChild(card(v, hosts)); });
     filter();
 
     // Say plainly what these samples are. The line every card reads is dated on purpose;
     // see scripts/make_cast_samples.py.
     var note = document.getElementById('host-note');
-    note.textContent = 'Every card reads the same line, so the grid is a fair comparison rather '
-      + 'than ' + list.length + ' different scripts. '
+    note.textContent = 'Every card reads the same line with its own name in it, so the grid is a '
+      + 'fair comparison rather than ' + list.length + ' different scripts. '
       + 'Rendered against the Flux TTS catalog.';
 
     // Upgrade every card's orb to the real molten object, once the cards exist. No analyser here:
