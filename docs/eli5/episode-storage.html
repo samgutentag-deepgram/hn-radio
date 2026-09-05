@@ -99,34 +99,35 @@
 
 <h2>The disk was full<small>35 episodes on a 1 GB disk</small></h2>
 <figure>
-<svg viewBox="0 0 860 400" role="img" aria-label="Before: a small donut for a 1 gigabyte disk, 98 percent filled. After: a donut more than twice the diameter for a 5 gigabyte disk, 4 percent filled.">
+<svg viewBox="0 0 860 410" role="img" aria-label="Before: a donut for the 1 gigabyte disk, 98 percent filled. After: the same size donut for the 5 gigabyte disk, 4 percent filled.">
   <text x="200" y="24" class="label" text-anchor="middle">BEFORE</text>
   <text x="200" y="44" class="mini muted" text-anchor="middle">1 GB disk</text>
-  <path d="M200.0 126.0 A64 64 0 1 1 193.4 126.3 L196.0 151.8 A38.4 38.4 0 1 0 200.0 151.6 Z" class="s1 slice"><title>used: 958 MB</title></path>
-  <path d="M193.4 126.3 A64 64 0 0 1 200.0 126.0 L200.0 151.6 A38.4 38.4 0 0 0 196.0 151.8 Z" class="track slice"><title>free: 16 MB</title></path>
-  <text x="200" y="192" class="label" text-anchor="middle">98%</text>
-  <text x="200" y="208" class="mini muted" text-anchor="middle">full</text>
-  <text x="200" y="288" class="mini" text-anchor="middle">used 958 MB, free 16 MB</text>
-  <text x="200" y="312" class="mini muted" text-anchor="middle">35 episodes at about 40 MB each.</text>
-  <text x="200" y="330" class="mini muted" text-anchor="middle">The 36th rendered, then had nowhere to go.</text>
+  <path d="M200.0 50.0 A120 120 0 1 1 187.6 50.6 L192.8 100.4 A70 70 0 1 0 200.0 100.0 Z" class="s1 slice"><title>used: 958 MB</title></path>
+  <path d="M187.6 50.6 A120 120 0 0 1 200.0 50.0 L200.0 100.0 A70 70 0 0 0 192.8 100.4 Z" class="track slice"><title>free: 16 MB</title></path>
+  <text x="200" y="166" class="big" text-anchor="middle">98%</text>
+  <text x="200" y="190" class="mini muted" text-anchor="middle">full</text>
+  <text x="200" y="324" class="mini" text-anchor="middle">used 958 MB, free 16 MB</text>
+  <text x="200" y="346" class="mini muted" text-anchor="middle">35 episodes at about 40 MB each.</text>
+  <text x="200" y="364" class="mini muted" text-anchor="middle">The 36th rendered, then had nowhere to go.</text>
 
   <line x1="430" y1="20" x2="430" y2="380" class="line" stroke-width="1"/>
 
   <text x="640" y="24" class="label" text-anchor="middle">AFTER</text>
-  <text x="640" y="44" class="mini muted" text-anchor="middle">5 GB disk, drawn to scale</text>
-  <path d="M640.0 46.5 A143.5 143.5 0 0 1 675.7 51.0 L661.4 106.6 A86.1 86.1 0 0 0 640.0 103.9 Z" class="s1 slice"><title>used: 196 MB</title></path>
-  <path d="M675.7 51.0 A143.5 143.5 0 1 1 640.0 46.5 L640.0 103.9 A86.1 86.1 0 1 0 661.4 106.6 Z" class="track slice"><title>free: 4704 MB</title></path>
-  <text x="640" y="188" class="big" text-anchor="middle">4%</text>
-  <text x="640" y="212" class="mini muted" text-anchor="middle">full</text>
-  <text x="640" y="368" class="mini" text-anchor="middle">used 196 MB, free 4.5 GB</text>
-  <text x="640" y="392" class="mini muted" text-anchor="middle">the same 36 episodes at 5.5 MB each</text>
+  <text x="640" y="44" class="mini muted" text-anchor="middle">5 GB disk</text>
+  <path d="M640.0 50.0 A120 120 0 0 1 669.8 53.8 L657.4 102.2 A70 70 0 0 0 640.0 100.0 Z" class="s1 slice"><title>used: 196 MB</title></path>
+  <path d="M669.8 53.8 A120 120 0 1 1 640.0 50.0 L640.0 100.0 A70 70 0 1 0 657.4 102.2 Z" class="track slice"><title>free: 4704 MB</title></path>
+  <text x="640" y="166" class="big" text-anchor="middle">4%</text>
+  <text x="640" y="190" class="mini muted" text-anchor="middle">full</text>
+  <text x="640" y="324" class="mini" text-anchor="middle">used 196 MB, free 4.5 GB</text>
+  <text x="640" y="346" class="mini muted" text-anchor="middle">The same 36 episodes at 5.5 MB each,</text>
+  <text x="640" y="364" class="mini muted" text-anchor="middle">on a disk five times the size.</text>
 
-  <g class="mini" transform="translate(0,392)">
+  <g class="mini" transform="translate(0,402)">
     <rect x="0" y="-10" width="12" height="12" rx="2" class="s1"/><text x="18" y="0">used</text>
     <rect x="80" y="-10" width="12" height="12" rx="2" class="track"/><text x="98" y="0">free</text>
   </g>
 </svg>
-<figcaption>Both disks drawn with area proportional to capacity. The WAVs and PCM were deleted from the disk by hand; the code now never leaves them behind.</figcaption>
+<figcaption>Each ring is its own disk at 100 percent. The WAVs and PCM were deleted from the disk by hand; the code now never leaves them behind.</figcaption>
 </figure>
 
 <h2>Runway<small>How long until the shelf is full again, at two shows a day</small></h2>
