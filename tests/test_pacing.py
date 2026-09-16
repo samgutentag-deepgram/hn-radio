@@ -271,3 +271,62 @@ def test_a_comment_boundary_is_not_read_as_a_story_change():
     commenter = seg(2, role="commenter", speaker="pg", hn=999)
     assert pacing.boundary_kind(desk, commenter, {100}) == "into_comment"
     assert pacing.boundary_kind(commenter, desk, {100}) == "out_of_comment"
+
+
+# --- the two-part cold open (2026-09-16) -------------------------------------------------------
+#
+# The cold open stopped being one segment: the tease is the anchor and the co-host trading a
+# sentence, then the preview is a third segment. Those boundaries are now real gaps in the audio
+# instead of pauses inside a single read, and at `exchange` (0.16s) they read as a conversational
+# turn when what they are is a list changing item.
+
+
+def _two_part_cold_open():
+    return [
+        seg(0, role="anchor", speaker="Haley", desk="anchor", hn=None),   # fixed intro
+        seg(1, role="anchor", speaker="Haley", desk="anchor", hn=None),   # tease, the lead story
+        seg(2, speaker="Marcus", hn=None),                                # tease, the co-host
+        seg(3, role="anchor", speaker="Haley", desk="anchor", hn=None),   # preview, the rest
+        seg(4, role="anchor", speaker="Haley", desk="anchor", hn=101),
+        seg(5, speaker="Marcus", hn=101),
+        seg(6, role="anchor", speaker="Haley", desk="anchor", hn=202),
+        seg(7, role="anchor", speaker="Haley", desk="anchor", hn=None),   # fixed outro
+    ]
+
+
+def test_cold_open_end_is_the_first_segment_carrying_a_story_id():
+    assert pacing.cold_open_end(_two_part_cold_open()) == 4
+
+
+def test_boundaries_inside_the_cold_open_get_the_cold_open_beat():
+    p = pacing.CONVERSATIONAL
+    plan = pacing.gap_plan(_two_part_cold_open(), p, {101, 202})
+    # tease -> tease, and tease -> preview
+    assert plan[1] == p.cold_open
+    assert plan[2] == p.cold_open
+    # and it is a real change from what a two-voice boundary would otherwise have got
+    assert p.cold_open > p.exchange
+
+
+def test_the_cold_open_beat_matches_the_spacing_used_inside_one_read():
+    """One value, both mechanisms. A listener cannot be told which boundaries in the preview
+    happen to fall between two TTS calls and which fall inside one."""
+    assert pacing.CONVERSATIONAL.cold_open == pacing.COLD_OPEN_PAUSE_SECONDS
+
+
+def test_an_untagged_pair_mid_show_is_still_a_conversational_turn():
+    """Position decides, not shape. Two untagged segments look identical whether they are the
+    tease and the preview or two thoughts in the middle of the show."""
+    segs = _two_part_cold_open()
+    segs[5] = seg(5, speaker="Marcus", hn=None)      # an untagged line mid-rundown
+    plan = pacing.gap_plan(segs, pacing.CONVERSATIONAL, {101, 202})
+    assert plan[4] != pacing.CONVERSATIONAL.cold_open
+
+
+def test_a_policy_without_a_cold_open_value_falls_back_to_its_ordinary_kinds():
+    flat = pacing.GapPolicy(name="x", note="", exchange=0.3, same_speaker=0.3,
+                            into_comment=0.3, out_of_comment=0.3, story_change=0.3,
+                            show_boundary=0.3)
+    assert flat.cold_open is None
+    plan = pacing.gap_plan(_two_part_cold_open(), flat, {101, 202})
+    assert plan[1] == 0.3

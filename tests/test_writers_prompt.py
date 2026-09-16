@@ -338,3 +338,46 @@ def test_the_handoff_rule_does_not_reintroduce_a_per_exchange_mandate():
     for mandate in ("every exchange must", "on each turn", "in every turn",
                     "use their name each", "always use a name"):
         assert mandate not in s.lower(), f"{mandate!r} turns names back into a rule"
+
+
+# --- the two-part cold open and turn length (2026-09-16) ---------------------------------------
+
+
+def test_the_cold_open_is_asked_for_in_two_parts():
+    block = _cold_open_line()
+    assert "TWO PARTS" in block
+    assert "TEASE" in block and "PREVIEW" in block
+
+
+def test_only_the_co_host_tease_line_may_ask_something():
+    block = _cold_open_line()
+    assert "the only question allowed in the cold open" in block
+    # the preview is still the flat, matter-of-fact list it always was
+    assert "MATTER-OF-FACT" in block
+
+
+def test_the_preview_is_still_one_segment():
+    """The audio reason did not change: separate renders put a pause between every headline that
+    no punctuation asked for."""
+    block = _cold_open_line()
+    assert "WHOLE PREVIEW as a SINGLE segment" in block
+
+
+def test_every_cold_open_segment_still_disclaims_a_story_id():
+    assert "source_hn_id 0" in _cold_open_line()
+
+
+def test_the_prompt_asks_for_uneven_turn_lengths():
+    s = _system()
+    assert "TURN LENGTH" in s
+    assert "NEVER WRITE TWO MEDIUM TURNS IN A ROW" in s
+    # the rule carries the measurement it came from, like the rest of this prompt
+    assert "3.9x" in s and "23x" in s
+
+
+def test_the_prompt_asks_one_of_them_to_carry_each_story_and_then_swap():
+    s = _system()
+    assert "ONE OF THEM CARRIES EACH STORY" in s
+    assert "SWAP" in s
+    # and it must not undo the two-equals rule the show was rebuilt around
+    assert "neither is a beat reporter" in s

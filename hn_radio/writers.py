@@ -481,26 +481,38 @@ class ClaudeWriter(ScriptWriter):
             f"reporter, and never have {anchor.name} thank {cohost.name} for a report.\n"
             f"{sub_line}\n"
             "STRUCTURE, in this order:\n"
-            f"1. COLD OPEN: {anchor.name} gives ONE sentence per story, all {n_stories}, each "
-            "TEN WORDS OR FEWER. That cap is hard. These are HEADLINES, roughly the title of "
-            "the article and nothing else: name the thing and what happened to it, then stop. "
-            "No context, no numbers, no analysis, no verdict, and NO SUBORDINATE CLAUSES. If "
-            "the sentence needs a comma it is already too long; cut it rather than rephrase "
-            "it. Every detail you are tempted to add has a home in that story's own coverage. "
-            "Example of the RIGHT length: \"A court fined Meta another half a billion "
-            "dollars.\" Example of TOO LONG: \"A New Mexico court has ordered Meta to pay "
-            "another five hundred and sixty-seven million dollars over harms to kids' mental "
-            "health.\"\n"
-            "   Return the WHOLE cold open as a SINGLE 'anchor' segment containing all of "
-            "those sentences. Each segment is a separate text-to-speech render, so splitting "
-            "the cold open puts seconds of dead air between headlines; let the full stops do "
-            "the pacing. Give the segment source_hn_id 0: it previews the stories, it is not "
-            "any one story's coverage.\n"
+            f"1. COLD OPEN, IN TWO PARTS. Measured across 29 weekday episodes of NPR's Up "
+            "First, every one of which has this shape: a two-voice tease of the lead story, "
+            "then a preview of the rest. The listener meets both people and one real question "
+            "before being handed a list.\n"
+            f"   1a. TEASE, two segments. {anchor.name} states the lead story in ONE sentence, "
+            f"TEN WORDS OR FEWER. Then {cohost.name} answers with ONE sentence, also ten or "
+            "fewer, that raises the stake it turns on. Hers MAY be a question and usually "
+            "should be: it is the only question allowed in the cold open, and it is what stops "
+            "the preview reading as a list read at the listener.\n"
+            f"   1b. PREVIEW, ONE segment, {anchor.name} alone: one sentence per remaining "
+            f"story, each TEN WORDS OR FEWER. That cap is hard. Between them the tease and the "
+            f"preview name all {n_stories}: shorter in each part must not become fewer. These "
+            "are HEADLINES, roughly the title of the article and nothing else: name the thing "
+            "and what happened to it, then stop. No context, no numbers, no analysis, no "
+            "verdict, and NO SUBORDINATE CLAUSES. If the sentence needs a comma it is already "
+            "too long; cut it rather than rephrase it. Every detail you are tempted to add has "
+            "a home in that story's own coverage. Example of the RIGHT length: \"A court fined "
+            "Meta another half a billion dollars.\" Example of TOO LONG: \"A New Mexico court "
+            "has ordered Meta to pay another five hundred and sixty-seven million dollars over "
+            "harms to kids' mental health.\"\n"
+            "   Return the WHOLE PREVIEW as a SINGLE segment: one 'anchor' entry containing all "
+            "of those sentences. The tease is two segments because it is two people; the "
+            "preview is one because it is one person reading a list. Each segment is a separate "
+            "text-to-speech render, so splitting the preview puts seconds of dead air between "
+            "headlines; let the full stops do the pacing. Give EVERY cold-open segment "
+            "source_hn_id 0: they preview the stories, they are not any one story's coverage.\n"
             "   The FINAL cold-open sentence must start with \"And\", so the preview resolves "
             "as a list instead of trailing off. \"And\" counts toward that story's own "
             "ten-word cap, so trim the rest of the sentence to fit it in.\n"
-            "   Read the cold open MATTER-OF-FACT: it is reporting, not selling the episode. "
-            "No build-up, no teasing, no verdicts; the reactions belong in the coverage.\n"
+            f"   Read the PREVIEW MATTER-OF-FACT: it is reporting, not selling the episode. No "
+            f"build-up, no teasing, no verdicts; the reactions belong in the coverage. "
+            f"{cohost.name}'s tease line is the one exception.\n"
             f"2. Then cover each story properly, {anchor.name} and {cohost.name} together.\n"
             "   HAND EACH STORY OVER: the line right before the second person's first turn "
             "on a story is an invitation that says their name and leaves them something to "
@@ -530,6 +542,26 @@ class ClaudeWriter(ScriptWriter):
             f"listener decides whether this is two people or two recordings, so {anchor.name} "
             f"actually asks {cohost.name} something and {cohost.name} opens by answering it, "
             "not with a prepared take.\n"
+            "TURN LENGTH. The single thing that most makes this show sound written rather than "
+            "spoken, and a measured defect rather than a note about voice.\n"
+            "   Every turn here is about the SAME length: across twelve live episodes the "
+            "middle half run 24 to 47 words and two consecutive turns differ by a median of "
+            "1.8x. Across 29 weekday episodes of Up First the middle half run 12 to 57, the "
+            "short-to-long spread is 23x against this show's 3.9x, and consecutive turns differ "
+            "by a median of 3.1x. Both shows change speaker on about 90% of turns, so the "
+            "trading back and forth was never the problem. The EVENNESS is, and longer lines do "
+            "not fix it: longer and even is still even.\n"
+            "   So ONE OF THEM CARRIES EACH STORY, explaining in runs of 60 to 120 words and "
+            "free to keep the floor for two turns together. The other punctuates in 6 to 20: a "
+            "real question, a short reaction, a correction, a pushback. Then they SWAP on the "
+            "next story, so across the episode they stay exact equals and neither is a beat "
+            "reporter, which HARD RULE 2 still governs. Inside one story they are deliberately "
+            "lopsided, and that is the whole effect.\n"
+            "   NEVER WRITE TWO MEDIUM TURNS IN A ROW. If two consecutive lines are both 25 to "
+            "50 words, one of them is wrong: fold it into the line before it or cut it to a "
+            "single sentence. A long run answered by a short jab reads as two people talking. "
+            "Two similar paragraphs traded back and forth reads as a machine alternating "
+            "between two voices.\n"
             "3. THE COMMENT SEGMENT PLAYS INSIDE THAT STORY'S COVERAGE. The source material "
             "marks ONE story as the busiest thread and gives you its real comments. Run them "
             f"as soon as that story's coverage is finished, {anchor.name} and {cohost.name} "
@@ -716,14 +748,21 @@ class ClaudeWriter(ScriptWriter):
 
 
 def _merge_cold_open(segments: List[ScriptSegment]) -> List[ScriptSegment]:
-    """Join a cold open the model split across several segments back into one.
+    """Join the pieces of a cold open the model split up, WITHIN each speaker's run.
 
     Belt to the prompt's braces, and the belt is the part that actually holds. The instruction
-    asks for one segment; a model that returns four anyway produced exactly that defect, and no
-    amount of prompt wording makes that impossible. Merging here does.
+    asks for one segment per voice; a model that returns four anyway produced exactly that
+    defect, and no amount of prompt wording makes that impossible. Merging here does.
 
-    Merges only the LEADING run of host lines that carry no story id, which is what the cold open
-    is and nothing else is:
+    REWRITTEN 2026-09-16 with the two-part cold open. This used to merge the LEADING run of
+    ANCHOR lines and stop dead at the co-host, because a cold open was the host alone. It is not
+    any more: the tease is the anchor and the co-host trading one sentence each, and the old rule
+    would have merged the anchor's tease line into nothing and left the preview -- the part that
+    is actually a list, and the part the 2.9s measurement was taken on -- unmerged behind the
+    co-host. So the scan now runs the whole cold-open region and merges each speaker's own
+    consecutive run inside it.
+
+    The region is still bounded the same way, and that bound is what keeps this safe:
 
       - it stops at the first segment with a `source_hn_id`, so an anchor throw into a story is
         never absorbed. Those open chapter markers (`chapters.build_chapters` uses a story id's
@@ -731,22 +770,30 @@ def _merge_cold_open(segments: List[ScriptSegment]) -> List[ScriptSegment]:
       - it only looks at the top of the script, so two adjacent untagged host lines later in the
         rundown stay separate. Mid-show those are two thoughts in a conversation, and joining
         them would read as one hurried sentence.
-      - the co-host's lines end the run, because a cold open is the host alone.
+      - it merges only segments with the SAME speaker, so the tease stays two voices however the
+        model chose to split each half.
 
     Joined with a single space, so the sentences' own full stops carry the pacing. That is the
     whole fix: the pauses now come from punctuation Flux is reading rather than from the silence
     `stitch` inserts between two separate renders.
     """
-    run = 0
+    region = 0
     for seg in segments:
-        if seg.source_hn_id or seg.desk != "anchor":
+        if seg.source_hn_id:
             break
-        run += 1
-    if run < 2:
+        region += 1
+    if region < 2:
         return segments
-    head = segments[0]
-    head.text = " ".join(seg.text for seg in segments[:run])
-    merged = [head] + segments[run:]
-    for i, seg in enumerate(merged):
+
+    merged: List[ScriptSegment] = []
+    for seg in segments[:region]:
+        prev = merged[-1] if merged else None
+        if prev is not None and prev.speaker_key == seg.speaker_key and prev.desk == seg.desk:
+            prev.text = f"{prev.text} {seg.text}"
+            continue
+        merged.append(seg)
+
+    out = merged + list(segments[region:])
+    for i, seg in enumerate(out):
         seg.order = i
-    return merged
+    return out

@@ -664,3 +664,45 @@ def test_the_legacy_assembler_narrator_also_names_herself():
     segs = TemplateAssembler().assemble(_stories(2), None, [], date(2026, 8, 20))
     assert config.voice_name(config.host_voice()) in segs[0].text
     assert "Hacker News front page" in segs[0].text
+
+
+# --- the two-part cold open (2026-09-16) -------------------------------------------------------
+
+
+def test_the_two_voice_tease_survives_the_merge_as_two_segments():
+    """The merge used to stop dead at the co-host, because a cold open was the host alone. The
+    tease is now two people trading a sentence, so stopping there would have left the preview --
+    the part the 2.9s measurement was taken on -- unmerged behind her."""
+    raw = [
+        {"role": "anchor", "desk": "anchor", "speaker_key": "",
+         "text": "A court fined Meta another half a billion dollars.", "source_hn_id": 0},
+        {"role": "desk", "desk": "cohost", "speaker_key": "",
+         "text": "How much of that does Meta actually pay?", "source_hn_id": 0},
+        {"role": "anchor", "desk": "anchor", "speaker_key": "",
+         "text": "A new Rust parser reads faster than C.", "source_hn_id": 0},
+        {"role": "anchor", "desk": "anchor", "speaker_key": "",
+         "text": "And someone rebuilt git in a weekend.", "source_hn_id": 0},
+        {"role": "desk", "desk": "cohost", "speaker_key": "", "text": "Start with Meta.",
+         "source_hn_id": 42},
+    ]
+    segs = ClaudeWriter()._to_segments(raw, _two_person_cast())
+    cold = [s for s in segs if not s.source_hn_id]
+    assert len(cold) == 3, [s.text for s in cold]
+    assert cold[0].desk == "anchor" and "half a billion" in cold[0].text
+    assert cold[1].desk != "anchor" and "actually pay" in cold[1].text
+    # the preview's two headlines became ONE read, so their pauses come from the full stops
+    assert "Rust parser" in cold[2].text and "And someone rebuilt git" in cold[2].text
+
+
+def test_the_merge_still_does_not_swallow_the_story_coverage():
+    raw = [
+        {"role": "anchor", "desk": "anchor", "speaker_key": "", "text": "One.",
+         "source_hn_id": 0},
+        {"role": "anchor", "desk": "anchor", "speaker_key": "", "text": "And two.",
+         "source_hn_id": 0},
+        {"role": "anchor", "desk": "anchor", "speaker_key": "", "text": "Meta lost again.",
+         "source_hn_id": 42},
+    ]
+    segs = ClaudeWriter()._to_segments(raw, _two_person_cast())
+    assert len(segs) == 2
+    assert segs[1].source_hn_id == 42 and segs[1].text == "Meta lost again."

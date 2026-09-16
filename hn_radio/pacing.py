@@ -63,6 +63,11 @@ class GapPolicy:
     out_of_comment: float    # a performed comment lands and someone reacts
     story_change: float      # the show moves to a different story
     show_boundary: float     # after the fixed intro, before the fixed outro
+    # Inside the cold open, between two of its parts. Its own kind because the cold open stopped
+    # being one segment on 2026-09-16: the tease is two voices trading a sentence and the preview
+    # is a third segment behind them, so those boundaries are now real gaps in the audio rather
+    # than pauses inside a single read. Falls back to `exchange` for a policy that predates it.
+    cold_open: Optional[float] = None
     normalize_edges: bool = True  # False reproduces today's raw, unmanaged segment edges
 
 
@@ -93,6 +98,18 @@ def _is_story_change(a, b, story_ids: Optional[set]) -> bool:
     return ida != idb
 
 
+def cold_open_end(segments: Sequence) -> int:
+    """Index of the first segment that carries a story id: the end of the cold-open region.
+
+    The same bound `writers._merge_cold_open` uses, and for the same reason. Everything before
+    the first story-tagged segment is the preview; the first tagged one opens a chapter.
+    """
+    for i, seg in enumerate(segments):
+        if getattr(seg, "source_hn_id", None):
+            return i
+    return len(segments)
+
+
 def gap_plan(segments: Sequence, policy: GapPolicy,
              story_ids: Optional[set] = None) -> List[float]:
     """One gap per boundary: `len(segments) - 1` values, aligned to the gaps `stitch` inserts.
@@ -100,15 +117,24 @@ def gap_plan(segments: Sequence, policy: GapPolicy,
     The first and last boundaries are show boundaries (the fixed intro and outro are the show's
     signature, not part of the conversation, so they get a beat of their own regardless of who
     speaks on either side).
+
+    A boundary with the cold open on BOTH sides gets `policy.cold_open`. Position decides that,
+    not `boundary_kind`: two untagged segments look identical whether they are the tease and the
+    preview at the top of the show or two thoughts in the middle of it, and only the first pair
+    wants a listed-item beat rather than a conversational turn.
     """
     n = len(segments)
     if n < 2:
         return []
+    cold_end = cold_open_end(segments)
     gaps: List[float] = []
     for i in range(n - 1):
         a, b = segments[i], segments[i + 1]
         if i == 0 or i == n - 2:
             gaps.append(policy.show_boundary)
+            continue
+        if i + 1 < cold_end and policy.cold_open is not None:
+            gaps.append(policy.cold_open)
             continue
         gaps.append(getattr(policy, boundary_kind(a, b, story_ids)))
     return gaps
@@ -276,6 +302,7 @@ UNIFORM = GapPolicy(
     exchange=config.GAP_SECONDS, same_speaker=config.GAP_SECONDS,
     into_comment=config.GAP_SECONDS, out_of_comment=config.GAP_SECONDS,
     story_change=config.GAP_SECONDS, show_boundary=config.GAP_SECONDS,
+    cold_open=config.GAP_SECONDS,
     normalize_edges=False,
 )
 
@@ -286,7 +313,7 @@ TIGHT = GapPolicy(
     name="tight",
     note="Flat rhythm, managed edges, ~0.40s of real pause everywhere.",
     exchange=0.28, same_speaker=0.28, into_comment=0.28, out_of_comment=0.28,
-    story_change=0.28, show_boundary=0.28,
+    story_change=0.28, show_boundary=0.28, cold_open=0.28,
 )
 
 # Isolates the second variable against TIGHT: same managed edges, but the gap now varies with
@@ -298,6 +325,11 @@ CONVERSATIONAL = GapPolicy(
          "a real beat at a story change.",
     exchange=0.16, same_speaker=0.22, into_comment=0.40, out_of_comment=0.30,
     story_change=0.85, show_boundary=0.90,
+    # The same number `set_internal_pauses` spaces headlines by inside one read, and it has to be:
+    # a listener cannot be told which boundaries in the cold open happen to fall between two TTS
+    # calls and which fall inside one. One value, both mechanisms, or the preview goes ragged
+    # exactly where the split lands. See COLD_OPEN_PAUSE_SECONDS for how 0.55 was arrived at.
+    cold_open=COLD_OPEN_PAUSE_SECONDS,
 )
 
 POLICIES = {p.name: p for p in (UNIFORM, TIGHT, CONVERSATIONAL)}
