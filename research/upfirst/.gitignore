@@ -1,0 +1,6 @@
+# Downloaded NPR audio and its raw transcripts. Large, generated, and third-party material that
+# has no business in this repo's history -- same reasoning as episodes/ at the root. The manifest
+# is committed, so any of it can be pulled again from the public feed.
+audio/
+transcripts/
+derived/
