@@ -465,12 +465,13 @@ from plain text with no markup or tuning.</p>
 
   // One sentence for the whole catalogue: what the figures mean, then the two facts no single
   // row can carry. Reads `totals` straight out of index.json and does no arithmetic of its own;
-  // hn_radio/manifest.js `_totals` is where those numbers are worked out, next to the definition
+  // hn_radio/manifest.py `_totals` is where those numbers are worked out, next to the definition
   // of what a cost is.
   //
   // "at the pace it has been publishing" and not "twice a day", because `episodes_per_day` is
   // measured off the last seven complete dates rather than read off the cron. The schedule has
-  // changed once already and the copy should not have to change with it.
+  // changed once already, and for eleven days the repo and the machine disagreed about it without
+  // anything noticing, so the copy must not restate a cadence it cannot verify.
   function renderCatalogCost(totals, rowCount) {
     var t = totals || {};
     var el = document.getElementById('catalog-cost');

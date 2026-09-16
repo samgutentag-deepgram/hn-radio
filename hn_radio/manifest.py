@@ -95,10 +95,10 @@ def _totals(episodes: list) -> dict:
     dollars is admittedly a thinner computation than deriving them, but the aggregate is a fact
     about the catalog and it belongs next to the definition of what a cost is, not in a page.
 
-    `episodes_per_day` is MEASURED, not read off the cron, because the cron is not a reliable
-    witness: the schedule went from daily to twice daily on 2026-09-04 and the committed crontab
-    and the deployed one still disagree about it. A page that hardcodes a cadence is wrong the
-    next time that changes, so this counts what actually shipped.
+    `episodes_per_day` is MEASURED, not read off the cron. The schedule went from daily to twice
+    daily on 2026-09-04, and for eleven days the committed crontab and the deployed one disagreed
+    about that without anything noticing. A page that hardcodes a cadence is wrong the next time it
+    changes, and wrong silently; counting what actually shipped cannot drift.
 
     TWO WINDOWING DECISIONS, both of which change the number:
 
