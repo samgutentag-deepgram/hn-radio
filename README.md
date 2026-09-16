@@ -208,6 +208,7 @@ render -> [cache] -> pace -> music -> stitch -> chapters -> publish
 | `music.py` | The theme: an intro cue, a sting at each story's first mention, a bed over the cold open. Levels are set relative to the episode's own speech, never as a fixed gain. Set `HN_RADIO_MUSIC=0` (or pass `--no-music`) to render speech only |
 | `stitch.py` | Concatenates the PCM with the per-boundary gaps and writes one correct WAV header |
 | `chapters.py` | Derives chapters from the script, writes `chapters.json`, and bakes ID3 CHAP frames into the MP3 with ffmpeg |
+| `pricing.py` | What an episode costs in Flux TTS, and the line the show reads about it. Characters times the published rate, from the script itself |
 | `publish.py` | A table of contents: what happens when. Knows the order, not the formats |
 | `feed.py` | RSS 2.0, plus the show notes that go inside it as the item description |
 | `manifest.py` | The JSON `web/` reads: the episode list and the voice catalog. With no build step, these two files *are* the frontend's API |
@@ -218,6 +219,42 @@ Recasting an episode into different voices, or building a custom one out of past
 a segment's PCM when it is still on disk and the words and voice are unchanged, and re-renders
 everything else. Since only the MP3 is kept after a render, that means a full re-render in
 practice. Recasts are rare enough that this costs less than storing every episode three times.
+
+## What an episode costs
+
+Flux TTS bills per character of input text, and every character this show pays for is a line of
+its own script. So an episode's spend is arithmetic on `script.json`: no invoice parsing, no
+audio measurement, no API call.
+
+At the published pay-as-you-go rate of **$0.045 per 1,000 characters**, a typical episode is about
+5,000 characters and costs about **22 cents**. Two episodes a day is about **49 cents**, and the
+$200 credit a new Deepgram account starts with runs the show for a little over a year.
+
+Three places that number shows up:
+
+- **The episode page.** A four-figure receipt: the dollar cost, the character count, the rate, and
+  how many episodes the signup credit buys. Four figures rather than one because any three of them
+  let you check the fourth by hand, which is the only reason to publish a cost at all.
+- **The outro, out loud.** Every episode now closes by saying what it cost. That line is itself
+  billable text inside the episode it describes, so the figure is a fixed point rather than a
+  subtraction, and on a cycle it rounds *up* (`pricing.resolve_cost_sentence`). It is about 290
+  characters, which is the difference between 24 cents and 26 on a normal episode.
+- **`scripts/episode_costs.py`.** The whole archive as a table, read-only by default.
+
+```
+uv run python scripts/episode_costs.py                 # price every episode on disk
+uv run python scripts/episode_costs.py --plan growth    # the same archive on Growth rates
+```
+
+The archive prices itself. `publish.rebuild_site` runs `pricing.backfill` on every boot and every
+publish, so the 58 episodes that aired before any of this existed got a cost the first time this
+code came up, with no migration step. Set `HN_RADIO_TTS_PLAN=growth` to quote Growth rates
+instead; unrecognized values fall back to pay-as-you-go rather than raising.
+
+What the figure deliberately leaves out, because each would make it wrong in a way a reader
+cannot see: the Flux 1:1 credit match (a promotion with an end date, which would halve every
+number and then stop being true), the Anthropic spend for the script, and retried segments. It is
+the TTS line item at list price, and the page says so in those words.
 
 ## The web app
 

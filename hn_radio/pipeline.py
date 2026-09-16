@@ -23,8 +23,8 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional
 
-from . import (config, deslop, editions, ingest, music, normalize, pacing, render, sources,
-               status, stitch, verify, voices)
+from . import (config, deslop, editions, ingest, music, normalize, pacing, pricing, render,
+               sources, status, stitch, verify, voices)
 from .cast import RoleUnavailable, episode_cast as episode_cast_for, host_name_for
 from .editions import DEFAULT_EDITION, EDITION_TITLES
 from .models import Episode, ScriptSegment
@@ -208,6 +208,40 @@ def _previously_covered(before_id: str) -> set:
     return set()
 
 
+def _with_cost_line(segments: List[ScriptSegment], cast) -> List[ScriptSegment]:
+    """Insert the "what this episode cost" line just before the sign-off. Returns a new list.
+
+    NORMALIZES FIRST, and that is not a tidiness thing. `normalize_segments` expands `HN` into
+    `Hacker News`, which is eleven billable characters per hit, and the figure this line quotes is
+    a character count. Pricing the un-normalized script would quote a number for text that was
+    never sent. `render_panel` normalizes again a moment later; the pass is idempotent, and
+    depending on the caller to have done it would be the kind of ordering requirement that holds
+    until someone adds a sixth entry point.
+
+    SECOND-TO-LAST, not last. The sign-off is the show's signature and has closed every episode
+    since the first one, so the cost line is a footnote BEFORE the goodbye rather than something
+    said after it. `_outro_segments` is left alone and still returns exactly one segment: three
+    tests and `scripts/frame_experiment.py` call it directly and read `[0]`.
+
+    Only `run_panel` calls this, so only the daily show says the line out loud. Every episode --
+    including a recast, a custom build, and the 58 that aired before this existed -- still gets
+    the cost DATA, because that comes from `pricing.episode_cost` in `_finalize` and from
+    `pricing.backfill` on the archive. Spoken copy is a decision about the show; the number on the
+    page is a fact about any episode.
+
+    A recast re-renders this episode's script unchanged, so the line it already carries stays true
+    of it: same characters, same cost. That only holds while the rate does, which is why the rate
+    is stored next to the figure rather than assumed.
+    """
+    priced = list(segments)
+    normalize.normalize_segments(priced)
+    text, _total, _usd = pricing.resolve_cost_sentence(pricing.script_characters(priced))
+    line = ScriptSegment(order=0, role="anchor", speaker_key=cast.anchor.name, desk="anchor",
+                         text=text)
+    priced.insert(max(len(priced) - 1, 0), line)
+    return priced
+
+
 def run_panel(
     edition: str = DEFAULT_EDITION,
     n_stories: int = config.N_STORIES,
@@ -321,6 +355,15 @@ def run_panel(
 
     # Wrap the writer's content in the fixed show intro + outro, then renumber.
     segments = _intro_segments(cast, win) + segments + _outro_segments(cast, win)
+    # The cost line goes in BEFORE the renumber, so its `order` is the one the render and the page
+    # agree on. It quotes a figure that includes its own characters; see
+    # `pricing.resolve_cost_sentence` for why that is a fixed point and not a subtraction.
+    #
+    # AFTER `verify.gate_script` and `deslop.gate`, deliberately. Both gates read the WRITER's
+    # output, and this line is neither written by the writer nor generated text: it is reviewed
+    # copy built from a number, exactly like the intro and the outro it sits between. Running the
+    # de-slop regexes over it would be linting a template.
+    segments = _with_cost_line(segments, cast)
     for i, seg in enumerate(segments):
         seg.order = i
 
@@ -417,7 +460,7 @@ def _space_cold_open(segments, pcm, log=print):
 
 def _finalize(segments, pcm, *, episode_id, title, source_items, edition, summary="",
               with_music: Optional[bool] = None, min_seconds: Optional[float] = None,
-              log=print) -> Episode:
+              billed_chars: Optional[int] = None, log=print) -> Episode:
     """Shared tail: stage per-segment audio, set start times, stitch, chapter + MP3, publish, then
     drop everything but the MP3.
 
@@ -436,6 +479,17 @@ def _finalize(segments, pcm, *, episode_id, title, source_items, edition, summar
     16 MB of PCM against a 5.5 MB MP3. Recasts are rare enough that re-rendering the whole episode
     on the day one is asked for costs less than storing every episode three times. `render_recast`
     and `render_custom` already fall back to a fresh render when the cache is missing.
+
+    `billed_chars` is what THIS run actually sent to Flux, and None means "the whole script",
+    which is true of every fresh episode. `render_recast` and `render_custom` pass what they
+    re-rendered.
+
+    IN PRACTICE THAT IS NOW ALWAYS THE WHOLE SCRIPT, and the parameter is kept anyway. Those two
+    only bill less than the full script when they get a cache hit, and the paragraph above deleted
+    the cache they were hitting -- so a recast re-renders every line and pays for every line. The
+    field stays because it reports what was billed rather than asserting a reuse rate: it was
+    correct when the cache existed, it is correct now that it does not, and it is the number that
+    would go wrong silently if the cache ever came back and nobody re-derived it.
     """
     from . import chapters as chapters_mod
 
@@ -492,10 +546,18 @@ def _finalize(segments, pcm, *, episode_id, title, source_items, edition, summar
             discard_render_intermediates(out_dir)
             raise
 
+    # Priced from the FINAL segment list, after normalization and after the cost line was
+    # inserted, so `characters` is exactly the text that went to /v2/speak. Computed here rather
+    # than in `publish` because this is the only place that knows what this run actually billed.
+    cost = pricing.episode_cost(pricing.script_characters(segments), billed_chars=billed_chars)
+    log(f"[cost]  {cost['characters']:,} characters, ${cost['usd']:.4f} of Flux TTS at list price"
+        + (f" (billed {cost['billed_characters']:,}, ${cost['billed_usd']:.4f}: cache reuse)"
+           if cost["billed_characters"] != cost["characters"] else ""))
+
     episode = Episode(
         id=episode_id, title=title, generated_at=_now_iso(), segments=segments,
         audio_path=str(out_dir / "episode.mp3"), source_items=source_items,
-        duration_seconds=duration, edition=edition, summary=summary,
+        duration_seconds=duration, edition=edition, summary=summary, cost=cost,
     )
 
     log("[chapters] deriving chapters, writing chapters.json + chaptered MP3...")
@@ -553,7 +615,7 @@ def render_recast(segments, *, original_id, episode_id, title, source_items, cas
         for d in json.loads(orig_script.read_text()):
             orig[d["order"]] = (d.get("text"), d.get("voice_id"))
 
-    pcm, reused, rendered = [], 0, 0
+    pcm, reused, rendered, billed = [], 0, 0, 0
     total = len(segments)
     for i, seg in enumerate(segments):
         cache = orig_seg_dir / f"{seg.order}.pcm"
@@ -562,11 +624,13 @@ def render_recast(segments, *, original_id, episode_id, title, source_items, cas
             pcm.append(cache.read_bytes()); reused += 1
         else:
             pcm.append(render.render_segment(seg.text, seg.voice_id, api_key)); rendered += 1
+            billed += len(seg.text)  # only a re-rendered line is a request, and requests are the bill
         status.stage("rendering", f"recasting segment {i + 1}/{total}", i + 1, total)
     log(f"[recast] reused {reused} cached segments, re-rendered {rendered}")
 
     return _finalize(segments, pcm, episode_id=episode_id, title=title,
-                     source_items=source_items, edition=edition, summary=summary, log=log)
+                     source_items=source_items, edition=edition, summary=summary,
+                     billed_chars=billed, log=log)
 
 
 def render_custom(segments, *, episode_id, title, source_items, cast, provenance,
@@ -600,7 +664,7 @@ def render_custom(segments, *, episode_id, title, source_items, cast, provenance
             scripts[src_id] = table
         return scripts[src_id].get(src_order)
 
-    pcm, reused, rendered = [], 0, 0
+    pcm, reused, rendered, billed = [], 0, 0, 0
     total = len(segments)
     for i, seg in enumerate(segments):
         src = provenance.get(seg.order)
@@ -615,8 +679,10 @@ def render_custom(segments, *, episode_id, title, source_items, cast, provenance
         if not hit:
             pcm.append(render.render_segment(seg.text, seg.voice_id, api_key))
             rendered += 1
+            billed += len(seg.text)  # a cache miss is a request; a hit costs nothing
         status.stage("rendering", f"building segment {i + 1}/{total}", i + 1, total)
     log(f"[custom] reused {reused} cached segments, rendered {rendered}")
 
     return _finalize(segments, pcm, episode_id=episode_id, title=title,
-                     source_items=source_items, edition=edition, summary=summary, log=log)
+                     source_items=source_items, edition=edition, summary=summary,
+                     billed_chars=billed, log=log)

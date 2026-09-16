@@ -26,7 +26,11 @@ from hn_radio import config
 # `SITE_BASE_URL` became `site_base_url()` and started reading `.env` like everything else here --
 # a developer who points their local feed at their Fly app would otherwise bake that host into
 # every URL the feed tests build.
-_MASKED_FROM_DOT_ENV = {"DEEPGRAM_API_HOST", "HN_RADIO_MUSIC", "HN_RADIO_BASE_URL"}
+# HN_RADIO_TTS_PLAN joined it on 2026-09-16 with the cost figures: it changes the rate every
+# spoken and published cost is computed on, so a laptop set to `growth` would quote a different
+# number in the outro and fail the pinned figures in tests/test_pricing.py.
+_MASKED_FROM_DOT_ENV = {"DEEPGRAM_API_HOST", "HN_RADIO_MUSIC", "HN_RADIO_BASE_URL",
+                        "HN_RADIO_TTS_PLAN"}
 
 
 @pytest.fixture(autouse=True)

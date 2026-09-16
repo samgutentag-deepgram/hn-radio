@@ -1,7 +1,7 @@
 // HN Radio episode page: Play + Recast. Reads the pipeline JSON; recasts via the FastAPI backend
 // (falls back to a copy-able CLI command if no backend is running). No build step: this is a
 // native ES module, loaded with <script type="module">, so `import` works without a bundler.
-import { mmss } from './format.js';
+import { mmss, usd, count } from './format.js';
 
 (function () {
   var params = new URLSearchParams(location.search);
@@ -65,6 +65,77 @@ import { mmss } from './format.js';
     document.getElementById('meta').textContent = String(e);
   });
 
+  // The cost receipt. Four figures and the caveats, from episode.json's `cost` block.
+  //
+  // IT DOES NOT COMPUTE ANYTHING. Every number here was worked out by hn_radio/pricing.py and
+  // written into episode.json, and that is the whole design: the show SAYS this figure in its
+  // outro, so a second implementation of the arithmetic in the browser is a second answer to a
+  // question the audio has already answered out loud. The page's job is formatting.
+  //
+  // Hides itself when the block is missing or has no characters in it. Every episode on the
+  // volume is priced by `pricing.backfill` on app startup, so absence means something went wrong
+  // reading that episode -- and an empty receipt is honest about that in a way a row of zeros,
+  // or an invented estimate, is not.
+  function renderCost(ep) {
+    var c = ep.cost || {};
+    var host = document.getElementById('cost');
+    if (!c.characters) return;               // stays [hidden]: no figures to show
+
+    var figures = [
+      // Four decimals, not two. Episodes land within a couple of cents of each other, so the
+      // cent-rounded figure the outro speaks is exactly the precision that makes two episodes
+      // look identical. The receipt is where the digits belong.
+      { cls: 'cost-figure-money', value: usd(c.usd, 4), label: 'of Deepgram Flux TTS' },
+      { value: count(c.characters), label: 'characters of script' },
+      { value: usd(c.rate_usd_per_1k, 4) + '/1k', label: rateLabel(c.plan) },
+      { value: count(c.episodes_per_credit),
+        label: 'episodes on the ' + usd(c.credit_usd, 0) + ' signup credit' }
+    ];
+
+    var grid = document.getElementById('cost-figures');
+    figures.forEach(function (f) {
+      var cell = document.createElement('div');
+      cell.className = 'cost-figure' + (f.cls ? ' ' + f.cls : '');
+      var v = document.createElement('span'); v.className = 'cost-value'; v.textContent = f.value;
+      var l = document.createElement('span'); l.className = 'cost-label'; l.textContent = f.label;
+      cell.appendChild(v); cell.appendChild(l);
+      grid.appendChild(cell);
+    });
+
+    // Written out rather than assembled from fragments, because the three caveats are the part a
+    // reader is owed: this is the TTS line item and not the cost of the show, it is list price
+    // with the credit-match promotion left out, and a cache hit on a recast is not a second bill.
+    // `hn_radio/pricing.py`'s module docstring is the long version of this paragraph.
+    var fine = document.getElementById('cost-fine');
+    fine.textContent =
+      'Text-to-speech only, at list price: ' + usd(c.rate_usd_per_1k, 4) + ' per 1,000 characters'
+      + ' on the ' + rateLabel(c.plan) + ' plan, as published on ' + (c.pricing_as_of || 'the pricing page')
+      + '. It excludes the model that writes the script, and it leaves out the Flux credit match,'
+      + ' which would halve it until the promotion ends. ';
+    if (c.billed_characters != null && c.billed_characters !== c.characters) {
+      // Only a recast or a custom build reaches this. Saying "this run cost less" without saying
+      // WHY reads as an error in the bigger number directly above it.
+      fine.textContent +=
+        'This particular render billed only ' + count(c.billed_characters) + ' characters ('
+        + usd(c.billed_usd, 4) + '): the rest came from the per-segment audio cache, because those'
+        + ' lines kept both their words and their voice. ';
+    }
+    var link = document.createElement('a');
+    link.href = c.pricing_url || 'https://deepgram.com/pricing';
+    link.target = '_blank'; link.rel = 'noopener';
+    link.textContent = 'Deepgram pricing';
+    fine.appendChild(link);
+
+    host.hidden = false;
+  }
+
+  // The plan's name in the words the pricing page uses. A map and not a capitalize(), because
+  // "Payg" is not a thing anyone calls it and an unknown id should fall through as itself rather
+  // than be dressed up as a plan that exists.
+  function rateLabel(plan) {
+    return { payg: 'pay-as-you-go', growth: 'Growth' }[plan] || (plan || 'list');
+  }
+
   function render(ep, segments, voicesDoc, chaptersDoc) {
     document.title = 'HN Radio: ' + ep.title;
     document.getElementById('title').textContent = ep.title;
@@ -74,6 +145,7 @@ import { mmss } from './format.js';
     var player = document.getElementById('player');
     player.src = base + 'episode.mp3';  // chaptered MP3 (podcast-friendly, small)
     renderChaptersAndNotes(ep, chaptersDoc, player);
+    renderCost(ep);
 
     // --- play instrumentation -----------------------------------------------------------------
     // Guarded on window.HNPlays rather than assumed. plays.js is a separate <script> and this is

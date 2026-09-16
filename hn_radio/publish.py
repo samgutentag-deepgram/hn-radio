@@ -5,6 +5,7 @@ and nothing about the formats:
 
     feed        RSS 2.0 + the show notes inside it       hn_radio/feed.py
     manifest    the JSON web/ reads (episodes, voices)   hn_radio/manifest.py
+    pricing     what an episode's Flux TTS costs         hn_radio/pricing.py
     transcript  WebVTT, from the script's start times    hn_radio/transcript.py
     jsonio      how any JSON artifact gets written       hn_radio/jsonio.py
 
@@ -20,7 +21,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from . import feed, manifest, transcript
+from . import feed, manifest, pricing, transcript
 from .jsonio import write_json
 from .models import Episode
 
@@ -85,7 +86,27 @@ def rebuild_site(episodes_dir: Path) -> dict:
     `episodes_dir` is required, not defaulted to `config.EPISODES_DIR`. Every caller already passes
     it explicitly, and a hidden config read inside a function documented as a pure function of its
     argument is the kind of second path that only shows up when a test writes to the real tree.
+
+    ONE WRITE THAT IS NOT AN ARTIFACT, and it is called out here because the paragraph above
+    promised there were none. `pricing.backfill` goes FIRST and it edits `episode.json` in place,
+    adding the `cost` block to any episode missing one or holding one computed on a rate that is
+    no longer current. It stays in this function rather than becoming a step every caller has to
+    remember, for the reason this function exists at all: there are five entry points, and the one
+    that matters most is the app's startup hook, because that is what prices the deployed archive
+    the first time this code boots on Fly. No separate migration, and no episode page that has to
+    render a blank where a cost should be.
+
+    Still no network, still no Deepgram key, still idempotent, and still safe on every boot: the
+    cost of an episode is arithmetic on the `script.json` sitting next to it. It runs before the
+    manifest because `build_manifest` copies the block it writes into `index.json`.
+
+    Its result is deliberately DROPPED rather than added to the returned dict. Every key in here
+    is a path a caller can open, three characterization tests assert exactly that set, and a count
+    of repriced episodes is neither a path nor something any caller acts on. The backfill reports
+    through its own `log` (silent here, by default), and `scripts/episode_costs.py` is the command
+    that exists to look at the numbers.
     """
+    pricing.backfill(episodes_dir)
     return {
         "feed_xml": str(feed.rebuild_feed(episodes_dir)),
         "index_json": str(manifest.build_manifest(episodes_dir)),

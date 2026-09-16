@@ -115,8 +115,10 @@ from plain text with no markup or tuning.</p>
   <div class="hero-meta">
     <p class="hero-kicker">Latest episode</p>
     <h2 id="hero-title" class="hero-title">&nbsp;</h2>
+    <!-- Both trailing spans start empty and each carries its own separator, so an episode with
+         no plays and no cost block leaves no orphaned middot behind it. -->
     <p class="hero-sub"><span id="hero-date"></span><span id="hero-dur"></span><span
-        id="hero-plays" hidden></span></p>
+        id="hero-plays" hidden></span><span id="hero-cost" class="hero-cost"></span></p>
     <!-- Empty and aria-hidden until playback names someone, so a paused hero does not claim a
          speaker. role="status" so a screen reader hears the handoffs it cannot see either. -->
     <p class="hero-speaker" id="hero-speaker" role="status" hidden></p>
@@ -439,7 +441,7 @@ from plain text with no markup or tuning.</p>
 })();
 </script>
 <script type="module">
-  import { mmss } from './format.js';
+  import { mmss, usd } from './format.js';
 
 (function () {
   var ul = document.getElementById('episodes');
@@ -570,6 +572,16 @@ from plain text with no markup or tuning.</p>
       document.getElementById('hero-date').textContent = latest.id;
       document.getElementById('hero-dur').textContent =
         ' · ' + mmss(hsecs);
+      // Two decimals here, four on the episode page. The hero is a glance -- "this costs cents,
+      // not dollars" is the whole message -- and the receipt on episode.html is where the digits
+      // that tell two episodes apart belong. The separator lives INSIDE this span so an episode
+      // with no cost block leaves no orphaned middot behind it.
+      var heroCost = document.getElementById('hero-cost');
+      var heroUsd = latest.cost && latest.cost.usd;
+      if (heroUsd != null) {
+        heroCost.innerHTML = ' · <span class="hero-cost-value">' + usd(heroUsd, 2)
+          + '</span> of Flux TTS';
+      }
       document.getElementById('hero-full').href = 'episode.html?id=' + encodeURIComponent(latest.id);
       hero.hidden = false;
 

@@ -62,6 +62,15 @@
 
 <section id="panel-play">
   <audio id="player" preload="metadata"></audio>
+  <!-- The cost receipt. Populated by app.js from episode.json's `cost` block and hidden when
+       that block is absent, which is why it ships empty rather than with placeholder figures:
+       an episode whose cost could not be computed must show nothing, not a zero. The outro of
+       every episode now says this number out loud, so this is where a listener checks it. -->
+  <section class="cost" id="cost" hidden aria-labelledby="cost-h">
+    <p class="cost-h" id="cost-h">What this episode cost to render</p>
+    <div class="cost-figures" id="cost-figures"></div>
+    <p class="cost-fine" id="cost-fine"></p>
+  </section>
   <p class="note">Every word below is read by Deepgram Flux TTS from plain text, with no markup,
   no phonetic hints, and no voice tuning. Voices are arbitrary AI assignments, not depictions of the commenters.</p>
   <div id="notes"></div>

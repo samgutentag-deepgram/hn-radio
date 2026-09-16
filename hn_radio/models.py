@@ -82,6 +82,12 @@ class Episode:
     duration_seconds: float
     edition: str = ""  # v3: which edition produced this episode ("" for v1/legacy)
     summary: str = ""  # 1-2 sentence episode summary for show notes (Claude writer sets it)
+    # What the Flux TTS for this episode costs at list price. Shape and reasoning in
+    # `pricing.episode_cost`. A dict rather than a float because the dollar figure is meaningless
+    # without the rate and plan it was computed on, and an episode.json outlives the price list.
+    # Defaults to {} so an Episode built before pricing existed, or by a test that does not care,
+    # is still a valid Episode; `pricing.backfill` fills those in from the script on disk.
+    cost: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         d = asdict(self)

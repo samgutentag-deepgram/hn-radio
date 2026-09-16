@@ -2442,6 +2442,98 @@ audio { width: 100%; margin: 0.6rem 0 0.4rem; }
 }
 
 /* ============================================================================
+   BLOCK 15.7 -- THE COST RECEIPT. What the episode cost to render, as four
+   figures plus the caveats, on episode.html and (as one figure) on the
+   landing hero.
+
+   A figure row and not a .note, deliberately. This is the number the show now
+   says out loud in its own outro, so the page has to be the place a listener
+   can check it rather than a footnote that restates it in smaller type. Four
+   cells because four facts make the arithmetic reproducible by hand: what it
+   cost, how many characters that was, the published rate, and what the signup
+   credit buys at that rate. Any three of them let you derive the fourth, which
+   is the point -- a single dollar figure is a claim, and these are a receipt.
+
+   The dollar figure is the only thing in the row set in the mono stack. It is
+   a number to be read digit by digit and compared against another episode's,
+   and it sits next to a character count of similar width; the tabular figures
+   stop the two from looking like the same kind of quantity.
+   ========================================================================= */
+.cost {
+  margin: 1rem 0 0;
+  border: 1px solid var(--dg-border);
+  border-radius: var(--dg-shape-panel);
+  background: var(--dg-bg-overlay);
+  -webkit-backdrop-filter: blur(var(--dg-glass-blur));
+  backdrop-filter: blur(var(--dg-glass-blur));
+  padding: 0.9rem 1rem 0.8rem;
+}
+
+.cost-h {
+  margin: 0 0 0.7rem;
+  font-family: var(--dg-font-ui);
+  font-size: 0.68rem;
+  font-weight: var(--dg-weight-bold);
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--dg-text-label);
+}
+
+/* auto-fit rather than four fixed columns: the row folds to 2x2 on a phone and
+   to one column on the narrowest screens without a media query, and it does not
+   strand a lone fourth cell on a tablet. */
+.cost-figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 0.9rem 1.2rem;
+}
+
+.cost-figure { min-width: 0; }
+
+.cost-value {
+  display: block;
+  font-size: 1.32rem;
+  line-height: 1.15;
+  font-weight: var(--dg-weight-bold);
+  color: var(--dg-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.cost-figure-money .cost-value {
+  font-family: var(--dg-font-mono);
+  color: var(--dg-accent);
+}
+html[data-theme="light"] .cost-figure-money .cost-value { color: var(--dg-accent-on-light); }
+
+.cost-label {
+  display: block;
+  margin-top: 0.18rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--dg-text-label);
+}
+
+/* The caveats. Small, but never hidden behind a disclosure: "this is the TTS
+   line item and not the whole show" is the difference between a figure that is
+   honest and one that is marketing. */
+.cost-fine {
+  margin: 0.8rem 0 0;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--dg-border);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--dg-text-label);
+}
+.cost-fine a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+
+/* The hero's one-line version on index.html, inline after the duration. Same
+   mono figure as the receipt so the two read as the same measurement. */
+.hero-cost { white-space: nowrap; }
+.hero-cost-value {
+  font-family: var(--dg-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================================
    BLOCK 16 -- WHAT WAS REMOVED, AND WHY, SO IT IS NOT RE-ADDED BY ACCIDENT.
 
    .ep-play        per-row play button. The rows became links on 2026-08-20 and

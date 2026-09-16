@@ -80,3 +80,27 @@ export function until(when) {
   const d = _deltaSeconds(when);
   return d === null ? '' : 'in ' + _span(Math.max(0, -d));
 }
+
+/** A dollar amount, to `places` decimals, with the sign: "$0.2442", "$0.24".
+ *
+ * Two places is the form for a figure you would compare against a card statement; four is the
+ * form for one you would check the arithmetic on, and an episode of this show costs about a fifth
+ * of a dollar, so two places throws away the digits that distinguish one episode from another.
+ * The caller picks, because the receipt and the hero want different answers.
+ *
+ * Null and undefined return the empty string rather than "$0.00". An episode whose cost block
+ * could not be computed has no cost, and a page that prints a made-up zero for it is worse than
+ * one that prints nothing: see `esc` above for the same bug in the same file. */
+export function usd(amount, places) {
+  if (amount == null || Number.isNaN(Number(amount))) return '';
+  return '$' + Number(amount).toFixed(places == null ? 2 : places);
+}
+
+/** An integer with thousands separators: "5,426".
+ *
+ * `toLocaleString` and not a hand-rolled regex, so a reader in a locale that groups differently
+ * gets their own grouping. Guards null the same way `usd` does and for the same reason. */
+export function count(n) {
+  if (n == null || Number.isNaN(Number(n))) return '';
+  return Math.round(Number(n)).toLocaleString();
+}

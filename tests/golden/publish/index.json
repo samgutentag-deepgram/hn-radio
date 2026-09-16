@@ -6,7 +6,8 @@
       "edition": "frontpage",
       "generated_at": "2026-08-01T12:00:00Z",
       "duration_seconds": 25.0,
-      "summary": "A summary with an ampersand & a <tag>."
+      "summary": "A summary with an ampersand & a <tag>.",
+      "cost": {}
     },
     {
       "id": "2026-08-01",
@@ -14,7 +15,8 @@
       "edition": "frontpage",
       "generated_at": "2026-08-01T12:00:00Z",
       "duration_seconds": 25.0,
-      "summary": "A summary with an ampersand & a <tag>."
+      "summary": "A summary with an ampersand & a <tag>.",
+      "cost": {}
     }
   ]
 }

@@ -71,6 +71,14 @@ def build_manifest(episodes_dir: Path) -> Path:
             # The feed page shows this under each title, NPR-style. Blank on episodes whose
             # writer did not produce show notes, which is visible rather than hidden.
             "summary": (d.get("summary") or "").strip(),
+            # The whole `cost` block, not just the dollar figure. The hero on the landing page
+            # quotes a cost, and a figure without the rate and the character count behind it is
+            # not checkable -- which is the only reason to publish a cost at all. `publish.
+            # rebuild_site` runs `pricing.backfill` immediately before this, so the block is
+            # present on every episode by the time this reads it; `{}` covers an episode.json
+            # that could not be read at all, and the page treats that as "no cost to show"
+            # rather than rendering a zero it made up.
+            "cost": d.get("cost") or {},
         })
     path = episodes_dir / "index.json"
     write_json(path, {"episodes": episodes})
