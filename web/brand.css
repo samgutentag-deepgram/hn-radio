@@ -577,8 +577,32 @@ html[data-theme="light"] [data-desk] { --v-on: var(--v-ink-lt, var(--v-d)); }
 
   /* Layout, one place. The content column and the gutter it sits in; the
      masthead cancels the gutter with a negative margin derived from this. */
-  --dg-col: 46rem;
+
+  /* 60% of the viewport, floored so it never gets narrower than the 46rem this
+     was fixed at, and capped so an ultrawide monitor does not get a 2000px
+     headline. Sam asked for the 60%; the two bounds are the parts he asked to
+     be reasonable about.
+
+     THE FLOOR IS NOT REDUNDANT AND IT IS NOT THERE FOR PHONES. 60vw is narrower
+     than 46rem on anything below about 1230px, which includes every laptop
+     screen at less than full width, and clamping up to 46rem there keeps those
+     exactly as they are today. On a phone the floor exceeds the viewport
+     entirely, which is harmless: a max-width wider than the screen just means
+     the element fills it, and `--dg-gutter` is what keeps the text off the edge.
+
+     Roughly: 1440px -> 54rem, 1920px -> 72rem, 2560px and up -> 78rem. */
+  --dg-col: clamp(46rem, 60vw, 78rem);
   --dg-gutter: 1.2rem;
+
+  /* The prose measure, which is NOT the column and must not follow it.
+     46rem of column was about 95 characters of body text, near the top of what
+     is comfortable. At 78rem the same paragraph runs past 150, and a transcript
+     is the worst case because it is the thing people actually read line by line.
+     So the column widens for LAYOUT -- two episode tiles side by side, four cost
+     figures in a row -- and every run of prose keeps the measure it already had.
+     Used by the transcript lines, the show notes, the disclaimer and the fine
+     print under the receipt. */
+  --dg-measure: 46rem;
 }
 
 /* On a light ground the accent is a fill, not an ink: #13ef95 is 1.52:1 on white.
@@ -786,6 +810,11 @@ html[data-theme="light"] .eyebrow .dg { color: var(--dg-accent-on-light); }
   border-radius: 0 var(--dg-shape-control) var(--dg-shape-control) 0;
   padding: 0.5rem 0.8rem;
   margin: 0.6rem 0 0;
+  /* The BOX is measured, not the text inside it. A `.note` is prose end to end,
+     so a full-width box with a measured paragraph in it would be mostly empty
+     border. The receipt above it does the opposite, because its content is four
+     figures in a row and genuinely wants the width. */
+  max-width: var(--dg-measure);
 }
 pre.note { white-space: pre-wrap; word-break: break-word; font-size: 0.74rem; }
 
@@ -1871,7 +1900,10 @@ audio { width: 100%; margin: 0.6rem 0 0.4rem; }
   font-size: 0.66rem;
   color: var(--dg-text-disabled);
 }
-.seg .text { font-size: 0.94rem; color: var(--dg-text-body); }
+/* max-width, not a narrower grid column: the row's play button and timestamp
+   stay pinned left where a reader's eye already expects them, and only the words
+   are measured. See --dg-measure. */
+.seg .text { font-size: 0.94rem; color: var(--dg-text-body); max-width: var(--dg-measure); }
 .seg.commenter .text { font-style: italic; }
 .ts { font-size: 0.64rem; color: var(--dg-text-label); }
 
@@ -1912,7 +1944,8 @@ audio { width: 100%; margin: 0.6rem 0 0.4rem; }
 .seg[data-voice] .icon:hover,
 .seg[data-desk] .icon:hover { color: var(--v-on); border-color: var(--v-on); }
 
-.summary { font-size: 0.94rem; color: var(--dg-text-body); margin: 0.7rem 0 0; }
+.summary { font-size: 0.94rem; color: var(--dg-text-body); margin: 0.7rem 0 0;
+           max-width: var(--dg-measure); }
 
 /* ============================================================================
    BLOCK 14 -- CAST CARDS.
@@ -2429,6 +2462,9 @@ html[data-theme="light"] .cost-figure-money .cost-value { color: var(--dg-accent
 /* The caveats. Small, but never hidden behind a disclosure: "this is the TTS
    line item and not the whole show" is the difference between a figure that is
    honest and one that is marketing. */
+/* The caveats are prose, so they are measured even though the figure row above
+   them is not. The rule above them still spans the box, which is what keeps them
+   reading as part of the receipt rather than as a detached paragraph. */
 .cost-fine {
   margin: 0.8rem 0 0;
   padding-top: 0.6rem;
@@ -2436,6 +2472,7 @@ html[data-theme="light"] .cost-figure-money .cost-value { color: var(--dg-accent
   font-size: 0.72rem;
   line-height: 1.45;
   color: var(--dg-text-label);
+  max-width: var(--dg-measure);
 }
 .cost-fine a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 
@@ -2635,6 +2672,20 @@ html[data-theme="light"] .ep-cell:focus-within {
 }
 .ep-cell--upcoming:hover,
 .ep-cell--upcoming:focus-within { border-color: rgba(var(--dg-accent-rgb), 0.3); }
+
+/* A COLUMN, so the action can sit on the floor of the tile.
+   Grid stretches both cells in a row to the tallest, which is right -- a pair of
+   equal cards reads as a pair -- but it left the shorter tile's Listen link
+   floating in the middle with dead space under it. Worst case is the newest
+   row, where the upcoming cell holds a 96px ticker and set a 234px row against
+   a tile whose content ended at 156px. `margin-top: auto` on the footer pushes
+   it to the bottom instead, so the two links in a row line up with each other
+   and the space reads as card padding rather than as a tile that came up short. */
+.ep-cell--linked {
+  display: flex;
+  flex-direction: column;
+}
+.ep-cell--linked .ep-foot { margin-top: auto; }
 
 /* The whole tile is the link target. A stretched pseudo-element over the card
    rather than wrapping the card in an <a>, because the card contains a heading
