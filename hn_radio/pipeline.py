@@ -70,8 +70,13 @@ def _panel_title(edition: str, stories, top_story, episode_date: date) -> str:
 # date is spoken outright, and the stories are framed as yesterday's relative to THAT. A listener
 # hearing it a week later still hears an internally consistent episode, which is what an archive
 # needs.
-_INTRO = ("Hi, this is {host}. You're listening to {show}, read by Deepgram Flux. "
-          "It's {date}, and I have {cohost} with me. {framing}")
+# REWRITTEN 2026-09-16 into the form a real two-hander uses, and it no longer runs first.
+# Up First opens on music, then ONE headline from each host, and only then the show ID: "I'm
+# Leila Fadel. That's A Martinez, and this is UP FIRST from NPR News." The listener hears what
+# the show is about before being told what the show is. This says the same thing in the same
+# order. `_splice_intro` is what puts it third.
+_INTRO = ("I'm {host}. That's {cohost}, and this is {show}, read by Deepgram Flux. "
+          "It's {date}. {framing}")
 _OUTRO = ("{framing}{handoff} From me and {cohost}, on Deepgram Flux, we'll talk to you {next}.")
 
 # What the host calls the show. The scheduled runs SAY their edition, so the spoken open matches
@@ -162,6 +167,29 @@ def _intro_segments(cast, when: WindowLike) -> List[ScriptSegment]:
                          framing=_INTRO_FRAMING[win.slot])
     return [ScriptSegment(order=0, role="anchor", speaker_key=cast.anchor.name, desk="anchor",
                           text=text)]
+
+
+def _splice_intro(intro: List[ScriptSegment],
+                  segments: List[ScriptSegment]) -> List[ScriptSegment]:
+    """Put the fixed show ID THIRD, after the two cold-open headlines, not first.
+
+    The show used to open on a 36-word block naming itself, the date, both hosts and the framing
+    before a listener had heard a single story. A produced two-hander does the reverse: music, one
+    headline each, then the ID. Measured on the reference episode, the first words of the show are
+    a headline at 2.24s and the ID does not arrive until 12.00s.
+
+    Positional, and deliberately conservative about it. The writer's first two segments are the
+    headline trade (prompt STRUCTURE 1a), and both must be untagged and from DIFFERENT speakers
+    for this to fire. Anything else -- a one-story episode, a writer that ignored the shape, the
+    PanelWriter's single-segment cold open -- falls back to prepending, which is exactly what the
+    show did before. A misplaced ID is worse than an old-fashioned one.
+    """
+    if len(segments) < 2 or not intro:
+        return intro + segments
+    a, b = segments[0], segments[1]
+    if a.source_hn_id or b.source_hn_id or a.speaker_key == b.speaker_key:
+        return intro + segments
+    return [a, b] + intro + segments[2:]
 
 
 def _outro_segments(cast, when: Optional[WindowLike] = None) -> List[ScriptSegment]:
@@ -354,7 +382,7 @@ def run_panel(
     log(f"      {len(segments)} segments")
 
     # Wrap the writer's content in the fixed show intro + outro, then renumber.
-    segments = _intro_segments(cast, win) + segments + _outro_segments(cast, win)
+    segments = _splice_intro(_intro_segments(cast, win), segments) + _outro_segments(cast, win)
     # The cost line goes in BEFORE the renumber, so its `order` is the one the render and the page
     # agree on. It quotes a figure that includes its own characters; see
     # `pricing.resolve_cost_sentence` for why that is a fixed point and not a subtraction.

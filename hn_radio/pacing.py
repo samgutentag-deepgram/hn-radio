@@ -68,6 +68,8 @@ class GapPolicy:
     # is a third segment behind them, so those boundaries are now real gaps in the audio rather
     # than pauses inside a single read. Falls back to `exchange` for a policy that predates it.
     cold_open: Optional[float] = None
+    # The beat after the show ID, before the previews. Falls back to `cold_open` when unset.
+    cold_open_beat: Optional[float] = None
     normalize_edges: bool = True  # False reproduces today's raw, unmanaged segment edges
 
 
@@ -130,11 +132,23 @@ def gap_plan(segments: Sequence, policy: GapPolicy,
     gaps: List[float] = []
     for i in range(n - 1):
         a, b = segments[i], segments[i + 1]
-        if i == 0 or i == n - 2:
+        in_cold_open = i + 1 < cold_end and policy.cold_open is not None
+        # The cold open owns its own boundaries, INCLUDING the first one. It did not used to:
+        # the fixed intro was always segment 0, so boundary 0 was always the show's opening beat.
+        # `pipeline._splice_intro` moved the intro to third on 2026-09-16, which put a headline at
+        # segment 0 and would otherwise have opened the show with a 0.90s hole between the two
+        # headlines that are supposed to land on top of each other.
+        if (i == 0 and not in_cold_open) or i == n - 2:
             gaps.append(policy.show_boundary)
             continue
-        if i + 1 < cold_end and policy.cold_open is not None:
-            gaps.append(policy.cold_open)
+        if in_cold_open:
+            # The cold open is [headline, headline, show ID, preview]. Everything up to the ID is
+            # a continuous trade; the single beat sits between the ID and the preview, which is
+            # the last boundary inside the region. Guarded on a region long enough to HAVE all
+            # four parts, so a two-story episode that never gets a preview does not put the beat
+            # in the middle of the trade instead.
+            beat = policy.cold_open_beat or policy.cold_open
+            gaps.append(beat if (cold_end >= 4 and i + 2 == cold_end) else policy.cold_open)
             continue
         gaps.append(getattr(policy, boundary_kind(a, b, story_ids)))
     return gaps
@@ -214,7 +228,11 @@ MIN_INTERNAL_RUN_SECONDS = 0.08
 # enough that the preview starts to sound like three separate items rather than one list. Neither
 # was recorded as the pick, so this is the reasoned middle: a by-ear call to overturn, not an
 # arithmetic one.
-COLD_OPEN_PAUSE_SECONDS = 0.55
+# RE-MEASURED 2026-09-16, down from 0.55. That value was reasoned from the show's own gap policy
+# and auditioned by ear. The reference episode says the real number is smaller: the only
+# sentence-boundary pause inside a host's cold-open run is 0.24s. 0.55 was reading a list at the
+# listener; 0.24 reads it as one thought.
+COLD_OPEN_PAUSE_SECONDS = 0.24
 
 
 def internal_silence_runs(pcm: bytes,
@@ -325,14 +343,22 @@ CONVERSATIONAL = GapPolicy(
          "a real beat at a story change.",
     exchange=0.16, same_speaker=0.22, into_comment=0.40, out_of_comment=0.30,
     story_change=0.85, show_boundary=0.90,
-    # NOT the same as COLD_OPEN_PAUSE_SECONDS, and the first version of this shipped as if it
-    # were. That value spaces one HEADLINE from the next inside a single read. This one is the
-    # tease handing over to the preview: a different and larger event, two people becoming one
-    # person reading a list. Measured off four Up First episodes (research/upfirst/timing.py),
-    # that boundary runs 2.4-3.0s against a show twice this one's length, so 1.20 is the scaled
-    # equivalent. Still well under `story_change`, which is what it should be: the cold open is
-    # changing paragraph, not changing subject.
-    cold_open=1.20,
+    # The headline trade at the very top, and it is CONTINUOUS. Measured at word level off a full
+    # Up First episode: between host one's headline and host two's, and again between host two's
+    # and the show ID, the gap is 0.00s. They come in on top of each other over the music bed.
+    # There is exactly one pause in the first fifty seconds of that show and it is not here.
+    #
+    # 0.08 rather than 0.00 because these are separate TTS renders, not one continuous studio
+    # read: `normalize_edges` already leaves 0.06s a side, and a hard butt-join clips the onset of
+    # a plosive. 0.08 puts the real gap near 0.20s, which is as close to continuous as separate
+    # renders get. Shipped at 1.20 for one episode, which put a second of dead air in the middle
+    # of the show's sharpest exchange.
+    cold_open=0.08,
+    # The one real beat in the cold open: after the show ID, before the previews. Measured at
+    # 2.72s on the same episode, and NOT scaled for show length the way `story_change` is. The
+    # opening ritual is a fixed editorial beat rather than a function of runtime; a six-minute
+    # show and a fifteen-minute one both say who they are and then pause before the rundown.
+    cold_open_beat=2.70,
 )
 
 POLICIES = {p.name: p for p in (UNIFORM, TIGHT, CONVERSATIONAL)}

@@ -23,31 +23,46 @@ from ._http import post_json_for_bytes
 from .models import ScriptSegment
 
 
-def _speak_url(voice_id: str) -> str:
+def _speak_url(voice_id: str, with_speed: bool = True) -> str:
     # Flux voices -> /v2/speak; Aura-2 (previous gen) -> /v1/speak. Same media params on both.
     # The host comes from config so a run can be pointed at a different Deepgram endpoint.
     base = config.speak_endpoint(voice_id)
-    query = urllib.parse.urlencode({
+    params = {
         "model": voice_id,
         "encoding": config.AUDIO_ENCODING,
         "container": config.AUDIO_CONTAINER,
         "sample_rate": config.SAMPLE_RATE,
-    })
-    return f"{base}?{query}"
+    }
+    if with_speed and config.SPEAK_SPEED is not None:
+        params["speed"] = config.SPEAK_SPEED
+    return f"{base}?{urllib.parse.urlencode(params)}"
+
+
+# What Flux returns when a model/language pair has no `speed` support. Retrying without the
+# parameter is the right response: a slightly slow read still ships, a hard failure takes the
+# 3am show off the air over a knob that only changes pace.
+_SPEED_UNSUPPORTED = ("SPEED_NOT_SUPPORTED", "does not support the 'speed' parameter")
 
 
 def render_segment(text: str, voice_id: str, api_key: str) -> bytes:
     """Render one segment to raw linear16 PCM bytes."""
     headers = {"Authorization": f"Token {api_key}", "Content-Type": "application/json"}
-    try:
-        audio = post_json_for_bytes(
-            _speak_url(voice_id), {"text": text}, headers,
+
+    def _post(with_speed: bool) -> bytes:
+        return post_json_for_bytes(
+            _speak_url(voice_id, with_speed), {"text": text}, headers,
             timeout=60, retries=config.http_retries(), backoff=config.HTTP_BACKOFF_SECONDS,
         )
+
+    try:
+        audio = _post(with_speed=True)
     except Exception as e:
-        raise RuntimeError(
-            f"Flux render failed for voice={voice_id!r} text={text[:60]!r}: {e}"
-        ) from e
+        if any(m in str(e) for m in _SPEED_UNSUPPORTED):
+            audio = _post(with_speed=False)
+        else:
+            raise RuntimeError(
+                f"Flux render failed for voice={voice_id!r} text={text[:60]!r}: {e}"
+            ) from e
     # Guard: if the server ever returns a container despite container=none, drop the header.
     if audio[:4] == b"RIFF":
         audio = audio[44:]

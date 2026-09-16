@@ -144,6 +144,23 @@ OUTRO_AT = 171.5
 # the extra 0.2s decaying. CUE_GAP_SECONDS stays where it is.
 CUE_GAP_SECONDS = 0.16
 
+# Air on either side of a STING specifically, separated from CUE_GAP_SECONDS on 2026-09-16 so the
+# show can breathe at a story change without also padding the bed and the outro.
+#
+# 0.95, which makes a story change 0.95 + STING_SECONDS + 0.95 = 3.90s of non-speech. That is the
+# measured target: Up First holds a median 8.3s between stories, and scaled for a show a bit under
+# half its length that is 3.9s. The old figure was 0.16 + 2.0 + 0.16 = 2.32s, and the show
+# not breathing at its chapter changes is most of what made the arc feel flat.
+#
+# WHAT THIS IS NOT, and the honest limit of it. On Up First that 8.3s is FULL of music; here it is
+# 2.0s of sting with silence either side. The right fix is a longer sting, but STING_SECONDS
+# cannot simply be raised: 85.8 for 2.0s was chosen against this track's own shape -- it opens in
+# the quiet tail of the 84.0s hit, rides the 86.4s bloom, and cuts out at 87.8 into quiet material
+# -- so a 3.5s sting would run to 89.3 and through material nobody has measured. Extending it
+# means searching the track for a longer window, which is a by-ear pass with `scripts/` tooling
+# rather than a constant edit. Until then the beat is the right LENGTH and the wrong TEXTURE.
+STING_GAP_SECONDS = 0.95
+
 # How much of the show the bed covers. Segment 0 is the fixed intro and the writer's cold open
 # follows it (see `pipeline._intro_segments` and the COLD OPEN instruction in `writers`), so the
 # opening is the first TWO segments. Detected structurally on purpose: nothing here reads the
@@ -499,9 +516,9 @@ def apply(
             # than stacking a full pacing gap on top of a fade that just played.
             gap = round(max(0.0, gap - BED_TAIL_SECONDS), 3)
         if (i - 1) in sting_at:
-            out_gaps.append(CUE_GAP_SECONDS)
+            out_gaps.append(STING_GAP_SECONDS)
             out_pieces.append(_cue(STING_AT, STING_SECONDS, sting_rms, STING_FADE_OUT, "sting"))
-            out_gaps.append(CUE_GAP_SECONDS)
+            out_gaps.append(STING_GAP_SECONDS)
         else:
             out_gaps.append(gap)
         out_pieces.append(pieces_in[i])

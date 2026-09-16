@@ -127,6 +127,20 @@ def music_enabled() -> bool:
 AUDIO_ENCODING = "linear16"
 AUDIO_CONTAINER = "none"
 SAMPLE_RATE = 24000    # Hz, mono, 16-bit
+
+# How fast Flux reads. Batch /v2/speak accepts 0.85-1.15 in 0.05 steps (see the expressivity note
+# further down for why this file used to say it did not).
+#
+# 1.10, and measured rather than chosen. Both shows were put through the same Deepgram transcribe
+# and the speech rate taken INSIDE each speaker run, so gaps and music are excluded and only the
+# read itself is compared: Up First reads at a median 177 wpm, the 2026-09-16-pm episode at 159.
+# That is a ratio of 1.113, and the grid's nearest step is 1.10. Sam's words for the 159 version
+# were that "the pace is funny".
+#
+# Not 1.15: that would overshoot to about 183 wpm, and the target is a produced news read rather
+# than the fastest legible one. Set to None to send no `speed` at all, which is what every episode
+# before 2026-09-16 was rendered at.
+SPEAK_SPEED = 1.10
 SAMPLE_WIDTH = 2       # bytes per sample (16-bit)
 CHANNELS = 1
 

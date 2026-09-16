@@ -155,10 +155,17 @@ def test_the_cold_open_pause_sits_between_a_paragraph_break_and_a_story_change()
     assert policy.same_speaker < pacing.COLD_OPEN_PAUSE_SECONDS < policy.story_change
 
 
-def test_the_cold_open_pause_is_clearly_longer_than_flux_leaves_on_its_own():
-    """It has to be audibly different from the defect. The largest pause on the real merged read
-    is 0.22s, so a value near it would ship the same "touch too fast" read with extra code."""
-    assert pacing.COLD_OPEN_PAUSE_SECONDS >= 2 * BOUNDARY_2
+def test_the_cold_open_pause_sits_at_the_top_of_what_flux_already_does():
+    """REPLACED 2026-09-16, and the premise flipped rather than the number drifting.
+
+    This used to demand the pause be at least twice the largest one Flux leaves on its own
+    (0.22s), on the reasoning that a value near it would ship the same read with extra code. A
+    real episode says the target is 0.24s, which is INSIDE that range. So the mechanism is not
+    here to make the pause bigger -- Flux's natural spacing was already about right and 0.55 was
+    overshooting it. What `set_internal_pauses` still buys is EVENNESS: Flux leaves 0.09, 0.13
+    and 0.22 on the same read, and an even pause is what makes a list scan as a list.
+    """
+    assert BOUNDARY_2 <= pacing.COLD_OPEN_PAUSE_SECONDS < 2 * BOUNDARY_2
 
 
 # --- how many pauses a cold open has ----------------------------------------------------------
