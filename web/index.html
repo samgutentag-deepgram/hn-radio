@@ -409,12 +409,53 @@ from plain text with no markup or tuning.</p>
     var n = tickerHost.getAttribute('data-count');
     var bits = [];
     if (idle && n && n !== '0') bits.push('top ' + n + ' on the front page');
-    bits.push('daily run 3am Pacific' + (st.next_run ? ', next ' + until(st.next_run) : ''));
-    if (st.last_completed) bits.push('last episode ' + st.last_completed.episode + ' ' + ago(st.last_completed.at));
+    // IT USED TO SAY "daily run 3am Pacific", which stopped being true on 2026-09-04 and stayed
+    // on the page for twelve days. The schedule is not restated here at all now: the countdown
+    // that matters is the one in the upcoming column, filled just below, and a second copy of the
+    // hours in this sentence is how the first wrong one survived so long.
+    if (st.last_completed) {
+      bits.push('last episode ' + st.last_completed.episode + ' ' + ago(st.last_completed.at));
+    }
     meta.innerHTML = bits.join(' &middot; ');
+
+    // The upcoming column's own timer. The board owns it because the board is what polls
+    // `/api/status`; the grid built the element and left it empty rather than guessing.
+    //
+    // `next_runs` is per slot, which is the whole point: at 09:00 the sooner run is this
+    // afternoon's, and the old single `next_run` pointed at tomorrow's 3am and said "in 18h" in a
+    // column waiting on something six hours away.
+    var nextEl = document.getElementById('ep-next-run');
+    if (nextEl) {
+      var slot = nextEl.getAttribute('data-slot');
+      var at = st.next_runs && st.next_runs[slot];
+      if (ACTIVE[st.state] && !stalled) {
+        nextEl.innerHTML = 'Rendering now.';
+      } else if (stalled) {
+        // Say nothing hopeful. The board directly below is already showing the stall.
+        nextEl.innerHTML = '';
+      } else if (at) {
+        // `until` returns "in 2h", so the "in" is lifted out of the mono span: leaving it in
+        // renders as "Renders  in 2h" -- the proportional space plus the mono one reads as a
+        // double space, which is the kind of thing that looks like a template bug.
+        nextEl.innerHTML = 'Renders in <b>' + esc(until(at).replace(/^in /, ''))
+          + '</b>, at ' + esc(clockLabel(at)) + ' Pacific.';
+      }
+    }
 
     var want = cadence(st);
     if (want !== mode) { mode = want; clearInterval(timer); timer = setInterval(poll, want); }
+  }
+
+  // "3 PM" from an ISO timestamp the server built in Pacific. Formatted in the ORIGINAL offset
+  // rather than the reader's, because the sentence says "Pacific" straight after it: converting
+  // to local time and then labelling it Pacific would be worse than either on its own.
+  function clockLabel(iso) {
+    var m = /T(\d{2}):(\d{2})/.exec(String(iso));
+    if (!m) return '';
+    var h = +m[1];
+    var suffix = h < 12 ? 'AM' : 'PM';
+    var h12 = h % 12 === 0 ? 12 : h % 12;
+    return h12 + (m[2] === '00' ? '' : ':' + m[2]) + ' ' + suffix;
   }
 
   function cadence(st) {
@@ -586,7 +627,9 @@ from plain text with no markup or tuning.</p>
     function episodeCell(e, slot) {
       var href = 'episode.html?id=' + encodeURIComponent(e.id);
       var cell = document.createElement('div');
-      cell.className = 'ep-cell' + (slot === 'full' ? ' ep-cell--full' : '');
+      // `--linked` turns the whole tile into the click target, via a stretched pseudo-element on
+      // the Listen link (see brand.css). Only tiles with an episode in them get it.
+      cell.className = 'ep-cell ep-cell--linked' + (slot === 'full' ? ' ep-cell--full' : '');
 
       var label = document.createElement('span');
       label.className = 'ep-slot';
@@ -636,7 +679,21 @@ from plain text with no markup or tuning.</p>
     // A slot in a PAST day that never got an episode. 2026-09-15 really is missing its morning
     // edition, and this is deliberately NOT the upcoming cell: telling a reader an episode is
     // coming for a day that is over would be a lie, and a gap in the archive is worth seeing.
-    function absentCell(slot) {
+    //
+    // WHAT ELSE COULD GO HERE, since Sam asked. Three things were considered and rejected:
+    //
+    //   The reason it failed. `status.json` holds ONE record, the last run, so the archive has no
+    //   per-day failure history to read. Publishing one would mean the pipeline writing a
+    //   tombstone per missed run, which is a real feature and not a label.
+    //   The stories it would have covered. `/api/trending` is a live snapshot with no history, so
+    //   there is nothing to show for a window that closed days ago.
+    //   A retry button. There is no endpoint, the render costs real money, and a listener is not
+    //   the person who should decide to spend it.
+    //
+    // So it says no episode, and then does the one genuinely useful thing available: points at
+    // the OTHER edition from the same day, which is what a reader who came for that date
+    // actually wants. `sibling` is null when the day lost both, and then it just says no episode.
+    function absentCell(slot, sibling) {
       var cell = document.createElement('div');
       cell.className = 'ep-cell ep-cell--absent';
       var label = document.createElement('span');
@@ -644,7 +701,16 @@ from plain text with no markup or tuning.</p>
       label.textContent = SLOT_LABEL[slot];
       var note = document.createElement('p');
       note.className = 'ep-absent-note';
-      note.textContent = 'No episode.';
+      if (sibling) {
+        note.textContent = 'No episode. ';
+        var a = document.createElement('a');
+        a.href = 'episode.html?id=' + encodeURIComponent(sibling.id);
+        a.textContent = 'The ' + SLOT_LABEL[slotOf(sibling.id)].toLowerCase() + ' covered this day';
+        note.appendChild(a);
+        note.appendChild(document.createTextNode('.'));
+      } else {
+        note.textContent = 'No episode aired.';
+      }
       cell.appendChild(label);
       cell.appendChild(note);
       return cell;
@@ -668,6 +734,15 @@ from plain text with no markup or tuning.</p>
       label.className = 'ep-slot';
       label.textContent = SLOT_LABEL[slot] + ' \u00b7 coming up';
       cell.appendChild(label);
+      // THIS SLOT'S OWN COUNTDOWN, filled by the status board's poll (it is the thing that has
+      // `/api/status`, and one fetch is enough for both). Empty until the first poll answers
+      // rather than showing a guess, and `data-slot` is how the board finds it without this
+      // function and that one sharing a variable across two IIFEs.
+      var next = document.createElement('p');
+      next.className = 'ep-next-run';
+      next.id = 'ep-next-run';
+      next.setAttribute('data-slot', slot);
+      cell.appendChild(next);
       cell.appendChild(board);   // a move, not a copy
       return cell;
     }
@@ -711,7 +786,7 @@ from plain text with no markup or tuning.</p>
           } else if (day === upcomingDay && slot === upcomingSlot) {
             row.appendChild(upcomingCell(slot, board));
           } else {
-            row.appendChild(absentCell(slot));
+            row.appendChild(absentCell(slot, slots[slot === 'am' ? 'pm' : 'am'] || null));
           }
         });
       }

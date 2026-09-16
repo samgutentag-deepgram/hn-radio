@@ -27,6 +27,34 @@ from . import config
 
 MORNING, AFTERNOON = "am", "pm"
 
+# The hour each run starts, Pacific. THIS IS THE SECOND COPY OF THE SCHEDULE and the first one is
+# `crontab` (`0 3,15 * * *`), which is the one that actually fires. Keeping them in step is a
+# manual job, and `tests/test_window.py` asserts they agree so it is at least a loud one.
+#
+# It lives here rather than in `config.py` because `slot_at` below is the function that turns a
+# clock time into `am` or `pm`, and a schedule that the slot logic cannot see is how the drift
+# starts. There was no Python copy at all until 2026-09-16: `backend/app.py` hardcoded a single
+# `hour=3` in its status handler, so for the twelve days after the show went twice daily the
+# landing page said "daily run 3am Pacific, next in 13h" while two episodes a day were airing.
+# Nobody noticed, because the sentence was plausible.
+RUN_HOURS = {MORNING: 3, AFTERNOON: 15}
+
+
+def next_run(slot: str, now: Optional[datetime] = None) -> datetime:
+    """When the `slot` run next starts, Pacific-aware. Today's if it is still ahead, else
+    tomorrow's."""
+    if slot not in RUN_HOURS:
+        raise ValueError(f"unknown slot {slot!r}; expected one of {sorted(RUN_HOURS)}")
+    now = (now or datetime.now(config.PACIFIC)).astimezone(config.PACIFIC)
+    at = now.replace(hour=RUN_HOURS[slot], minute=0, second=0, microsecond=0)
+    return at if at > now else at + timedelta(days=1)
+
+
+def next_runs(now: Optional[datetime] = None) -> dict:
+    """`{slot: next start}` for every run, so a caller can show one timer per column."""
+    now = now or datetime.now(config.PACIFIC)
+    return {slot: next_run(slot, now) for slot in RUN_HOURS}
+
 
 @dataclass(frozen=True)
 class EpisodeWindow:

@@ -2538,19 +2538,125 @@ html[data-theme="light"] .catalog-cost {
      column off the page. This is the one that actually bites in two-column
      text layouts. */
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 1.6rem;
-  padding: 1.15rem 0;
-  border-bottom: 1px solid var(--dg-border);
+  gap: 0.9rem 1.1rem;
+  padding: 0.5rem 0 1.1rem;
 }
-.day-row:last-child { border-bottom: none; }
+/* NO SEPARATOR BETWEEN ROWS ANY MORE. The cells became tiles with their own
+   edges, and a hairline across the page as well gave every row a box inside a
+   box. The date kicker is what separates one day from the next now. */
 
 /* The date, once per row, above both cells rather than repeated in each. */
 .day-date {
   grid-column: 1 / -1;
-  margin: 0 0 0.7rem;
+  margin: 0 0 0.1rem;
 }
 
-.ep-cell { min-width: 0; }
+/* ---- the tile ------------------------------------------------------------
+   Each episode is its own card, and it LIFTS on hover.
+
+   `translateY(-3px)` plus a shadow, not `scale()`. Scaling a card that is
+   mostly type resamples every glyph in it, which on a subpixel-antialiased
+   headline reads as a moment of blur rather than a moment of depth; moving it
+   and putting a shadow under it is the same cue with none of that. It is also
+   why the transform is on the tile and not on a wrapper: one compositor layer,
+   no text reflow.
+
+   The gradient is the same construction as `.catalog-cost`, one step lighter:
+   `--dg-accent-rgb` at a low alpha over the panel fill, so a tile reads as
+   raised against the near-black page without becoming a green box. Dark mode
+   needs less of it than light, same asymmetry as the callout.
+   -------------------------------------------------------------------------- */
+.ep-cell {
+  min-width: 0;
+  position: relative;
+  border: 1px solid var(--dg-border);
+  border-radius: var(--dg-shape-panel);
+  padding: 0.9rem 1rem 1rem;
+  background-image:
+    linear-gradient(160deg,
+      rgba(var(--dg-accent-rgb), 0.055) 0%,
+      rgba(var(--dg-accent-rgb), 0.015) 45%,
+      rgba(var(--dg-accent-rgb), 0) 100%);
+  background-color: var(--dg-bg-panel);
+  transition:
+    transform var(--dg-anim-fast) var(--dg-anim-ease),
+    box-shadow var(--dg-anim-fast) var(--dg-anim-ease),
+    border-color var(--dg-anim-fast) var(--dg-anim-ease);
+}
+html[data-theme="light"] .ep-cell {
+  background-image:
+    linear-gradient(160deg,
+      rgba(var(--dg-accent-rgb), 0.16) 0%,
+      rgba(var(--dg-accent-rgb), 0.05) 45%,
+      rgba(var(--dg-accent-rgb), 0) 100%);
+}
+
+/* :focus-within as well as :hover, so tabbing to the Listen link lifts the tile
+   it is in. Without it a keyboard reader gets the focus ring and none of the
+   depth cue a mouse reader gets for free. */
+.ep-cell:hover,
+.ep-cell:focus-within {
+  transform: translateY(-3px);
+  border-color: rgba(var(--dg-accent-rgb), 0.38);
+  box-shadow:
+    0 10px 24px -8px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(var(--dg-accent-rgb), 0.08);
+}
+html[data-theme="light"] .ep-cell:hover,
+html[data-theme="light"] .ep-cell:focus-within {
+  box-shadow:
+    0 10px 24px -10px rgba(16, 16, 20, 0.22),
+    0 0 0 1px rgba(var(--dg-accent-rgb), 0.18);
+}
+
+/* A tile with no episode in it does not lift, and does not pretend to be one:
+   nothing in it is clickable, so depth would be an affordance for nothing.
+
+   `align-self: start` so it sizes to its own content instead of stretching to
+   match the episode beside it. Grid's default stretch is right for two real
+   tiles -- a pair of equal cards reads as a pair -- and wrong for this one,
+   where it drew a dashed box four lines deep around one line of "No episode".
+   The upcoming tile opts out too, because the status board inside it is however
+   tall the front page happens to be today. */
+.ep-cell--absent,
+.ep-cell--upcoming {
+  align-self: start;
+  background-image: none;
+  background-color: transparent;
+  border-style: dashed;
+}
+.ep-cell--absent:hover,
+.ep-cell--absent:focus-within,
+.ep-cell--upcoming:hover,
+.ep-cell--upcoming:focus-within {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--dg-border);
+}
+.ep-cell--upcoming:hover,
+.ep-cell--upcoming:focus-within { border-color: rgba(var(--dg-accent-rgb), 0.3); }
+
+/* The whole tile is the link target. A stretched pseudo-element over the card
+   rather than wrapping the card in an <a>, because the card contains a heading
+   and a second link and nesting interactive content inside an anchor is
+   invalid and unusable with a screen reader. This keeps exactly one anchor in
+   the accessibility tree and lets the rest of the card be inert. */
+.ep-cell--linked .ep-listen-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+/* ...which means the title link would be unreachable underneath it, so it is
+   lifted back above. Both point at the same episode page. */
+.ep-cell--linked h3.ep-title a { position: relative; z-index: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ep-cell { transition: none; }
+  .ep-cell:hover,
+  .ep-cell:focus-within { transform: none; }
+}
+
 .ep-cell--full { grid-column: 1 / -1; }
 
 /* Which edition this cell is, so a single-episode day or an empty slot still
@@ -2577,14 +2683,37 @@ html[data-theme="light"] .catalog-cost {
 .ep-absent-note {
   margin: 0;
   font-size: 0.82rem;
+  line-height: 1.5;
   color: var(--dg-text-label);
-  opacity: 0.7;
+}
+.ep-absent-note a { color: var(--dg-link); }
+/* The run countdown in an upcoming tile. Mono for the figure so "in 2h 40m"
+   does not reflow the line every minute as the digits change width. */
+.ep-next-run {
+  margin: 0 0 0.6rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--dg-text-body);
+}
+.ep-next-run b {
+  font-family: var(--dg-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--dg-weight-medium);
+  color: var(--dg-text-primary);
 }
 
 /* The upcoming slot. It holds #status-board, which brings its own styling from
    block 9, so this only has to make room for it and label it. */
 .ep-cell--upcoming .ep-slot { color: var(--dg-state-live); }
 html[data-theme="light"] .ep-cell--upcoming .ep-slot { color: var(--dg-accent-on-light); }
+/* The board brings its own panel from block 9. Inside a tile that is a box in a
+   box, so it gives up its chrome and keeps only its contents. */
+.ep-cell--upcoming .status-board {
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+}
 
 /* One column on a phone. The two editions become two stacked cells, each still
    labelled, which is why .ep-slot is not a desktop-only affordance. */

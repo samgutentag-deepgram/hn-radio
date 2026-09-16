@@ -93,8 +93,8 @@ def health():
 @app.get("/api/status")
 def api_status():
     """Generation status for the feed-page status board: current state + next scheduled run."""
-    from datetime import datetime, timedelta
-    from hn_radio import status as status_mod
+    from datetime import datetime
+    from hn_radio import status as status_mod, window
 
     st = status_mod.read()
     # Derived, not stored: a stall is an inference from silence, so it has to be computed when the
@@ -105,10 +105,15 @@ def api_status():
     st["silent_seconds"] = None if quiet is None else int(quiet)
     st["stall_after_seconds"] = status_mod.stall_seconds()
     now = datetime.now(config.PACIFIC)
-    nxt = now.replace(hour=3, minute=0, second=0, microsecond=0)
-    if nxt <= now:
-        nxt += timedelta(days=1)
-    st["next_run"] = nxt.isoformat()
+    # ONE TIMER PER RUN, because the page shows one per column. This used to be a single hardcoded
+    # `hour=3`, which was right until the cron went to `0 3,15` on 2026-09-04 and then counted to
+    # the wrong run for twelve days while the page said "daily run 3am Pacific". The hours now come
+    # from `window.RUN_HOURS`, next to the function that decides which slot a clock time is in.
+    runs = window.next_runs(now)
+    st["next_runs"] = {slot: at.isoformat() for slot, at in runs.items()}
+    # The sooner of the two, kept because the board's polling cadence latches onto "a run is about
+    # to start" and does not care which one it is.
+    st["next_run"] = min(runs.values()).isoformat()
     st["now"] = now.isoformat()
     return st
 
