@@ -533,8 +533,7 @@ from plain text with no markup or tuning.</p>
         + ' would run this show for about <b>' + t.days_per_credit + '</b> days at the pace it has'
         + ' been publishing.';
     }
-    html += ' Every episode page shows what that episode cost. '
-      + '<a href="' + (t.pricing_url || 'https://deepgram.com/pricing')
+    html += ' <a href="' + (t.pricing_url || 'https://deepgram.com/pricing')
       + '" target="_blank" rel="noopener">See the rates</a>.';
     el.innerHTML = html;
     el.hidden = false;

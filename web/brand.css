@@ -2489,7 +2489,13 @@ html[data-theme="light"] .cost-figure-money .cost-value { color: var(--dg-accent
    stays text rather than becoming a figure row: four cells is a receipt for one
    episode, and one sentence is the right weight for a catalogue. */
 .catalog-cost {
-  margin: 0 0 1.4rem;
+  /* Centered in the column, not filling it. The box is capped at 44rem by the
+     measure below while the column is up to 78rem, so left-aligning it hung the
+     whole thing off one edge with a third of the row empty beside it. `auto`
+     on the inline sides rather than `text-align: center`: the box centers, the
+     sentence inside it stays ranged left, because centered prose of three lines
+     gives every line a different starting point to find. */
+  margin: 0 auto 1.4rem;
   border: 1px solid var(--dg-border);
   border-radius: var(--dg-shape-panel);
   padding: 0.85rem 1rem;
