@@ -42,6 +42,19 @@
          delete the orb's lava layers along with the old glyph. -->
     <button class="transport orb orb-glyph" id="transport" type="button" aria-label="Play"
             ><span id="transport-mark">&#9654;</span></button>
+    <!-- The scrub bar, and the gap it fills was a real one: the console had the orb on the left
+         and the clock pushed to the right with `margin-left: auto`, and nothing in between. The
+         hero on the landing page has had this scrubber the whole time; the console never got it
+         when the bar canvas was replaced by the orb, so an episode page showed a wide empty strip
+         exactly where a progress bar belongs.
+
+         Ticks are the CHAPTER boundaries, which is why this is more useful here than on the hero:
+         the episode page is the one that knows them. -->
+    <div class="transport-scrub" id="transport-scrub" role="slider" tabindex="0"
+         aria-label="Seek" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div class="transport-bar" id="transport-bar"></div>
+      <div class="transport-ticks" id="transport-ticks"></div>
+    </div>
     <span class="transport-time" id="transport-time">0:00 / 0:00</span>
   </div>
   <div id="chapters"></div>

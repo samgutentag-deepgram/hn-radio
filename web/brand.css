@@ -594,15 +594,16 @@ html[data-theme="light"] [data-desk] { --v-on: var(--v-ink-lt, var(--v-d)); }
   --dg-col: clamp(46rem, 60vw, 78rem);
   --dg-gutter: 1.2rem;
 
-  /* The prose measure, which is NOT the column and must not follow it.
-     46rem of column was about 95 characters of body text, near the top of what
-     is comfortable. At 78rem the same paragraph runs past 150, and a transcript
-     is the worst case because it is the thing people actually read line by line.
-     So the column widens for LAYOUT -- two episode tiles side by side, four cost
-     figures in a row -- and every run of prose keeps the measure it already had.
-     Used by the transcript lines, the show notes, the disclaimer and the fine
-     print under the receipt. */
-  --dg-measure: 46rem;
+  /* THE PROSE MEASURE IS GONE, deliberately and on request. It capped the
+     transcript, the show notes, the disclaimer and the receipt's fine print at
+     46rem while the column ran to 78rem, on the reasoning that a 150-character
+     line is hard to read. Sam looked at it wide and wanted the text to fill the
+     container instead: "when I make the page wide, the content lines expand,
+     but the text does not stretch to fill the space."
+     Recorded rather than argued: it is his page, the effect is only visible
+     above about 1230px, and anyone who wants it back adds one token and four
+     max-widths. `.catalog-cost` keeps its own 44rem cap, which is a separate
+     decision about one centered box and not part of this. */
 }
 
 /* On a light ground the accent is a fill, not an ink: #13ef95 is 1.52:1 on white.
@@ -810,11 +811,6 @@ html[data-theme="light"] .eyebrow .dg { color: var(--dg-accent-on-light); }
   border-radius: 0 var(--dg-shape-control) var(--dg-shape-control) 0;
   padding: 0.5rem 0.8rem;
   margin: 0.6rem 0 0;
-  /* The BOX is measured, not the text inside it. A `.note` is prose end to end,
-     so a full-width box with a measured paragraph in it would be mostly empty
-     border. The receipt above it does the opposite, because its content is four
-     figures in a row and genuinely wants the width. */
-  max-width: var(--dg-measure);
 }
 pre.note { white-space: pre-wrap; word-break: break-word; font-size: 0.74rem; }
 
@@ -1392,7 +1388,8 @@ html[data-theme="light"] .hero-kicker { color: var(--dg-accent-on-light); }
 /* Scrub bar: a seek target and a chapter map. Taller than a pure readout so it
    is a comfortable click target, and the ticks sit above the fill so they stay
    visible as the played portion passes under them. */
-.hero-scrub {
+.hero-scrub,
+.transport-scrub {
   position: relative;
   height: 8px;
   border-radius: var(--dg-shape-pill);
@@ -1400,15 +1397,21 @@ html[data-theme="light"] .hero-kicker { color: var(--dg-accent-on-light); }
   overflow: hidden;
   cursor: pointer;
 }
-.hero-bar {
+/* The console's takes the slack in its row. The hero's is a block in a column
+   and is full width already, which is why only this one needs a flex basis. */
+.transport-scrub { flex: 1 1 auto; min-width: 4rem; }
+.hero-bar,
+.transport-bar {
   height: 100%;
   width: 0;
   background: var(--dg-state-live);
   border-radius: var(--dg-shape-pill);
   transition: width var(--dg-anim-base) linear;
 }
-.hero-ticks { position: absolute; inset: 0; pointer-events: none; }
-.hero-tick {
+.hero-ticks,
+.transport-ticks { position: absolute; inset: 0; pointer-events: none; }
+.hero-tick,
+.transport-tick {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -1417,6 +1420,10 @@ html[data-theme="light"] .hero-kicker { color: var(--dg-accent-on-light); }
   background: var(--dg-bg-app);
   opacity: 0.9;
 }
+/* Both scrubbers are keyboard seek targets, so both need a visible ring. The
+   track clips its children, so the ring goes outside it or it is invisible. */
+.hero-scrub:focus-visible,
+.transport-scrub:focus-visible { outline-offset: 3px; }
 /* There is no waveform canvas here any more. The orb IS the signal now: it is
    driven by the same AnalyserNode the bars used to be, so the page shows the
    speech in the object it already had rather than in a second widget beside it.
@@ -1725,7 +1732,7 @@ audio { width: 100%; margin: 0.6rem 0 0.4rem; }
   backdrop-filter: blur(var(--dg-glass-blur));
   border-bottom: 1px solid var(--dg-border);
 }
-.console-player { display: flex; align-items: center; gap: 0.8rem; }
+.console-player { display: flex; align-items: center; gap: 0.9rem; }
 .transport {
   /* Bigger than the 2.5rem it was, because it is doing two jobs now: it is the
      play control AND it is the playback visual that replaced the bar canvas
@@ -1754,7 +1761,17 @@ audio { width: 100%; margin: 0.6rem 0 0.4rem; }
 /* margin-left: auto rather than a flex:1 spacer in the middle. The bar canvas
    used to be that spacer; with it gone the readout would otherwise sit glued to
    the orb, and a player's elapsed time belongs at the far end of its row. */
-.transport-time { flex: none; margin-left: auto; font-size: 0.76rem; color: var(--dg-text-label); }
+/* `flex: none` and no auto margin any more. The clock used to be shoved right
+   by `margin-left: auto` with nothing between it and the orb, which is what left
+   the empty strip; the scrubber is `flex: 1` and now takes that space. Mono and
+   tabular so the readout does not reflow the row every second. */
+.transport-time {
+  flex: none;
+  font-family: var(--dg-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.76rem;
+  color: var(--dg-text-label);
+}
 .console .chapter-strip { margin: 0.55rem 0 0; }
 
 /* Narrow, the console keeps sticking but the viewport it sticks to is short and
@@ -1900,10 +1917,7 @@ audio { width: 100%; margin: 0.6rem 0 0.4rem; }
   font-size: 0.66rem;
   color: var(--dg-text-disabled);
 }
-/* max-width, not a narrower grid column: the row's play button and timestamp
-   stay pinned left where a reader's eye already expects them, and only the words
-   are measured. See --dg-measure. */
-.seg .text { font-size: 0.94rem; color: var(--dg-text-body); max-width: var(--dg-measure); }
+.seg .text { font-size: 0.94rem; color: var(--dg-text-body); }
 .seg.commenter .text { font-style: italic; }
 .ts { font-size: 0.64rem; color: var(--dg-text-label); }
 
@@ -1944,8 +1958,7 @@ audio { width: 100%; margin: 0.6rem 0 0.4rem; }
 .seg[data-voice] .icon:hover,
 .seg[data-desk] .icon:hover { color: var(--v-on); border-color: var(--v-on); }
 
-.summary { font-size: 0.94rem; color: var(--dg-text-body); margin: 0.7rem 0 0;
-           max-width: var(--dg-measure); }
+.summary { font-size: 0.94rem; color: var(--dg-text-body); margin: 0.7rem 0 0; }
 
 /* ============================================================================
    BLOCK 14 -- CAST CARDS.
@@ -2462,9 +2475,6 @@ html[data-theme="light"] .cost-figure-money .cost-value { color: var(--dg-accent
 /* The caveats. Small, but never hidden behind a disclosure: "this is the TTS
    line item and not the whole show" is the difference between a figure that is
    honest and one that is marketing. */
-/* The caveats are prose, so they are measured even though the figure row above
-   them is not. The rule above them still spans the box, which is what keeps them
-   reading as part of the receipt rather than as a detached paragraph. */
 .cost-fine {
   margin: 0.8rem 0 0;
   padding-top: 0.6rem;
@@ -2472,7 +2482,6 @@ html[data-theme="light"] .cost-figure-money .cost-value { color: var(--dg-accent
   font-size: 0.72rem;
   line-height: 1.45;
   color: var(--dg-text-label);
-  max-width: var(--dg-measure);
 }
 .cost-fine a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 

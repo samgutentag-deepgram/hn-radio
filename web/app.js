@@ -378,8 +378,75 @@ import { mmss, usd, count } from './format.js';
       // them would be inventing a transition that no audio made.
       player.addEventListener('seeking', function () { snapNext = true; lastRow = null; });
 
+      // ---- the scrub bar -----------------------------------------------------------------
+      //
+      // It fills the strip between the orb and the clock, which was empty: the console kept the
+      // orb and the readout when the bar canvas was replaced, and the scrubber that replaced it
+      // on the landing hero was never added here.
+      //
+      // POSITION ONLY. The orb is the signal -- it reads the same AnalyserNode the old bars did,
+      // through an amplitude envelope -- so this answers "where am I" and the orb answers "what
+      // does it sound like". Drawing a waveform here as well would put one question in two
+      // widgets, which is the trade the orb was chosen over.
+      var scrub = document.getElementById('transport-scrub');
+      var bar = document.getElementById('transport-bar');
+      var ticks = document.getElementById('transport-ticks');
+
+      // Chapter boundaries as ticks. This is the reason the console's scrubber is more useful
+      // than the hero's: the episode page is the one that knows where the chapters are. Placed
+      // once, on metadata, because a percentage needs a duration and `duration` is NaN until
+      // then; `loadedmetadata` can fire before or after this code runs, so it is also called
+      // directly for a cached file that already has one.
+      function placeTicks() {
+        if (!ticks || !isFinite(player.duration) || player.duration <= 0) return;
+        var chapters = (chaptersDoc && chaptersDoc.chapters) || [];
+        ticks.innerHTML = '';
+        chapters.forEach(function (c) {
+          // Not the one at zero: a tick on the left edge reads as a rendering artifact rather
+          // than as a chapter, and nobody needs to be told the episode starts at the start.
+          if (!c.startTime) return;
+          var t = document.createElement('div');
+          t.className = 'transport-tick';
+          t.style.left = (c.startTime / player.duration * 100) + '%';
+          ticks.appendChild(t);
+        });
+      }
+
       function syncTime() {
         timeEl.textContent = mmss(player.currentTime) + ' / ' + mmss(player.duration);
+        if (bar && isFinite(player.duration) && player.duration > 0) {
+          var frac = Math.min(1, Math.max(0, player.currentTime / player.duration));
+          bar.style.width = (frac * 100) + '%';
+          if (scrub) scrub.setAttribute('aria-valuenow', Math.round(frac * 100));
+        }
+      }
+
+      if (scrub) {
+        // Seek from a click anywhere on the track, including the ticks, which are
+        // `pointer-events: none` precisely so they cannot swallow one.
+        function seekToX(clientX) {
+          if (!isFinite(player.duration) || player.duration <= 0) return;
+          var r = scrub.getBoundingClientRect();
+          var frac = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+          player.currentTime = frac * player.duration;
+          syncTime();
+        }
+        scrub.addEventListener('click', function (ev) { seekToX(ev.clientX); });
+        // Arrows nudge, Home and End jump. `role="slider"` in the markup is a promise that these
+        // work; without them it is a lie to a screen reader.
+        scrub.addEventListener('keydown', function (ev) {
+          if (!isFinite(player.duration) || player.duration <= 0) return;
+          var step = ev.shiftKey ? 30 : 5;
+          var to = null;
+          if (ev.key === 'ArrowRight' || ev.key === 'ArrowUp') to = player.currentTime + step;
+          else if (ev.key === 'ArrowLeft' || ev.key === 'ArrowDown') to = player.currentTime - step;
+          else if (ev.key === 'Home') to = 0;
+          else if (ev.key === 'End') to = player.duration;
+          if (to === null) return;
+          ev.preventDefault();
+          player.currentTime = Math.min(player.duration, Math.max(0, to));
+          syncTime();
+        });
       }
 
       transport.addEventListener('click', function () {
@@ -401,8 +468,12 @@ import { mmss, usd, count } from './format.js';
         if (orb) orb.setLive(false);          // holds its pose; the envelope goes to zero
       });
       player.addEventListener('timeupdate', function () { syncTime(); followSpeaker(); });
-      player.addEventListener('loadedmetadata', syncTime);
+      player.addEventListener('loadedmetadata', function () { syncTime(); placeTicks(); });
+      // `seeking` as well as `timeupdate`: dragging past the end of the file fires no timeupdate,
+      // so the bar would sit where the last one left it.
+      player.addEventListener('seeked', syncTime);
       syncTime();
+      placeTicks();
     })();
 
     // --- follow the words while playing -------------------------------------------------------
