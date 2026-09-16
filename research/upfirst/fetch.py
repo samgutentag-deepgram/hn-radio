@@ -3,10 +3,10 @@
 Stdlib only, same as hn_radio/ itself. Resumable: an episode already on disk is skipped,
 so a re-run after a network failure costs nothing.
 
-The feed carries two different shows under one title. Weekday and Saturday editions are the
-three-story briefing (12-14 min). Sunday is The Sunday Story, a long-form narrative documentary
-(23-30 min) with none of the briefing's structure. Mixing them poisons every structural average,
-so --format picks one and the default is the briefing.
+The feed carries several shows under one title. Mon-Fri is the three-story briefing with the
+regular host pair. Saturday is the same shape but leans on guest hosts, and Sunday is The Sunday
+Story, a long-form narrative documentary with none of the briefing's structure. Both would skew
+the averages for different reasons, so the default is weekdays only.
 """
 import argparse, json, re, sys, urllib.request, xml.etree.ElementTree as ET
 from datetime import datetime
@@ -45,22 +45,36 @@ def episodes(raw: bytes):
             "duration_s": int(dur) if dur.isdigit() else None,
             # Strip NPR's tracking segment; it 302s anyway and the bare URL is stable.
             "url": enc.get("url").split("?")[0],
+            "page": (it.findtext("link") or "").strip(),
+            # NPR's story id, the key to www.npr.org/transcripts/<id>.
+            "story_id": _story_id(it.findtext("link") or ""),
         })
     return out
 
 
+STORY_ID = re.compile(r"/(nx-s1-[0-9a-z]+|\d{6,})/")
+
+
+def _story_id(link: str) -> str:
+    m = STORY_ID.search(link or "")
+    return m.group(1) if m else ""
+
+
 def classify(ep) -> str:
-    """Briefing or sunday-story. Day of week is the reliable signal; duration confirms it."""
+    """Which of the three shows this is. Day of week is the reliable signal."""
     if ep["weekday"] == "Sun":
         return "sunday-story"
-    return "briefing"
+    if ep["weekday"] == "Sat":
+        return "saturday"
+    return "weekday"
 
 
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("-n", "--count", type=int, default=30,
                    help="how many episodes to download (default 30)")
-    p.add_argument("--format", choices=["briefing", "sunday-story", "all"], default="briefing")
+    p.add_argument("--format", choices=["weekday", "saturday", "sunday-story", "all"],
+                   default="weekday")
     p.add_argument("--manifest-only", action="store_true",
                    help="write the manifest, download nothing")
     a = p.parse_args()

@@ -8,14 +8,28 @@ the range actually is on a produced show, so those rules can cite a measurement.
 ## Run it
 
 ```bash
-python3 fetch.py -n 30          # briefing episodes only; Sunday is a different show
-export DEEPGRAM_API_KEY=...
-python3 transcribe.py           # nova-3, diarize + utterances + filler_words
-python3 segment.py --report     # cut sponsor reads and credits; eyeball the cuts
-python3 analyze.py              # the numbers
+python3 fetch.py -n 30 --manifest-only   # weekdays only; Sat and Sun are different shows
+python3 pull_transcripts.py              # NPR's own transcripts: named speakers + roles
+python3 analyze.py                       # the numbers
 ```
 
-Every stage is resumable and skips work already on disk.
+Every stage is resumable and skips work already on disk. No audio and no API key needed for any
+of it.
+
+### Why NPR's transcripts and not STT
+
+NPR publishes a full transcript per episode at `npr.org/transcripts/<story_id>`, and every turn
+carries a NAME and a ROLE -- `LEILA FADEL, HOST` vs `SCOTT HORSLEY, BYLINE`. That is the one
+distinction this whole exercise turns on: host copy is written and read, correspondent copy is
+reported, and HN Radio is entirely the former. Diarization returns "speaker 0" and leaves that
+unresolved, so STT would have been strictly worse here as well as slower and metered.
+
+`(SOUNDBITE OF MUSIC)` delimits the blocks, which is the same device HN Radio uses for story
+changes, so the structures line up without any inference.
+
+The one thing NPR transcripts do NOT carry is timestamps. Anything measured in seconds still
+needs the audio, which is what `fetch.py` (without `--manifest-only`) and `transcribe.py` are
+for, on a handful of episodes rather than all of them.
 
 ## What this is not
 
