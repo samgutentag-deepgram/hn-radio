@@ -152,7 +152,7 @@ from plain text with no markup or tuning.</p>
      hidden if nothing in it is priced. Per-episode prices were printed on each row until
      2026-09-16 and are not any more; see the note above .catalog-cost in brand.css. -->
 <p class="catalog-cost" id="catalog-cost" hidden></p>
-<ul class="ep-list" id="episodes"><li class="muted">Loading episodes…</li></ul>
+<ul class="day-grid" id="episodes"><li class="muted">Loading episodes…</li></ul>
 
 <!-- The site's only footer, added with the play counter. The stats page is public and should be
      reachable, but it is a page ABOUT the site rather than part of it, and it was reading as a
@@ -506,15 +506,34 @@ from plain text with no markup or tuning.</p>
     // their own episode page rather than playing here, so nothing competes for it.
     var audio = document.getElementById('hero-audio');
 
-    function longDate(id) {
-      // id is YYYY-MM-DD. Parse as local, not UTC: new Date('2026-08-07') is midnight UTC,
-      // which renders as the previous day for anyone west of Greenwich.
-      var p = String(id).split('-');
-      if (p.length !== 3) return id;
+    // Takes a bare YYYY-MM-DD, which is what `dayOf` hands it.
+    //
+    // IT USED TO TAKE THE EPISODE ID, and that quietly broke on 2026-09-04. The id gained an
+    // `-am` / `-pm` suffix when the show went twice daily, `split('-')` started returning four
+    // parts, the `length !== 3` guard returned the id unchanged, and every row on this page has
+    // been printing "2026-09-15-PM" instead of "SEPTEMBER 15, 2026" ever since. The guard was
+    // doing its job -- it refused to guess -- but nothing was watching what it fell back to.
+    //
+    // Parse as local, not UTC: new Date('2026-08-07') is midnight UTC, which renders as the
+    // previous day for anyone west of Greenwich.
+    function longDate(day) {
+      var p = String(day).split('-');
+      if (p.length !== 3) return day;
       var dt = new Date(+p[0], +p[1] - 1, +p[2]);
       return dt.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })
                 .toUpperCase();
     }
+
+    // An episode id is `YYYY-MM-DD` with an optional `-am` / `-pm`. Both halves are read off it
+    // rather than published as fields, because the id IS the schedule: `cast.slot_of_episode_id`
+    // does the same thing server-side, and adding a column to index.json for something already
+    // encoded in the key is a second source of truth.
+    function dayOf(id) { return String(id).slice(0, 10); }
+    function slotOf(id) {
+      var rest = String(id).slice(10);
+      return rest === '-am' ? 'am' : rest === '-pm' ? 'pm' : 'full';
+    }
+    var SLOT_LABEL = { am: 'Morning Edition', pm: 'Afternoon Edition', full: 'Full day' };
 
     // "A very quick description", so the row does not carry a paragraph. The only per-episode
     // prose index.json publishes is `summary`, the writer's show-notes blurb (see
@@ -531,41 +550,60 @@ from plain text with no markup or tuning.</p>
       return (sp > 60 ? cut.slice(0, sp) : cut).replace(/[\s,;:.\u2014-]+$/, '') + '\u2026';
     }
 
-    // The hero already presents episodes[0]; repeating it directly underneath read as a bug.
-    var more = d.episodes.slice(1);
+    // EVERY episode, including the one the hero is playing.
+    //
+    // This used to be `d.episodes.slice(1)`, on the stated grounds that "the hero already
+    // presents episodes[0]; repeating it directly underneath read as a bug". That was true of a
+    // flat list and is false of a dated grid, and keeping it would break the thing this grid
+    // exists for: the newest day's row has to show BOTH of its slots to say which one is still
+    // to come, and hiding the morning edition because it happens to be in the hero would render
+    // it as a day that never got one. A calendar showing today twice reads as a calendar.
+    var all = d.episodes;
 
-    // Filled in one pass after the rows exist, from a single /api/stats request. Building the
-    // rows first and decorating them second keeps the list rendering at full speed on a cold
-    // cache: the archive is readable before the counter has answered, and it stays readable if
-    // the counter never does.
+    // Filled in one pass after the cells exist, from a single /api/stats request. Building the
+    // cells first and decorating them second keeps rendering at full speed on a cold cache: the
+    // archive is readable before the counter has answered, and it stays readable if the counter
+    // never does.
     var countEls = {};
 
-    // A basic list: date, title, one-line description, and a link OUT to the episode page.
-    // NO playback down here, on purpose. There used to be a "Listen" BUTTON per row, and it
-    // retargeted the single player pinned at the top of the page instead of taking you to the
-    // episode. The affordance said "go here" and the behavior said "the thing at the top
-    // changed". A real <a href> is the honest version: keyboard reachable, middle-clickable,
-    // and it lands on the page that has the transcript, chapters and download.
-    more.forEach(function (e) {
-      var href = 'episode.html?id=' + encodeURIComponent(e.id);
-      var li = document.createElement('li');
+    // Group by date, newest first. index.json is already newest-first, so first-seen order is
+    // the order to render; a Map would do the same job with one more thing to explain.
+    var days = [];
+    var byDay = {};
+    all.forEach(function (e) {
+      var day = dayOf(e.id);
+      if (!byDay[day]) { byDay[day] = {}; days.push(day); }
+      byDay[day][slotOf(e.id)] = e;
+    });
 
-      var kick = document.createElement('p'); kick.className = 'ep-date';
-      kick.textContent = longDate(e.id);
+    // One cell: the edition label, the title, a blurb, and the link out.
+    //
+    // NO PLAYBACK IN A CELL, on purpose, and this is the third time that decision has been made
+    // on this page. There used to be a "Listen" BUTTON per row that retargeted the single player
+    // at the top instead of navigating; the affordance said "go here" and the behaviour said
+    // "the thing at the top changed". A real <a href> is keyboard reachable, middle-clickable,
+    // and lands on the page that has the transcript, the chapters and the cost.
+    function episodeCell(e, slot) {
+      var href = 'episode.html?id=' + encodeURIComponent(e.id);
+      var cell = document.createElement('div');
+      cell.className = 'ep-cell' + (slot === 'full' ? ' ep-cell--full' : '');
+
+      var label = document.createElement('span');
+      label.className = 'ep-slot';
+      label.textContent = SLOT_LABEL[slot] || '';
       var plays = document.createElement('span');
       plays.className = 'ep-plays';
       plays.hidden = true;
-      kick.appendChild(plays);
+      label.appendChild(plays);
       countEls[e.id] = plays;
+      cell.appendChild(label);
 
       var h = document.createElement('h3'); h.className = 'ep-title';
       var link = document.createElement('a');
       link.href = href;
       link.textContent = e.title;
       h.appendChild(link);
-
-      li.appendChild(kick);
-      li.appendChild(h);
+      cell.appendChild(h);
 
       // Episodes written before the show had show notes carry an empty summary. No line beats a
       // blank one holding open the space where a line would be.
@@ -573,41 +611,120 @@ from plain text with no markup or tuning.</p>
       if (blurb) {
         var sum = document.createElement('p'); sum.className = 'ep-summary';
         sum.textContent = blurb;
-        li.appendChild(sum);
+        cell.appendChild(sum);
       }
 
       var listen = document.createElement('a');
       listen.className = 'ep-listen-link';
       listen.href = href;
-      // The arrow says "this navigates" in a shape, not a color, and the accessible name says
+      // The arrow says "this navigates" in a shape, not a colour, and the accessible name says
       // it in words. Nothing here is distinguished by hue alone.
       //
       // The word is wrapped so the UNDERLINE can live on it alone. Underlining the whole anchor
-      // and opting the arrow out (the previous shape) also un-underlined the space between them,
-      // so the rule stopped a few pixels short of the arrow and left a visible gap.
+      // and opting the arrow out also un-underlined the space between them, so the rule stopped
+      // a few pixels short of the arrow and left a visible gap.
       listen.innerHTML = '<span class="ep-listen-label">Listen</span>'
         + '<span class="ep-listen-arrow" aria-hidden="true">&rarr;</span>';
       listen.setAttribute('aria-label', 'Listen to ' + e.title + ' on its episode page');
 
-      // A baseline row holding the row's one action. It carried a per-episode price until
-      // 2026-09-16, which is why a single-child flex row looks like overkill: the shape is kept
-      // because it is where a second footer item would go, and the per-episode cost now lives on
-      // the episode page where there is room to show the rate and the character count with it.
       var foot = document.createElement('div'); foot.className = 'ep-foot';
       foot.appendChild(listen);
-      li.appendChild(foot);
+      cell.appendChild(foot);
+      return cell;
+    }
 
-      ul.appendChild(li);
+    // A slot in a PAST day that never got an episode. 2026-09-15 really is missing its morning
+    // edition, and this is deliberately NOT the upcoming cell: telling a reader an episode is
+    // coming for a day that is over would be a lie, and a gap in the archive is worth seeing.
+    function absentCell(slot) {
+      var cell = document.createElement('div');
+      cell.className = 'ep-cell ep-cell--absent';
+      var label = document.createElement('span');
+      label.className = 'ep-slot';
+      label.textContent = SLOT_LABEL[slot];
+      var note = document.createElement('p');
+      note.className = 'ep-absent-note';
+      note.textContent = 'No episode.';
+      cell.appendChild(label);
+      cell.appendChild(note);
+      return cell;
+    }
+
+    // THE UPCOMING SLOT, which is where the front-page ticker went.
+    //
+    // It is not a copy of the status board, it is THE status board: `#status-board` is moved into
+    // this cell with appendChild. The board is an IIFE further up this file that owns that
+    // element and holds references to its children, so relocating the node leaves it working --
+    // its poll loop, its ticker animation and its "generating / idle" copy all carry over. A
+    // second rendering of the same state would be a second thing to keep true.
+    //
+    // Moving rather than cloning also means there is exactly one of it. If the newest day is
+    // already complete there is no empty slot to fill, and the board simply stays where it is,
+    // above the grid; nothing has to decide between two homes at once.
+    function upcomingCell(slot, board) {
+      var cell = document.createElement('div');
+      cell.className = 'ep-cell ep-cell--upcoming';
+      var label = document.createElement('span');
+      label.className = 'ep-slot';
+      label.textContent = SLOT_LABEL[slot] + ' \u00b7 coming up';
+      cell.appendChild(label);
+      cell.appendChild(board);   // a move, not a copy
+      return cell;
+    }
+
+    // The board goes in the newest day's empty slot, and only there. `days[0]` is the newest
+    // date; a day with a `full` episode predates the two-edition schedule and has no empty slot
+    // to fill.
+    var board = document.getElementById('status-board');
+    var upcomingDay = null, upcomingSlot = null;
+    if (days.length && board) {
+      var newest = byDay[days[0]];
+      if (!newest.full) {
+        upcomingSlot = !newest.am ? 'am' : (!newest.pm ? 'pm' : null);
+        if (upcomingSlot) upcomingDay = days[0];
+      }
+    }
+
+    days.forEach(function (day) {
+      var slots = byDay[day];
+      var row = document.createElement('li');
+      row.className = 'day-row';
+
+      // BOTH classes, and the second one is what puts the cells in the right columns.
+      // `.ep-date` is the shared kicker typography (block 8); `.day-date` is
+      // the `grid-column: 1 / -1` that makes the date its own full-width row. Without it the date
+      // occupies column 1, the morning edition gets pushed into column 2, and the afternoon wraps
+      // to the next row's column 1 -- which renders as the two editions swapped.
+      var kick = document.createElement('p');
+      kick.className = 'ep-date day-date';
+      kick.textContent = longDate(day);
+      row.appendChild(kick);
+
+      if (slots.full) {
+        // The pre-schedule era, 2026-08-01 to 2026-09-03: one episode for the whole day, so it
+        // spans both columns rather than being filed as a morning edition it predates.
+        row.appendChild(episodeCell(slots.full, 'full'));
+      } else {
+        ['am', 'pm'].forEach(function (slot) {
+          if (slots[slot]) {
+            row.appendChild(episodeCell(slots[slot], slot));
+          } else if (day === upcomingDay && slot === upcomingSlot) {
+            row.appendChild(upcomingCell(slot, board));
+          } else {
+            row.appendChild(absentCell(slot));
+          }
+        });
+      }
+      ul.appendChild(row);
     });
 
-    renderCatalogCost(d.totals, more.length);
+    renderCatalogCost(d.totals, days.length);
 
-    if (more.length) {
+    if (days.length) {
       document.getElementById('more-h').hidden = false;
     } else {
-      // Exactly one episode: the hero IS the catalogue. The heading stays hidden (its default),
-      // and the empty <ul> is hidden too, because it still carries the list's top margin and
-      // would leave an unexplained gap under the hero.
+      // No dated rows at all. The heading stays hidden (its default) and so does the empty
+      // <ul>, which still carries the grid's top margin and would leave an unexplained gap.
       ul.hidden = true;
     }
 

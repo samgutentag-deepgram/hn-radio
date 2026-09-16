@@ -1416,20 +1416,15 @@ html[data-theme="light"] .hero-kicker { color: var(--dg-accent-on-light); }
    already did. The row is three things now and the only playable episode on this
    page is the hero.
    ========================================================================= */
-.ep-list { list-style: none; padding: 0; margin: 0.6rem 0 0; }
-.ep-list li { display: block; padding: 1.15rem 0; border-bottom: 1px solid var(--dg-border); }
-.ep-list li:first-child { padding-top: 0.5rem; }
-/* Item 1 of the review notes: the last row drew a rule under itself, so the list
-   ended on a hairline hanging in space with nothing below it. Same under the
-   single "No episodes yet." row, where the rule was the only thing on screen
-   after the message. A separator between two rows is a separator; a separator
-   after the last one is a mistake. */
-.ep-list li:last-child { border-bottom: none; }
+/* The flat `.ep-list` that used to live here went with the day grid (block
+   15.8) on 2026-09-16. `.ep-date`, `.ep-summary` and the `.ep-listen-*` rules
+   below are still emitted, by `.ep-cell` instead of by a list row.
 
+   ONE RULE FROM IT IS WORTH CARRYING FORWARD rather than rediscovering: the
+   last row must not draw a separator under itself, or the list ends on a
+   hairline hanging in space with nothing below it. That was item 1 of the
+   review notes, and it is `.day-row:last-child { border-bottom: none }` now. */
 .ep-date { margin: 0 0 0.35rem; }
-.ep-list h3.ep-title { font-size: 1.14rem; margin: 0 0 0.35rem; line-height: 1.24; }
-.ep-list h3.ep-title a { color: var(--dg-text-primary); text-decoration: none; }
-.ep-list h3.ep-title a:hover { color: var(--dg-link); text-decoration: underline; }
 .ep-summary { font-size: 0.9rem; color: var(--dg-text-body); margin: 0 0 0.6rem; max-width: 40rem; }
 
 /* The row's one action, and it is a LINK, not a player. It replaced a filled
@@ -2541,14 +2536,38 @@ html[data-theme="light"] .cost-figure-money .cost-value { color: var(--dg-accent
   margin: 0 0 1.4rem;
   border: 1px solid var(--dg-border);
   border-radius: var(--dg-shape-panel);
-  background: var(--dg-bg-overlay);
-  -webkit-backdrop-filter: blur(var(--dg-glass-blur));
-  backdrop-filter: blur(var(--dg-glass-blur));
   padding: 0.85rem 1rem;
   font-size: 0.85rem;
   line-height: 1.55;
   color: var(--dg-text-label);
   max-width: 44rem;
+  /* THE GREEN WASH, and it is built from --dg-accent-rgb rather than a second
+     literal green. That token exists in block 0 for exactly this: an accent at
+     an alpha, so a palette change carries here instead of leaving one hardcoded
+     #13ef95 behind. Two stops on a diagonal, 10% to 3%, over the panel fill it
+     already had -- enough to lift the box off the page, not enough to turn a
+     paragraph of grey type into a coloured panel.
+     Layer order matters: the gradient is FIRST so it sits over the flat fill
+     underneath it, and `background-color` stays as its own declaration so the
+     box is never transparent if a gradient fails to paint. */
+  background-image:
+    linear-gradient(135deg,
+      rgba(var(--dg-accent-rgb), 0.10) 0%,
+      rgba(var(--dg-accent-rgb), 0.03) 55%,
+      rgba(var(--dg-accent-rgb), 0) 100%);
+  background-color: var(--dg-bg-overlay);
+  -webkit-backdrop-filter: blur(var(--dg-glass-blur));
+  backdrop-filter: blur(var(--dg-glass-blur));
+}
+/* Light mode needs MORE alpha, not less. The same 10% over a near-white panel is
+   invisible, where over the dark app background it reads clearly. Measured by
+   eye in both themes rather than assumed symmetric. */
+html[data-theme="light"] .catalog-cost {
+  background-image:
+    linear-gradient(135deg,
+      rgba(var(--dg-accent-rgb), 0.22) 0%,
+      rgba(var(--dg-accent-rgb), 0.07) 55%,
+      rgba(var(--dg-accent-rgb), 0) 100%);
 }
 .catalog-cost b {
   font-family: var(--dg-font-mono);
@@ -2566,6 +2585,95 @@ html[data-theme="light"] .cost-figure-money .cost-value { color: var(--dg-accent
   gap: 0.8rem;
   flex-wrap: wrap;
 }
+/* ============================================================================
+   BLOCK 15.8 -- THE DAY GRID. The episode catalogue as one row per date, with
+   the Morning Edition on the left and the Afternoon Edition on the right.
+
+   WHY A GRID AND NOT A LIST. The show went twice daily on 2026-09-04, and a
+   flat newest-first list renders that as "Afternoon, Morning, Afternoon,
+   Morning" -- the reader has to parse the suffix on every row to work out
+   which half of which day they are looking at. Two columns make the shape of
+   the schedule the shape of the page, and a gap in it becomes visible instead
+   of being an absence you would have to notice.
+
+   THREE CELL STATES, and the difference between the last two is the point:
+     .ep-cell            an episode
+     .ep-cell--upcoming  the slot the next episode will land in. It holds the
+                         status board, so "being processed, coming soon" is
+                         said by the thing that actually knows.
+     .ep-cell--absent    a slot in a PAST day that never got an episode. Quiet,
+                         honest, and deliberately not the same as upcoming:
+                         2026-09-15 really is missing its morning edition, and
+                         telling a reader that one is coming would be a lie.
+
+   The pre-schedule era (2026-08-01 to 2026-09-03) is one episode for the whole
+   day, and those span both columns rather than being filed as a morning
+   edition they predate.
+   ========================================================================= */
+.day-grid { list-style: none; padding: 0; margin: 0.6rem 0 0; }
+
+.day-row {
+  display: grid;
+  /* minmax(0, 1fr) and not 1fr: a long headline in a grid child with implicit
+     min-width:auto refuses to shrink below its content and pushes the second
+     column off the page. This is the one that actually bites in two-column
+     text layouts. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 1.6rem;
+  padding: 1.15rem 0;
+  border-bottom: 1px solid var(--dg-border);
+}
+.day-row:last-child { border-bottom: none; }
+
+/* The date, once per row, above both cells rather than repeated in each. */
+.day-date {
+  grid-column: 1 / -1;
+  margin: 0 0 0.7rem;
+}
+
+.ep-cell { min-width: 0; }
+.ep-cell--full { grid-column: 1 / -1; }
+
+/* Which edition this cell is, so a single-episode day or an empty slot still
+   says which half of the day it belongs to. */
+.ep-slot {
+  display: block;
+  font-family: var(--dg-font-ui);
+  font-size: 0.66rem;
+  font-weight: var(--dg-weight-bold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dg-text-label);
+  margin: 0 0 0.3rem;
+}
+
+.ep-cell h3.ep-title { font-size: 1.05rem; margin: 0 0 0.35rem; line-height: 1.26; }
+.ep-cell h3.ep-title a { color: var(--dg-text-primary); text-decoration: none; }
+.ep-cell h3.ep-title a:hover { color: var(--dg-link); text-decoration: underline; }
+.ep-cell .ep-summary { font-size: 0.86rem; margin: 0 0 0.55rem; max-width: none; }
+
+/* An absent past slot. No border, no box: it is the absence of a thing, and
+   drawing a container around nothing makes it look like a failed load. */
+.ep-cell--absent .ep-slot { opacity: 0.55; }
+.ep-absent-note {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--dg-text-label);
+  opacity: 0.7;
+}
+
+/* The upcoming slot. It holds #status-board, which brings its own styling from
+   block 9, so this only has to make room for it and label it. */
+.ep-cell--upcoming .ep-slot { color: var(--dg-state-live); }
+html[data-theme="light"] .ep-cell--upcoming .ep-slot { color: var(--dg-accent-on-light); }
+
+/* One column on a phone. The two editions become two stacked cells, each still
+   labelled, which is why .ep-slot is not a desktop-only affordance. */
+@media (max-width: 40rem) {
+  .day-row { grid-template-columns: minmax(0, 1fr); gap: 1.1rem 0; }
+  .ep-cell--full { grid-column: auto; }
+}
+
 /* ============================================================================
    BLOCK 16 -- WHAT WAS REMOVED, AND WHY, SO IT IS NOT RE-ADDED BY ACCIDENT.
 
