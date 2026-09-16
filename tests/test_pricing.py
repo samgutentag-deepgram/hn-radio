@@ -397,15 +397,25 @@ def test_an_episode_with_no_script_is_reported_not_guessed(tmp_path):
 
 # --- what the site publishes -------------------------------------------------------------------
 
-def test_rebuild_site_prices_the_archive_and_publishes_it_in_the_manifest(tmp_path):
+def test_rebuild_site_prices_the_archive_and_publishes_the_total(tmp_path):
     """End to end on the path that actually runs: the app's startup hook calls `rebuild_site`, so
-    deploying this code is the whole backfill. No migration step to remember."""
+    deploying this code is the whole backfill. No migration step to remember.
+
+    Asserts on `totals`, not on a per-row price. index.json stopped publishing one on 2026-09-16
+    -- the landing page no longer shows a price per row, and a key nothing reads is how this file
+    drifts. The backfill still writes the block into each `episode.json`, which is what the
+    episode page reads and what the test below checks.
+    """
     _write_episode(tmp_path, "2026-08-01", ["a" * 2000])
     publish.rebuild_site(tmp_path)
-    row = json.loads((tmp_path / "index.json").read_text())["episodes"][0]
-    assert row["cost"]["characters"] == 2000
-    assert row["cost"]["usd"] == pytest.approx(0.09)
-    assert row["cost"]["rate_usd_per_1k"] == 0.045
+    doc = json.loads((tmp_path / "index.json").read_text())
+    assert doc["totals"]["characters"] == 2000
+    assert doc["totals"]["usd"] == pytest.approx(0.09)
+    assert doc["totals"]["rate_usd_per_1k"] == 0.045
+    # The per-episode block is on the episode, not in the manifest.
+    assert "cost" not in doc["episodes"][0]
+    on_disk = json.loads((tmp_path / "2026-08-01" / "episode.json").read_text())["cost"]
+    assert on_disk["characters"] == 2000
 
 
 def test_rebuild_site_still_returns_only_paths(tmp_path):
@@ -416,13 +426,32 @@ def test_rebuild_site_still_returns_only_paths(tmp_path):
     assert all(isinstance(v, str) for v in written.values())
 
 
-def test_the_manifest_never_invents_a_cost(tmp_path):
-    """An episode that could not be priced publishes `{}`, and the page hides the receipt. A row
-    of zeros would read as "this episode was free", which is a claim, not an absence."""
+def test_the_manifest_never_invents_a_total(tmp_path):
+    """An unpriced catalogue publishes `{}`, and the callout hides itself. A zero would read as
+    "this was free", which is a claim, not an absence."""
     _write_episode(tmp_path, "2026-08-01", ["a" * 100])
     manifest.build_manifest(tmp_path)   # directly, so no backfill runs first
-    row = json.loads((tmp_path / "index.json").read_text())["episodes"][0]
-    assert row["cost"] == {}
+    doc = json.loads((tmp_path / "index.json").read_text())
+    assert doc["totals"] == {}
+
+
+def test_the_manifest_publishes_no_per_episode_price(tmp_path):
+    """Removed on 2026-09-16, and pinned so it does not come back without a reader.
+
+    Sam, on the row prices: "that's actually not as useful as I thought it would be." Every
+    episode costs within about two cents of every other, so 57 rows of "$0.25" read as a column
+    of the same number and buried the aggregate, which is the figure that says something. This
+    file is the frontend's whole API, and `cohost_pool` is the precedent for what happens to a
+    published key after its last reader goes away.
+    """
+    _write_episode(tmp_path, "2026-08-01", ["a" * 2000])
+    publish.rebuild_site(tmp_path)
+    doc = json.loads((tmp_path / "index.json").read_text())
+    assert doc["episodes"], "there should be an episode to check"
+    for row in doc["episodes"]:
+        assert "cost" not in row, "a per-episode price needs a reader before it is published"
+    # ...and the aggregate is still there, because that is what replaced it.
+    assert doc["totals"]["usd"] > 0
 
 
 # --- the render path ---------------------------------------------------------------------------

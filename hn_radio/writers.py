@@ -403,19 +403,6 @@ class ClaudeWriter(ScriptWriter):
         self._caller_set_substitutions = substitutions is not None
         self._title: Optional[str] = None
         self._summary: Optional[str] = None
-        # What the previous attempt was rejected for, appended to the next user prompt.
-        #
-        # `pipeline.run_panel` gives an LLM writer two tries and, before this existed, the second
-        # try was an identical request: same system prompt, same stories, no indication that the
-        # first sample had been thrown away or why. The retry was a reroll on temperature alone.
-        # The de-slop gate names exactly what it objected to, so handing that to the retry turns
-        # a reroll into a correction, and the failure it avoids is the expensive one -- a fallback
-        # episode is a full render of the deterministic script plus a re-run.
-        #
-        # Deliberately NOT part of the system prompt. The rules live there and are the same every
-        # night; this is a fact about one rejected draft, and mixing the two would make the
-        # standing instructions read differently on a retry than on a first attempt.
-        self.retry_note: Optional[str] = None
 
     def episode_title(self):
         return self._title
@@ -427,16 +414,6 @@ class ClaudeWriter(ScriptWriter):
         import anthropic  # lazy: the LLM path is opt-in, so its dependency is too
 
         system, user = self._build_prompt(stories, top_story, comments, cast, edition, episode_date)
-        if self.retry_note:
-            user += (
-                "\n\nYOUR PREVIOUS DRAFT OF THIS EPISODE WAS REJECTED BEFORE IT WAS RECORDED, "
-                "for this:\n"
-                f"{self.retry_note}\n"
-                "Write it again from the source material above. Same stories, same structure, "
-                "same length. Do not write around the rule by reaching for a synonym of the "
-                "banned construction; say the thing plainly instead. Everything else about the "
-                "draft was fine, so this is not an instruction to change the show."
-            )
         try:
             client = anthropic.Anthropic(api_key=config.get_anthropic_key())
             with client.messages.stream(
@@ -609,15 +586,6 @@ class ClaudeWriter(ScriptWriter):
             "that username is the show's record of who said it.\n"
             "8. Lively, specific, fast. Warm and a little wry, never fawning. No AI cliches "
             "(no 'delve', 'leverage', 'in today's fast-paced world', 'buckle up').\n"
-            "   BANNED OUTRIGHT, in any wording, because each one has been caught on this show "
-            "or reads as machine-written every time: NOTHING IS EVER 'LOAD-BEARING' -- not a "
-            "line, not an argument, not a detail, not a word; say what it does instead. No "
-            "\"it's not X, it's Y\" and no \"not the X, the Y\"; assert the thing you mean and "
-            "leave the thing you don't out. Nothing is 'worth sitting with' or worth any other "
-            "gerund. Never say 'and that matters' or 'here's the thing': if a line needs to be "
-            "told it was important, write a better line. `hn_radio/deslop.py` rejects a script "
-            "for these AFTER it is written and BEFORE it is rendered, so a hit here costs a "
-            "retry and a second call; not writing them is cheaper.\n"
             f"9. LENGTH (strict): aim for about {words} words and DO NOT exceed {ceiling} "
             f"words (~{self.target_minutes} minutes read aloud). Cover exactly {n_stories} "
             f"{story_word}, every one you are given. Drop none, pad nothing.\n"

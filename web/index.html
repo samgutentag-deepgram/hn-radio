@@ -115,10 +115,11 @@ from plain text with no markup or tuning.</p>
   <div class="hero-meta">
     <p class="hero-kicker">Latest episode</p>
     <h2 id="hero-title" class="hero-title">&nbsp;</h2>
-    <!-- Both trailing spans start empty and each carries its own separator, so an episode with
-         no plays and no cost block leaves no orphaned middot behind it. -->
+    <!-- The trailing span starts empty and carries its own separator, so an episode with no
+         plays leaves no orphaned middot behind it. There was a cost figure here too until
+         2026-09-16; per-episode price lives on the episode page now, not on this one. -->
     <p class="hero-sub"><span id="hero-date"></span><span id="hero-dur"></span><span
-        id="hero-plays" hidden></span><span id="hero-cost" class="hero-cost"></span></p>
+        id="hero-plays" hidden></span></p>
     <!-- Empty and aria-hidden until playback names someone, so a paused hero does not claim a
          speaker. role="status" so a screen reader hears the handoffs it cannot see either. -->
     <p class="hero-speaker" id="hero-speaker" role="status" hidden></p>
@@ -147,9 +148,9 @@ from plain text with no markup or tuning.</p>
 <div id="status-board" class="status-board"></div>
 
 <h2 class="section-h" id="more-h" hidden>More episodes</h2>
-<!-- The cost sentence, said ONCE for the whole list. Every row below carries only the figure.
-     Filled from index.json's `totals` block and left hidden if the catalogue has no priced
-     episode in it. See the note above .catalog-cost in brand.css for why it is not per-row. -->
+<!-- What the catalogue cost, as one callout. Filled from index.json's `totals` block and left
+     hidden if nothing in it is priced. Per-episode prices were printed on each row until
+     2026-09-16 and are not any more; see the note above .catalog-cost in brand.css. -->
 <p class="catalog-cost" id="catalog-cost" hidden></p>
 <ul class="ep-list" id="episodes"><li class="muted">Loading episodes…</li></ul>
 
@@ -463,10 +464,16 @@ from plain text with no markup or tuning.</p>
   document.getElementById('subscribe-note').innerHTML =
     '<a href="cast.html">Meet the cast</a>: two hosts, and every voice in the Flux catalog.';
 
-  // One sentence for the whole catalogue: what the figures mean, then the two facts no single
-  // row can carry. Reads `totals` straight out of index.json and does no arithmetic of its own;
-  // hn_radio/manifest.py `_totals` is where those numbers are worked out, next to the definition
-  // of what a cost is.
+  // What the whole catalogue cost, as a callout above the list. Reads `totals` straight out of
+  // index.json and does no arithmetic of its own; hn_radio/manifest.py `_totals` is where those
+  // numbers are worked out, next to the definition of what a cost is.
+  //
+  // THE AGGREGATE ONLY, as of 2026-09-16. This used to open "Each figure below is what that
+  // episode cost..." and caption a price printed on every row. The per-row prices are gone (Sam:
+  // "that's actually not as useful as I thought it would be" -- 57 numbers two cents apart), so
+  // the sentence that introduced them had to go with them or it would be describing something
+  // that is not on the page. What is left is the part no single row could ever say, plus a pointer
+  // to where a per-episode price does live.
   //
   // "at the pace it has been publishing" and not "twice a day", because `episodes_per_day` is
   // measured off the last seven complete dates rather than read off the cron. The schedule has
@@ -477,15 +484,16 @@ from plain text with no markup or tuning.</p>
     var el = document.getElementById('catalog-cost');
     if (!t.usd || !rowCount) return;   // stays hidden: nothing priced, or no list to caption
 
-    var html = 'Each figure below is what that episode cost to render with Deepgram Flux TTS, at '
-      + '<b>' + usd(t.rate_usd_per_1k, 4) + '</b> per 1,000 characters. '
-      + '<b>' + t.episodes + '</b> episodes so far, <b>' + usd(t.usd, 2) + '</b> of speech all in.';
+    var html = '<b>' + t.episodes + '</b> episodes so far, <b>' + usd(t.usd, 2)
+      + '</b> of Deepgram Flux text to speech all in, at <b>' + usd(t.rate_usd_per_1k, 4)
+      + '</b> per 1,000 characters.';
     if (t.days_per_credit) {
       html += ' The <b>' + usd(t.credit_usd, 0) + '</b> credit a new Deepgram account starts with'
         + ' would run this show for about <b>' + t.days_per_credit + '</b> days at the pace it has'
         + ' been publishing.';
     }
-    html += ' <a href="' + (t.pricing_url || 'https://deepgram.com/pricing')
+    html += ' Every episode page shows what that episode cost. '
+      + '<a href="' + (t.pricing_url || 'https://deepgram.com/pricing')
       + '" target="_blank" rel="noopener">See the rates</a>.';
     el.innerHTML = html;
     el.hidden = false;
@@ -581,20 +589,12 @@ from plain text with no markup or tuning.</p>
         + '<span class="ep-listen-arrow" aria-hidden="true">&rarr;</span>';
       listen.setAttribute('aria-label', 'Listen to ' + e.title + ' on its episode page');
 
-      // The link and the figure share a baseline row. The figure is JUST the number: the words
-      // that explain it are in #catalog-cost above the list, said once. `aria-label` restores
-      // them for a screen reader, which gets no benefit from the visual grouping and would
-      // otherwise hear a bare dollar amount after every title.
+      // A baseline row holding the row's one action. It carried a per-episode price until
+      // 2026-09-16, which is why a single-child flex row looks like overkill: the shape is kept
+      // because it is where a second footer item would go, and the per-episode cost now lives on
+      // the episode page where there is room to show the rate and the character count with it.
       var foot = document.createElement('div'); foot.className = 'ep-foot';
       foot.appendChild(listen);
-      var epUsd = e.cost && e.cost.usd;
-      if (epUsd != null) {
-        var tag = document.createElement('span');
-        tag.className = 'ep-cost';
-        tag.textContent = usd(epUsd, 2);
-        tag.setAttribute('aria-label', 'Cost to render: ' + usd(epUsd, 2) + ' of Deepgram Flux TTS');
-        foot.appendChild(tag);
-      }
       li.appendChild(foot);
 
       ul.appendChild(li);
@@ -621,16 +621,6 @@ from plain text with no markup or tuning.</p>
       document.getElementById('hero-date').textContent = latest.id;
       document.getElementById('hero-dur').textContent =
         ' · ' + mmss(hsecs);
-      // Two decimals here, four on the episode page. The hero is a glance -- "this costs cents,
-      // not dollars" is the whole message -- and the receipt on episode.html is where the digits
-      // that tell two episodes apart belong. The separator lives INSIDE this span so an episode
-      // with no cost block leaves no orphaned middot behind it.
-      var heroCost = document.getElementById('hero-cost');
-      var heroUsd = latest.cost && latest.cost.usd;
-      if (heroUsd != null) {
-        heroCost.innerHTML = ' · <span class="hero-cost-value">' + usd(heroUsd, 2)
-          + '</span> of Flux TTS';
-      }
       document.getElementById('hero-full').href = 'episode.html?id=' + encodeURIComponent(latest.id);
       hero.hidden = false;
 

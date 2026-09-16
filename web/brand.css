@@ -2525,27 +2525,28 @@ html[data-theme="light"] .cost-figure-money .cost-value { color: var(--dg-accent
 }
 .cost-fine a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 
-/* The hero's one-line version on index.html, inline after the duration. Same
-   mono figure as the receipt so the two read as the same measurement. */
-.hero-cost { white-space: nowrap; }
-.hero-cost-value {
-  font-family: var(--dg-font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-/* The catalogue's cost line, above the episode list, and the per-row figure.
-   THE ANTI-REPETITION RULE, written down because the obvious build breaks it.
-   Putting "this episode cost $0.24 to render with Deepgram Flux TTS" on every
-   row spells the same sentence twenty times under twenty numbers that differ by
-   two cents, which reads as boilerplate and teaches a reader to skip it. So the
-   SENTENCE is said once, here, above the list, and each row carries only the
-   part that varies: the figure, in mono, quiet, sitting beside the row's one
-   action. The aggregate in this line is then the thing no row can say, which is
-   what earns it the space. */
+/* The catalogue's cost callout, above the episode list.
+   A BOXED CALLOUT AND NOT A PARAGRAPH, because of what happened to the version
+   before it. This started as a caption for a price printed on every row, and
+   both the caption and the prices are gone: 57 numbers two cents apart taught a
+   reader to skip the one interesting figure in the set. What survives is the
+   aggregate, which no single row could ever state, and it earns a box rather
+   than small grey type under a heading precisely because it is now the only
+   place the landing page says anything about cost.
+   Same idiom as `.cost` in block 15.7 -- hairline, glass fill, panel radius --
+   so the two cost surfaces read as the same kind of object on two pages. It
+   stays text rather than becoming a figure row: four cells is a receipt for one
+   episode, and one sentence is the right weight for a catalogue. */
 .catalog-cost {
-  margin: 0 0 1rem;
-  font-size: 0.82rem;
-  line-height: 1.5;
+  margin: 0 0 1.4rem;
+  border: 1px solid var(--dg-border);
+  border-radius: var(--dg-shape-panel);
+  background: var(--dg-bg-overlay);
+  -webkit-backdrop-filter: blur(var(--dg-glass-blur));
+  backdrop-filter: blur(var(--dg-glass-blur));
+  padding: 0.85rem 1rem;
+  font-size: 0.85rem;
+  line-height: 1.55;
   color: var(--dg-text-label);
   max-width: 44rem;
 }
@@ -2565,18 +2566,22 @@ html[data-theme="light"] .cost-figure-money .cost-value { color: var(--dg-accent
   gap: 0.8rem;
   flex-wrap: wrap;
 }
-/* Quiet on purpose. It is a footnote to the row, not a second call to action,
-   and it must not compete with the Listen link it sits next to. */
-.ep-cost {
-  font-family: var(--dg-font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 0.76rem;
-  color: var(--dg-text-label);
-}
-
 /* ============================================================================
    BLOCK 16 -- WHAT WAS REMOVED, AND WHY, SO IT IS NOT RE-ADDED BY ACCIDENT.
 
+   .ep-cost        a per-episode price on each row of the landing page, and
+   .hero-cost      the same figure on the hero. Both shipped 2026-09-16 and were
+   .hero-cost-value
+                   removed the same day. They were not wrong, they were not
+                   interesting: every episode costs within about two cents of
+                   every other, so 57 rows of "$0.25" read as a column of the
+                   same number and buried the one figure that does say
+                   something, which is what the catalogue costs in total. That
+                   aggregate is `.catalog-cost` above, and a per-episode price
+                   still has a home on episode.html, where `.cost` has room to
+                   print the rate and the character count beside it. If a row
+                   price comes back, the question to answer first is what a
+                   reader learns from the fifty-seventh one.
    .ep-play        per-row play button. The rows became links on 2026-08-20 and
                    the hero is the only player on the landing page; nothing has
                    emitted this class since.

@@ -304,19 +304,6 @@ def test_the_handoff_is_never_a_debate_setup():
         assert s.count(removed) == 1, f"{removed!r} should survive only as a banned example"
 
 
-def test_the_prompt_bans_the_phrases_the_gate_rejects():
-    """The gate and the prompt must not disagree about what a good script is.
-
-    `deslop.py` rejects a draft for these AFTER it is written, which costs a retry. Naming them in
-    the prompt is the cheap half; the gate is what catches them coming back.
-    """
-    s = _system()
-    assert "NOTHING IS EVER 'LOAD-BEARING'" in s
-    assert "worth sitting with" in s
-    assert "here's the thing" in s
-    assert "deslop.py" in s, "the prompt should say what enforces this and what a hit costs"
-
-
 def test_the_comment_segment_is_an_exchange_not_two_readings():
     """Sam, 2026-09-16: tighten the comment theater, the show is a back and forth between hosts.
 

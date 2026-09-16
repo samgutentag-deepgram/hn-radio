@@ -58,10 +58,21 @@ def build_manifest(episodes_dir: Path) -> Path:
     left out of the feed. One tile per real episode.
     """
     episodes = []
+    # Per-episode cost, read but NOT published. `totals` below is a fold over these, and the
+    # landing page has no other use for them: it stopped showing a price per row on 2026-09-16
+    # (Sam: "that's actually not as useful as I thought it would be"), and the receipt on
+    # episode.html reads that episode's own `episode.json` rather than this file.
+    #
+    # Kept out of the rows on purpose rather than left in as harmless. This file is the frontend's
+    # whole API, and a key nothing reads is how it drifts: `cohost_pool` was published here for
+    # weeks after `cast.html` stopped reading it. If a row needs a price again, add it back with a
+    # reader.
+    costs = []
     for ej in sorted(episodes_dir.glob("*/episode.json"), reverse=True):
         d = json.loads(ej.read_text())
         if is_recast(d["id"]):
             continue
+        costs.append({"id": d["id"], "cost": d.get("cost") or {}})
         episodes.append({
             "id": d["id"],
             "title": d["title"],
@@ -71,17 +82,9 @@ def build_manifest(episodes_dir: Path) -> Path:
             # The feed page shows this under each title, NPR-style. Blank on episodes whose
             # writer did not produce show notes, which is visible rather than hidden.
             "summary": (d.get("summary") or "").strip(),
-            # The whole `cost` block, not just the dollar figure. The hero on the landing page
-            # quotes a cost, and a figure without the rate and the character count behind it is
-            # not checkable -- which is the only reason to publish a cost at all. `publish.
-            # rebuild_site` runs `pricing.backfill` immediately before this, so the block is
-            # present on every episode by the time this reads it; `{}` covers an episode.json
-            # that could not be read at all, and the page treats that as "no cost to show"
-            # rather than rendering a zero it made up.
-            "cost": d.get("cost") or {},
         })
     path = episodes_dir / "index.json"
-    write_json(path, {"episodes": episodes, "totals": _totals(episodes)})
+    write_json(path, {"episodes": episodes, "totals": _totals(costs)})
     return path
 
 
@@ -112,6 +115,10 @@ def _totals(episodes: list) -> dict:
 
     So this is "the pace it has been publishing at", which is what the page calls it. It is not a
     promise about the schedule, and the copy does not make one.
+
+    Takes `{id, cost}` rows, not the rows that get published: per-episode cost is no longer one of
+    the published keys (see `build_manifest`), so this reads the costs its caller collected on the
+    way past. Same two fields either way.
 
     Recasts never reach here: `build_manifest` filtered them out before calling this.
     """
