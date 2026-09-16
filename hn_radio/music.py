@@ -403,6 +403,29 @@ def _sting_boundaries(segments: Sequence, story_ids: Optional[set]) -> set:
             boundary = j - 1
             if boundary != 0 and boundary != last_boundary:
                 boundaries.add(boundary)
+
+    # TWO MORE CUES, both added 2026-09-16 on a note from a listen. Neither is keyed to a story,
+    # which is why they sit outside the loop above.
+    #
+    # 1. Out of the cold open. `pipeline._splice_intro` puts the fixed show ID third, and
+    #    `pacing.cold_open_beat` already holds 2.70s of air after it before the rundown starts.
+    #    That beat was silence; the theme coming back is what a listener expects there, and it is
+    #    what the reference show does. Needs the full four-part open (headline, headline, ID,
+    #    preview) to be the right boundary at all, hence the length guard.
+    cold_end = next((j for j, seg in enumerate(segments) if seg.source_hn_id), 0)
+    if cold_end >= 4:
+        boundaries.add(cold_end - 2)
+
+    # 2. Out of the last story, before the sign-off. Keyed to where the STORIES end rather than
+    #    counted back from the tail, because what follows them changed: the credits line moved
+    #    after the sign-off the same day, so `n - 3` would have been right today and wrong on any
+    #    path that does not add one (a recast, a custom build). When the sign-off is the final
+    #    segment this lands on `last_boundary` and is skipped, which is correct: the outro cue
+    #    already plays there and two cues on one beat mark nothing.
+    last_story = max((j for j, seg in enumerate(segments) if seg.source_hn_id), default=None)
+    if last_story is not None and 0 < last_story < last_boundary:
+        boundaries.add(last_story)
+
     return boundaries
 
 

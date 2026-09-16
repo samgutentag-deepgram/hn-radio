@@ -77,7 +77,10 @@ def _panel_title(edition: str, stories, top_story, episode_date: date) -> str:
 # order. `_splice_intro` is what puts it third.
 _INTRO = ("I'm {host}. That's {cohost}, and this is {show}, read by Deepgram Flux. "
           "It's {date}. {framing}")
-_OUTRO = ("{framing}{handoff} From me and {cohost}, on Deepgram Flux, we'll talk to you {next}.")
+# "on Deepgram Flux" came out 2026-09-16, when the credits line moved to AFTER the sign-off. The
+# line that follows this one now opens "Every voice in this episode was Deepgram Flux text to
+# speech", so saying it here too put the same credit in two consecutive sentences.
+_OUTRO = ("{framing}{handoff} From me and {cohost}, we'll talk to you {next}.")
 
 # What the host calls the show. The scheduled runs SAY their edition, so the spoken open matches
 # the "Morning Edition:" / "Afternoon Edition:" prefix on the title; the calendar shape is the
@@ -246,10 +249,15 @@ def _with_cost_line(segments: List[ScriptSegment], cast) -> List[ScriptSegment]:
     depending on the caller to have done it would be the kind of ordering requirement that holds
     until someone adds a sixth entry point.
 
-    SECOND-TO-LAST, not last. The sign-off is the show's signature and has closed every episode
-    since the first one, so the cost line is a footnote BEFORE the goodbye rather than something
-    said after it. `_outro_segments` is left alone and still returns exactly one segment: three
-    tests and `scripts/frame_experiment.py` call it directly and read `[0]`.
+    LAST, after the sign-off. REVERSED 2026-09-16 on Sam's note from a listen: the show should
+    say goodbye to the listener and hand over to the other edition, and only then read the
+    credits. Putting the cost line before the goodbye made the money the second-to-last thing
+    anyone heard and pushed the hand-off behind a footnote. This used to argue the opposite, that
+    the sign-off is the show's signature and must close the episode; the sign-off still closes
+    the SHOW, and what follows it is a credit roll rather than part of it.
+
+    `_outro_segments` is left alone and still returns exactly one segment: three tests and
+    `scripts/frame_experiment.py` call it directly and read `[0]`.
 
     Only `run_panel` calls this, so only the daily show says the line out loud. Every episode --
     including a recast, a custom build, and the 58 that aired before this existed -- still gets
@@ -266,7 +274,7 @@ def _with_cost_line(segments: List[ScriptSegment], cast) -> List[ScriptSegment]:
     text, _total, _usd = pricing.resolve_cost_sentence(pricing.script_characters(priced))
     line = ScriptSegment(order=0, role="anchor", speaker_key=cast.anchor.name, desk="anchor",
                          text=text)
-    priced.insert(max(len(priced) - 1, 0), line)
+    priced.append(line)
     return priced
 
 

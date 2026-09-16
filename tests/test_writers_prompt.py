@@ -381,3 +381,21 @@ def test_the_prompt_asks_one_of_them_to_carry_each_story_and_then_swap():
     assert "SWAP" in s
     # and it must not undo the two-equals rule the show was rebuilt around
     assert "neither is a beat reporter" in s
+
+
+# --- fixes from the 2026-09-16 listen ---------------------------------------------------------
+
+
+def test_the_prompt_forbids_inventing_a_pronoun():
+    """The show called Canada's prime minister "she" for a whole segment."""
+    s = _system()
+    assert "PRONOUNS ARE A FACT LIKE ANY OTHER" in s
+    assert "Never guess from a first name" in s
+
+
+def test_the_first_story_may_not_point_back_at_the_preview():
+    """The preview ends on the LAST story and the coverage starts with the FIRST, so a deictic
+    hand-off there sends the listener to the wrong subject."""
+    s = _system()
+    assert "DO NOT POINT BACK AT THE PREVIEW" in s
+    assert "let's start there" in s

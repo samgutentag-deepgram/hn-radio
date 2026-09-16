@@ -260,14 +260,15 @@ def _script(n_lines=6):
             for i in range(n_lines)]
 
 
-def test_the_cost_line_lands_before_the_sign_off():
-    """Second-to-last, not last. The sign-off has closed every episode since the first one, so the
-    cost is a footnote BEFORE the goodbye rather than something said after it."""
+def test_the_cost_line_lands_after_the_sign_off():
+    """REVERSED 2026-09-16, on a note from a listen. The show says goodbye and hands over to the
+    other edition, and only THEN reads the credits. The old order made the money the
+    second-to-last thing anyone heard and pushed the hand-off behind a footnote."""
     segments = _script() + pipeline._outro_segments(DEFAULT_CAST)
     priced = pipeline._with_cost_line(segments, DEFAULT_CAST)
     assert len(priced) == len(segments) + 1
-    assert "we'll talk to you tomorrow" in priced[-1].text
-    assert "cost about" in priced[-2].text
+    assert "cost about" in priced[-1].text
+    assert "we'll talk to you tomorrow" in priced[-2].text
 
 
 def test_the_cost_line_is_spoken_by_the_anchor():
@@ -292,7 +293,7 @@ def test_the_cost_line_prices_the_normalized_script():
     priced = pipeline._with_cost_line(segments, DEFAULT_CAST)
     assert "Hacker News" in priced[0].text and "HN " not in priced[0].text
     quoted = pricing.say_money(pricing.cost_usd(pricing.script_characters(priced)))
-    assert quoted in priced[-2].text
+    assert quoted in priced[-1].text
 
 
 def test_outro_segments_still_returns_exactly_one_segment():

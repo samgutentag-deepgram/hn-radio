@@ -567,14 +567,19 @@ def test_the_intro_introduces_todays_cohost_by_name():
     assert ep_cast.by_role("cohost").name in intro[0].text
 
 
-def test_the_outro_signs_off_both_of_them_on_deepgram_flux():
+def test_the_outro_signs_off_both_of_them_and_leaves_the_credit_to_the_credits():
+    """"Deepgram Flux" came out of the sign-off on 2026-09-16, when the credits line moved to
+    after it. That line opens "Every voice in this episode was Deepgram Flux text to speech", so
+    keeping it here put the same credit in two consecutive sentences. Both hosts and the
+    hand-off to tomorrow are what the sign-off is actually for, and those still have to be here.
+    """
     from hn_radio import pipeline
     ep_cast = _two_person_cast()
     outro = pipeline._outro_segments(ep_cast)
     assert len(outro) == 1
     assert ep_cast.by_role("cohost").name in outro[0].text
-    assert "Deepgram Flux" in outro[0].text
     assert "tomorrow" in outro[0].text.lower()
+    assert "Deepgram Flux" not in outro[0].text
 
 
 def test_the_signature_lines_are_owned_by_the_pipeline_not_the_writers():
