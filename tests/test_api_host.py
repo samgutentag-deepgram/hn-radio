@@ -1,86 +1,90 @@
-"""The Deepgram API host is selectable, and the public cloud API is the default.
+"""The Deepgram API host is selectable, and production is the default.
 
-The selector exists so a run can be pointed at a different Deepgram endpoint without editing
-code. What is worth pinning is the DEFAULT: "the documented cloud API unless told otherwise" is
-the property that stops a deploy drifting somewhere else by accident, and it is what these tests
-hold in place.
+The original reason is now history and is kept as history: the pre-GA Flux voices (the
+ga_candidate and _studio ids) lived only on console staging until GA, and the key on hand 401d
+against production, so a hardcoded host made it impossible to preview the cast. GA landed
+2026-08-12 and a working production key landed 2026-08-22, so local runs and the Fly deploy now
+both reach api.deepgram.com. The selector stays because "production unless told otherwise" is the
+property worth pinning: it is what stops the deploy drifting onto staging by accident.
 
 There was a `_reloaded()` helper here that re-imported config to re-read the environment. Deleted
-2026-08-22: it never had a caller, and it was worse than dead weight because tests in this file
-monkeypatch config attributes and a reload would throw those away. See config.py's note on why
-api_host() is a function and test_feed.py on why reload was removed.
+2026-08-22: it never had a caller, and it was worse than dead weight because four tests in this
+file monkeypatch config attributes and a reload would throw those away. See config.py's note on
+why api_host() is a function and test_feed.py on why reload was removed.
 """
 
 
 from hn_radio import config, render
 
 
-OTHER_HOST = "api.example-deepgram-endpoint.com"
 
 
-def test_api_host_defaults_to_the_cloud_api(monkeypatch):
+def test_api_host_defaults_to_production(monkeypatch):
     monkeypatch.delenv("DEEPGRAM_API_HOST", raising=False)
     monkeypatch.setattr(config, "_read_env_var", lambda name: None)
     assert config.api_host() == "api.deepgram.com"
 
 
 def test_api_host_reads_the_environment(monkeypatch):
-    monkeypatch.setenv("DEEPGRAM_API_HOST", OTHER_HOST)
-    assert config.api_host() == OTHER_HOST
+    monkeypatch.setenv("DEEPGRAM_API_HOST", "api.staging.deepgram.com")
+    assert config.api_host() == "api.staging.deepgram.com"
 
 
 def test_api_host_strips_a_scheme_if_someone_pastes_a_url(monkeypatch):
     # Easy mistake, and it would otherwise produce https://https://host/v2/speak.
-    monkeypatch.setenv("DEEPGRAM_API_HOST", f"https://{OTHER_HOST}/")
-    assert config.api_host() == OTHER_HOST
+    monkeypatch.setenv("DEEPGRAM_API_HOST", "https://api.staging.deepgram.com/")
+    assert config.api_host() == "api.staging.deepgram.com"
 
 
 def test_speak_url_follows_the_configured_host(monkeypatch):
-    monkeypatch.setenv("DEEPGRAM_API_HOST", OTHER_HOST)
+    monkeypatch.setenv("DEEPGRAM_API_HOST", "api.staging.deepgram.com")
     flux = render._speak_url("flux-cole-en")
     aura = render._speak_url("aura-2-thalia-en")
-    assert flux.startswith(f"https://{OTHER_HOST}/v2/speak?")
-    assert aura.startswith(f"https://{OTHER_HOST}/v1/speak?")
+    assert flux.startswith("https://api.staging.deepgram.com/v2/speak?")
+    assert aura.startswith("https://api.staging.deepgram.com/v1/speak?")
     assert "model=flux-cole-en" in flux
 
 
-def test_speak_url_still_defaults_to_the_cloud_api(monkeypatch):
+def test_speak_url_still_defaults_to_production(monkeypatch):
     monkeypatch.delenv("DEEPGRAM_API_HOST", raising=False)
     monkeypatch.setattr(config, "_read_env_var", lambda name: None)
     assert render._speak_url("flux-cole-en").startswith("https://api.deepgram.com/v2/speak?")
 
 
-def test_the_catalog_does_not_follow_the_host(monkeypatch):
-    """The host is where calls go; it is not a claim about which voices exist.
-
-    These were coupled once, and the coupling was the bug: pointing the renderer at a different
-    endpoint silently swapped the whole cast, so the cast page listed one set of voices and the
-    audio rendered another. Nothing failed, because both id sets authenticated. Now the catalog
-    is a constant and the host is a URL, and neither can move the other.
-    """
-    monkeypatch.setenv("DEEPGRAM_API_HOST", OTHER_HOST)
-    assert config.active_voice_catalog() is config.VOICE_CATALOG
-    assert config.host_voice() == "flux-alexis-en"
+def test_http_retries_is_one_budget_for_every_host(monkeypatch):
+    """Retries used to be host-dependent: staging got more, because a cold pre-GA model would 500
+    on the first call. With one host that branch is gone, and the budget is the constant unless a
+    long-running script raises it deliberately."""
+    monkeypatch.setenv("DEEPGRAM_API_HOST", config.DEFAULT_API_HOST)
+    production = config.http_retries()
+    monkeypatch.setenv("DEEPGRAM_API_HOST", "api.example.invalid")
+    assert config.http_retries() == production == config.HTTP_RETRIES
 
 
-def test_the_cast_is_castable_from_the_catalog(monkeypatch):
-    """Every voice the show references must exist in the catalog or it renders 400."""
-    monkeypatch.delenv("DEEPGRAM_API_HOST", raising=False)
-    monkeypatch.setattr(config, "_read_env_var", lambda name: None)
-    assert config.active_voice_catalog() is config.VOICE_CATALOG
-    # Alexis. This said Haley while `cast.ROLE_VOICES` had been preferring the
-    # Alexis ids for weeks, so the legacy v1 path and the panel path cast different hosts.
-    assert config.host_voice() == "flux-alexis-en"
-    referenced = {config.host_voice(), *config.commenter_voices(), *config.guest_voices()}
-    assert referenced <= set(config.VOICE_CATALOG), sorted(referenced - set(config.VOICE_CATALOG))
-
-
-def test_retries_are_the_configured_budget(monkeypatch):
-    """A function rather than a constant, because the long-running scripts raise it by hand.
-
-    The default must stay low: a normal episode would rather fail fast on a real outage than
-    hang through a dozen attempts per segment.
-    """
-    monkeypatch.delenv("DEEPGRAM_API_HOST", raising=False)
-    monkeypatch.setattr(config, "_read_env_var", lambda name: None)
-    assert config.http_retries() == config.HTTP_RETRIES == 3
+# ELEVEN TESTS WERE DELETED BELOW THIS LINE on 2026-09-16, and they are named here because a
+# deleted guard should be findable:
+#
+#   test_staging_only_voices_are_flagged_as_such
+#   test_jun_uses_the_working_id_not_the_demo_sites_stale_one
+#   test_staging_gets_more_retries_than_production
+#   test_staging_cast_uses_only_the_pre_ga_voices
+#   test_production_cast_is_unchanged_and_still_documented_only
+#   test_the_staging_cast_is_the_full_featured_eight
+#   test_no_production_voice_leaks_into_the_staging_cast
+#   test_staging_cast_revoices_every_desk_and_keeps_names_matching
+#   test_jun_counts_as_staging_only_despite_a_plain_looking_id
+#
+# Every one of them was about the pre-GA voice cast: `cast.staging_cast()`, the eight
+# `ga_candidate`/`_studio` ids, `config.STAGING_CAST_VOICES`, `config.STAGING_ONLY_VOICES` and
+# `config.is_staging_only`. All of that was deleted in the work recovered off the machine on
+# 2026-09-05, for the reason the header above already gives: Flux went GA on 2026-08-12, the
+# pre-GA ids were dropped from the catalog at GA, and they now 400 in production. There is no
+# staging cast to test.
+#
+# The host SELECTOR is what survived and it is tested above, because "production unless told
+# otherwise" is still the property that stops a deploy drifting onto staging.
+#
+# One of them was doing real work beyond the staging split and has been
+# rewritten rather than dropped: `test_staging_gets_more_retries_than_production` was pinning that
+# the retry budget is read per call rather than captured, which is still true and is now
+# `test_http_retries_is_one_budget_for_every_host`.

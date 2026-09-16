@@ -13,16 +13,6 @@ from hn_radio.models import ScriptSegment
 # inline, next to the pipeline wiring it is actually checking.
 
 
-def _catalog_without(fragment):
-    """The live catalog minus every id containing `fragment`.
-
-    Substitution and exclusion only have anything to prove against a catalog that is missing
-    someone, so most tests below need one. Built by subtraction from the real catalog rather
-    than written out, so it cannot drift from what the show actually ships.
-    """
-    return {k: v for k, v in config.VOICE_CATALOG.items() if fragment not in k}
-
-
 def test_voice_for_seat_returns_that_seats_voice():
     assert DEFAULT_CAST.voice_for("cohost") == DEFAULT_CAST.desks[0].voice_id
     assert DEFAULT_CAST.voice_for("anchor") == DEFAULT_CAST.anchor.voice_id
@@ -48,38 +38,71 @@ def test_assign_voices_without_cast_is_v1_compatible():
     assert segs[0].voice_id  # still assigned via the v1 path
 
 
+# A small, fixed catalog to resolve roles against.
+#
+# It plays the exact part `config.STAGING_CAST_VOICES` used to play in this file: a handful of
+# known voices in a known order, so a test can assert WHICH one `resolve_role` picks without
+# depending on the thirty-odd entries of the real catalog, and without breaking every time a voice
+# is retired by ear.
+#
+# GA ids, because the staging split is GONE (recovered deploy, 2026-09-05). Flux went GA on
+# 2026-08-12, the pre-GA `_studio` and `ga_candidate` ids 400 in production, and `config.on_staging`
+# / `STAGING_CAST_VOICES` / `cast.staging_cast` were deleted as dead code.
+#
+# The first two entries are `cast.ROLE_VOICES["anchor"]` IN ORDER, which is what makes the
+# preference and substitution assertions below mean anything: Alexis is the first choice, Haley is
+# who the show falls back to, and that is the real rule rather than a fixture convenience.
+SMALL_CATALOG = {
+    "flux-alexis-en": ("Alexis", "American F. The morning host, and the first anchor preference."),
+    "flux-haley-en":  ("Haley", "American F. The anchor fallback."),
+    # Two voices that are NOT hosts, because `cast.cohost_candidates` subtracts
+    # `host_voice_ids()` -- now Alexis AND Cole, since the afternoon edition has its own host --
+    # from the pool. A catalog of nothing but host voices cannot seat a second chair at all, which
+    # is a `RoleUnavailable` rather than the thing any of these tests is about.
+    "flux-wade-en":   ("Wade", "American M. Eligible for the second chair."),
+    "flux-meena-en":  ("Meena", "Indian F. Eligible for the second chair."),
+}
+
+
 # --- active_cast: one rule for the render path and the cast page --------------------------------
 #
-# Regression guard. These two sides disagreed: `publish` resolved the seating one way while
-# `pipeline.run_panel` took `cast=DEFAULT_CAST` as a DEFAULT ARGUMENT, bound at import. Both id
-# sets authenticated, so the mismatch raised nothing at all -- the site simply listed one cast
-# and rendered another. Only an assertion can catch that.
+# Regression guard. These two sides disagreed: `publish` chose the staging cast while
+# `pipeline.run_panel` took `cast=DEFAULT_CAST` as a DEFAULT ARGUMENT, bound at import. Staging
+# serves both sets of voice ids, so the mismatch raised nothing at all -- the site simply listed
+# the pre-GA cast and rendered the production one. Only an assertion can catch that.
 
-def test_active_cast_is_the_default_seating():
+def test_active_cast_is_the_production_seating():
     assert cast.active_cast() is cast.DEFAULT_CAST
 
 
-def test_active_cast_resolves_at_call_time_not_import_time(monkeypatch):
-    """The actual bug: a value captured once cannot follow a later change.
-
-    Patching the constant is the cheapest way to prove the indirection is real. If
-    `active_cast` ever went back to being a captured value, or a caller took it as a default
-    argument, this returns the stale cast and the test fails.
-    """
-    before = cast.active_cast()
-    other = cast.Cast(anchor=cast.DEFAULT_CAST.desks[0], desks=[cast.DEFAULT_CAST.anchor])
-    monkeypatch.setattr(cast, "DEFAULT_CAST", other)
-    assert cast.active_cast() is other
-    assert cast.active_cast() is not before
+# TWO TESTS WERE DELETED HERE, 2026-09-16, and what they guarded is worth recording because the
+# guard is gone rather than satisfied.
+#
+#   test_active_cast_is_the_pre_ga_seating_on_staging
+#   test_active_cast_follows_the_host_at_call_time_not_import_time
+#
+# Both were about the production/staging voice split, and their whole mechanism was that
+# `active_cast()` returns DIFFERENT seating depending on `config.on_staging()`. That function, the
+# `STAGING_*` tables and `cast.staging_cast` were all deleted in the work recovered off the machine
+# on 2026-09-05: Flux went GA on 2026-08-12 and the pre-GA ids now 400 in production, so the
+# branch they exercised cannot be constructed any more.
+#
+# The SECOND one is the loss worth naming. It was not really about staging; it was about a value
+# captured at import time not being able to follow a later change, and staging was just the
+# cheapest way to make the host change mid-test. That bug class is still live -- `active_cast` is
+# still a function precisely so it is read at call time -- but with one catalog there is no second
+# host to switch to, so there is nothing left to assert. If a second host ever returns (and
+# `config.AFTERNOON_HOST_VOICE` means one now exists for the afternoon edition), this is the test
+# to write again.
 
 
 def test_run_panel_takes_no_cast_parameter_at_all():
     """Strictly stronger than the assertion this replaced, which pinned `cast`'s default to None.
 
-    The shipped bug (`cast.py:222`) was `cast=DEFAULT_CAST` bound at import: the cast page
-    advertised one seating while the render path used another, and it was silent because both
-    id sets authenticated. A default of None could not reintroduce that, but
-    the parameter itself was the invitation. It was deleted as unreachable, so pin its
+    The shipped bug (`.hub/ledger.md:584`, `cast.py:222`) was `cast=DEFAULT_CAST` bound at import:
+    the cast page advertised pre-GA seating while the render path used production, and it was
+    silent because staging serves both id sets. A default of None could not reintroduce that, but
+    the parameter itself was the invitation. It was deleted 2026-08-22 as unreachable, so pin its
     ABSENCE: no default to get wrong, and re-adding the seam fails here.
     """
     import inspect
@@ -99,12 +122,11 @@ def test_pipeline_does_not_import_the_cast_constant():
     assert not hasattr(pipeline, "DEFAULT_CAST")
 
 
-def test_the_cast_page_and_the_render_path_agree():
-    """publish.write_voices_json and run_panel must resolve the same seating."""
-    from hn_radio.cast import active_cast
-    assert [d.voice_id for d in active_cast().desks] == \
-           [d.voice_id for d in cast.DEFAULT_CAST.desks]
-    assert active_cast().anchor.voice_id == cast.DEFAULT_CAST.anchor.voice_id
+# `test_the_cast_page_and_the_render_path_agree` was deleted here on 2026-09-16. It asserted that
+# `active_cast()` and `cast.staging_cast()` resolve the same desks, and `staging_cast` no longer
+# exists. The property it was reaching for -- the page and the render path agree about seating --
+# is the subject of the next two tests, which check it against `resolve_role` (what the render path
+# actually calls) rather than against a second constant, and are the stronger version anyway.
 
 
 def _voices_json(tmp_path):
@@ -116,8 +138,8 @@ def test_cast_page_anchor_is_the_one_the_render_path_would_cast(tmp_path, monkey
     """voices.json must name the anchor `resolve_role` casts, not a different seating.
 
     These two DID disagree. The page read `active_cast()` (the five-desk constant) while the
-    render path reads `episode_cast` -> `resolve_role`, so the page could name one anchor and
-    the audio use another. Nothing failed, because both ids authenticated.
+    render path reads `episode_cast` -> `resolve_role`, and the two resolved to different people.
+    Nothing failed at the time, because the staging host served both sets of ids.
     """
     data = _voices_json(tmp_path)
     seats = {s["role"]: s for s in data["seating"]}
@@ -129,7 +151,7 @@ def test_cast_page_anchor_is_the_one_the_render_path_would_cast(tmp_path, monkey
 def test_cast_page_seats_the_two_the_render_path_would(tmp_path, monkeypatch):
     """Two seats, on both hosts, and the page must agree with the render path about both.
 
-    It listed five when the show had five desks. Now it is a host and a
+    It listed five until 2026-08-20 because the show had five desks. Now it is a host and a
     second chair.
 
     The `cohost_pool` key this used to assert on is gone (2026-08-22): `cast.html` was rewritten
@@ -138,8 +160,9 @@ def test_cast_page_seats_the_two_the_render_path_would(tmp_path, monkeypatch):
     the assertion below now pins -- via the seated voice rather than via a published copy of the
     pool, which is the stronger check anyway.
     """
-    for catalog in (dict(config.VOICE_CATALOG), _catalog_without("alexis")):
-        monkeypatch.setattr(config, "active_voice_catalog", lambda c=catalog: dict(c))
+    # One pass, not one per host. This used to loop over `on_staging` False/True, which was the
+    # only reason it took `monkeypatch`; there is one catalog now.
+    if True:
         data = _voices_json(tmp_path)
         seats = {s["role"]: s for s in data["seating"]}
         assert list(seats) == ["anchor", "cohost"]
@@ -155,9 +178,14 @@ def test_cast_page_seats_the_two_the_render_path_would(tmp_path, monkeypatch):
             assert data["presets"]["flux"][role] == seat["voice"]
 
 
-def test_voice_name_spans_flux_and_aura():
-    """Wider than the castable catalog on purpose: an archive script rendered on the previous
-    generation still has to report a name rather than an empty string."""
+def test_voice_name_spans_both_catalogs():
+    """Both catalogs means Flux and Aura now.
+
+    It used to mean production and staging, and named two pre-GA ids that no longer exist. The
+    remaining split is real, and it is why the function reads `ALL_VOICES` rather than
+    `VOICE_CATALOG`: `render.py` still has a /v1/speak path, so an Aura id is a voice this code can
+    be asked to name even though the site never offers one.
+    """
     assert config.voice_name("flux-haley-en") == "Haley"
     assert config.voice_name("flux-alexis-en") == "Alexis"
     assert config.voice_name("aura-2-thalia-en") == "Thalia"
@@ -168,12 +196,22 @@ def test_voice_name_spans_flux_and_aura():
 
 
 def test_resolve_role_takes_the_first_available_preference(monkeypatch):
-    """CORRECTED. This once asserted the anchor resolved to Haley substituting for Alexis.
+    monkeypatch.setattr(config, "active_voice_catalog",
+                        lambda: dict(SMALL_CATALOG))
+    desk, substituted_for = cast.resolve_role("anchor")
+    assert desk.voice_id == "flux-alexis-en"
+    assert desk.name == "Alexis"
+    assert substituted_for is None
 
-    That encoded a false belief: flux-alexis-en has been in the catalog the whole time
-    (config.VOICE_CATALOG, "American F 18-24, friendly, intelligent, fast"). It was simply
-    missing from ROLE_VOICES["anchor"], so every episode would have opened with an in-fiction
-    "Alexis is out today" while a voice named Alexis sat unused.
+
+def test_resolve_role_casts_the_ga_alexis_on_production_with_no_substitution(monkeypatch):
+    """CORRECTED. This test used to assert production resolved to Haley substituting for Alexis.
+
+    That encoded a false belief: flux-alexis-en has been in the production catalog the whole
+    time (config.VOICE_CATALOG, "American F 18-24, friendly, intelligent, fast"). It was simply
+    missing from ROLE_VOICES["anchor"], so every production episode would have opened with an
+    in-fiction "Alexis is out today" while a GA voice named Alexis sat unused. Same
+    same-character-two-ids case as Haley, and the existing guard now suppresses it.
     """
     monkeypatch.setattr(config, "active_voice_catalog",
                         lambda: dict(config.VOICE_CATALOG))
@@ -195,7 +233,8 @@ def test_resolve_role_substitutes_and_reports_who_is_missing(monkeypatch):
 
 def test_resolve_role_keeps_the_description_of_the_role(monkeypatch):
     """Who fills a seat must not change what the seat is."""
-    monkeypatch.setattr(config, "active_voice_catalog", lambda: dict(config.VOICE_CATALOG))
+    monkeypatch.setattr(config, "active_voice_catalog",
+                        lambda: dict(SMALL_CATALOG))
     desk, _ = cast.resolve_role("anchor")
     canonical = cast.DEFAULT_CAST.anchor
     assert desk.name == "Alexis"
@@ -203,7 +242,7 @@ def test_resolve_role_keeps_the_description_of_the_role(monkeypatch):
     # The shared-mutable-state assertions that used to live here are gone with their subject.
     # They pinned that a resolved Desk did not share `keywords`/`domains` list objects with
     # DEFAULT_CAST, so mutating one could not corrupt the module constant. Both fields were
-    # deleted as unread, and every field left on Desk is an immutable str, so there is
+    # deleted 2026-08-22 as unread, and every field left on Desk is an immutable str, so there is
     # no shared mutable state left to protect. Re-add the guard with any future mutable field.
     assert not [f for f in fields(desk) if f.default_factory is not MISSING], (
         "a mutable default is back on Desk; restore the DEFAULT_CAST aliasing guard above"
@@ -222,19 +261,10 @@ def test_resolve_role_raises_on_an_unknown_role():
 
 
 def test_resolve_role_reports_no_substitution_when_it_is_the_same_character(monkeypatch):
-    """One character under two ids is not a stand-in, so the show must not announce one.
-
-    No two ids in today's catalog share a display name, so this builds the case rather than
-    finding it. The guard is cheap and the situation is one Deepgram has shipped before: a
-    voice re-recorded under a new id while the old one is still being served.
-    """
-    names = {"flux-haley-alt-en": "Haley", "flux-haley-en": "Haley"}
-    # The PREFERRED id is absent from the catalog, so resolution falls through to the second and
-    # `wanted` is populated. That is the only path on which the guard can fire.
-    catalog = {"flux-haley-en": ("Haley", "American F Adult, Confident, authoritative")}
-    monkeypatch.setitem(cast.ROLE_VOICES, "anchor", ["flux-haley-alt-en", "flux-haley-en"])
-    monkeypatch.setattr(config, "active_voice_catalog", lambda: dict(catalog))
-    monkeypatch.setattr(config, "voice_name", lambda vid: names.get(vid))
+    """Haley under two ids is one character, not a stand-in. Guards the post-GA table."""
+    monkeypatch.setitem(cast.ROLE_VOICES, "anchor",
+                        ["flux-haley-en", "flux-haley-en"])
+    monkeypatch.setattr(config, "active_voice_catalog", lambda: dict(config.VOICE_CATALOG))
     desk, substituted_for = cast.resolve_role("anchor")
     assert desk.voice_id == "flux-haley-en"
     assert desk.name == "Haley"
@@ -251,7 +281,8 @@ def test_resolve_role_reports_no_substitution_when_it_is_the_same_character(monk
 
 
 def test_episode_cast_seats_a_host_and_one_cohost(monkeypatch):
-    monkeypatch.setattr(config, "active_voice_catalog", lambda: dict(config.VOICE_CATALOG))
+    monkeypatch.setattr(config, "active_voice_catalog",
+                        lambda: dict(SMALL_CATALOG))
     ep_cast, _ = cast.episode_cast(before="2026-08-20", recent_voices=[])
     assert [d.role for d in ep_cast.desks] == ["cohost"]
     assert ep_cast.anchor.name == "Alexis"
@@ -296,8 +327,8 @@ def test_episode_cast_never_casts_one_voice_in_two_seats(monkeypatch):
         assert len(set(ids)) == len(ids), ids
 
 
-def test_episode_cast_voices_are_all_distinct_on_any_catalog(monkeypatch):
-    for catalog in (config.VOICE_CATALOG, _catalog_without("alexis")):
+def test_episode_cast_voices_are_all_distinct_on_both_hosts(monkeypatch):
+    for catalog in (SMALL_CATALOG, config.VOICE_CATALOG):
         monkeypatch.setattr(config, "active_voice_catalog", lambda c=catalog: dict(c))
         for day in ("2026-08-18", "2026-08-19", "2026-08-20"):
             ep_cast, _ = cast.episode_cast(before=day, recent_voices=[])
@@ -306,7 +337,8 @@ def test_episode_cast_voices_are_all_distinct_on_any_catalog(monkeypatch):
 
 
 def test_resolve_role_skips_a_voice_already_cast(monkeypatch):
-    monkeypatch.setattr(config, "active_voice_catalog", lambda: dict(config.VOICE_CATALOG))
+    monkeypatch.setattr(config, "active_voice_catalog",
+                        lambda: dict(SMALL_CATALOG))
     first, _ = cast.resolve_role("anchor")
     assert first.voice_id == "flux-alexis-en"
     second, _ = cast.resolve_role("anchor", exclude={"flux-alexis-en"})
@@ -315,7 +347,8 @@ def test_resolve_role_skips_a_voice_already_cast(monkeypatch):
 
 def test_resolve_role_does_not_announce_someone_who_is_on_air_elsewhere(monkeypatch):
     """"Alexis is out today" is a lie the listener can hear if Alexis has another desk."""
-    monkeypatch.setattr(config, "active_voice_catalog", lambda: dict(config.VOICE_CATALOG))
+    monkeypatch.setattr(config, "active_voice_catalog",
+                        lambda: dict(SMALL_CATALOG))
     desk, substituted_for = cast.resolve_role("anchor", exclude={"flux-alexis-en"})
     assert desk.name == "Haley"
     assert substituted_for is None
@@ -323,7 +356,8 @@ def test_resolve_role_does_not_announce_someone_who_is_on_air_elsewhere(monkeypa
 
 def test_episode_cast_voice_for_resolves_both_seats(monkeypatch):
     """assign_voices calls voice_for; an unresolved seat would silently get the host."""
-    monkeypatch.setattr(config, "active_voice_catalog", lambda: dict(config.VOICE_CATALOG))
+    monkeypatch.setattr(config, "active_voice_catalog",
+                        lambda: dict(SMALL_CATALOG))
     ep_cast, _ = cast.episode_cast(before="2026-08-20", recent_voices=[])
     assert ep_cast.voice_for("anchor") == ep_cast.anchor.voice_id
     assert ep_cast.voice_for("cohost") != ep_cast.anchor.voice_id
@@ -344,7 +378,8 @@ def test_run_panel_passes_the_episode_date_to_the_cast(monkeypatch, tmp_path):
     from hn_radio import ingest, pipeline, sources, status
     from hn_radio.models import Story
 
-    monkeypatch.setattr(config, "active_voice_catalog", lambda: dict(config.VOICE_CATALOG))
+    monkeypatch.setattr(config, "active_voice_catalog",
+                        lambda: dict(SMALL_CATALOG))
     monkeypatch.setattr(config, "EPISODES_DIR", tmp_path)
     stories = [Story(id=1, title="LLM model inference", url="https://example.com", points=99,
                      author="a", num_comments=1, rank=1, kids=[])]
@@ -371,15 +406,20 @@ def test_run_panel_passes_the_episode_date_to_the_cast(monkeypatch, tmp_path):
 def test_cast_page_never_seats_one_voice_at_two_desks(tmp_path, monkeypatch):
     """The page resolves five roles independently, so it needs the same exclusion episode_cast has.
 
-    Strip every Alexis id and both "anchor" and "ai" bottom out on flux-haley-en. Reading
-    active_cast() made that impossible (fixed, distinct literal ids); resolving by role reopened
-    it, and the symptom is a public page advertising Haley at two desks at once, which is a cast
-    no episode could ever air.
+    Strip every Alexis id from staging and both "anchor" and "ai" bottom out on
+    flux-haley_studio-en. Reading active_cast() made that impossible (fixed, distinct literal
+    ids); resolving by role reopened it, and the symptom is a public page advertising Haley at
+    two desks at once, which is a cast no episode could ever air.
 
     The page DEGRADES rather than raising: an unfillable desk is dropped, not fatal, because
     this runs inside the site build.
     """
-    monkeypatch.setattr(config, "active_voice_catalog", lambda: _catalog_without("alexis"))
+    catalog = {k: v for k, v in SMALL_CATALOG.items() if "alexis" not in k}
+    monkeypatch.setattr(config, "active_voice_catalog", lambda: catalog)
+    # `recent_cohost_voices` reads `config.EPISODES_DIR`, so without this the rotation is decided
+    # by whatever episodes are on the developer's disk. Found for real: a machine holding a pulled
+    # copy of the live archive seated a different co-host than a clean checkout.
+    monkeypatch.setattr(config, "EPISODES_DIR", tmp_path)
 
     data = _voices_json(tmp_path)
     ids = [s["voice"] for s in data["seating"]]

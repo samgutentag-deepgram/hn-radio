@@ -24,6 +24,11 @@ from hn_radio import config, manifest, pipeline, recast
 from hn_radio.cast import DEFAULT_CAST
 from hn_radio.models import ScriptSegment
 
+# The GA id, not the pre-GA `flux-alexis_studio-en` this used to be. `rewrite_role_names`
+# resolves a voice id to a display name through `config.ALL_VOICES`, and the staging ids were
+# deleted from the catalog when Flux went GA -- so with the old constant no name resolved, every
+# rename was silently skipped, and `test_swapping_the_two_voices_does_not_collapse_both_names`
+# passed its rename through unchanged while asserting it had happened.
 ANCHOR = "flux-alexis-en"
 COHOST = "flux-wade-en"
 OTHER = "flux-cole-en"

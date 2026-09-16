@@ -17,6 +17,9 @@ def test_run_panel_casts_two_voices_and_covers_n_stories(monkeypatch, tmp_path):
     from hn_radio import pipeline, ingest, sources, config, status
     from hn_radio.models import Story
 
+    # The real catalog, pinned. This used to be `config.STAGING_CAST_VOICES`, an eight-voice
+    # fixture that is gone with the staging split; nothing in this test depends on WHICH voices
+    # exist, only on there being enough of them to seat a host and a co-host.
     monkeypatch.setattr(config, "active_voice_catalog", lambda: dict(config.VOICE_CATALOG))
     monkeypatch.setattr(config, "EPISODES_DIR", tmp_path)
 
@@ -58,8 +61,8 @@ def test_run_panel_casts_two_voices_and_covers_n_stories(monkeypatch, tmp_path):
 def test_a_reused_writer_gets_fresh_substitutions_on_the_second_run(monkeypatch, tmp_path):
     """Run 1's substitutions must not survive into run 2 unchanged.
 
-    REWORKED for the two-person show. It used to lean on the desks: a catalog with no Priya made
-    the ai desk substitute, so run 1 recorded {"ai": "Priya"}. There are no desks to substitute now,
+    REWORKED for the two-person show. It used to lean on the desks: staging had no Priya, so the
+    ai desk substituted and run 1 recorded {"ai": "Priya"}. There are no desks to substitute now,
     and the co-host never reports one (its candidates are built from the live catalog), so the
     only seat that can announce an absence is the host.
 

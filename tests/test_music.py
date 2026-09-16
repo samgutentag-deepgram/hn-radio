@@ -555,7 +555,7 @@ def test_ad_bracket_degrades_like_everything_else(tmp_path):
 def test_the_ad_bracket_is_not_wired_into_the_render_path():
     """It exists so the demo can reach for it. Wiring it in is a separate, unbuilt feature.
 
-    PARKED DELIBERATELY, not merely unfinished. Sam auditioned a five-company
+    PARKED DELIBERATELY on 2026-08-08, not merely unfinished. Sam auditioned a five-company
     roster and ruled the reads "fine, not great", and the ad-to-show transition "mechanical":
     voice ends, pause, stinger, pause, ad starts. Four sequential events where a real break
     has one continuous one. So this stays unwired until the transition is designed rather
@@ -577,8 +577,13 @@ def _finalize_episode(tmp_path, monkeypatch, **kw):
     monkeypatch.setattr(status, "begin", lambda *a, **k: None)
     monkeypatch.setattr(status, "stage", lambda *a, **k: None)
     monkeypatch.setattr(status, "done", lambda *a, **k: None)
-    # Keep the WAV and PCM this once: the test reads them to check what _finalize wrote.
-    monkeypatch.setattr(pipeline, "discard_render_intermediates", lambda d: 0)
+    # KEEP THE WAV AND THE SEGMENT PCM. `_finalize` deletes both once the MP3 is written -- the
+    # MP3 is the show and everything else was scaffolding, decided when the volume filled up
+    # (ledger 2026-09-04, "Only the MP3 survives a render"). Every assertion below reads the
+    # intermediates, so the cleanup is stubbed rather than the tests rewritten: what they are
+    # about is what the render PRODUCED, and the disk policy that removes it afterwards is a
+    # separate decision with its own tests.
+    monkeypatch.setattr(pipeline, "discard_render_intermediates", lambda out_dir: 0)
     segs = _episode()
     for s in segs:
         s.voice_id = "flux-haley-en"

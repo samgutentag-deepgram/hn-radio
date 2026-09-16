@@ -71,6 +71,13 @@ def _silence_status(monkeypatch):
     monkeypatch.setattr(status, "begin", lambda *a, **k: None)
     monkeypatch.setattr(status, "stage", lambda *a, **k: None)
     monkeypatch.setattr(status, "done", lambda *a, **k: None)
+    # KEEP THE WAV AND THE SEGMENT PCM. `_finalize` deletes both once the MP3 is written -- the
+    # MP3 is the show and everything else was scaffolding, decided when the volume filled up
+    # (ledger 2026-09-04, "Only the MP3 survives a render"). Every assertion below reads the
+    # intermediates, so the cleanup is stubbed rather than the tests rewritten: what they are
+    # about is what the render PRODUCED, and the disk policy that removes it afterwards is a
+    # separate decision with its own tests.
+    monkeypatch.setattr(pipeline, "discard_render_intermediates", lambda out_dir: 0)
 
 
 def _fresh_render(tmp_path, monkeypatch):

@@ -3,7 +3,13 @@
     {
       "id": "flux-alexis-en",
       "name": "Alexis",
-      "note": "American F, clear and fast",
+      "note": "American F, studio, crisp",
+      "family": "flux"
+    },
+    {
+      "id": "flux-wade-en",
+      "name": "Wade",
+      "note": "American M, second chair",
       "family": "flux"
     },
     {
@@ -269,6 +275,7 @@
   ],
   "buildable": [
     "flux-alexis-en",
+    "flux-wade-en",
     "flux-cole-en"
   ],
   "host_voice": "flux-alexis-en",
@@ -286,6 +293,7 @@
   },
   "build_preset": {
     "anchor": "flux-alexis-en",
+    "maker": "flux-wade-en",
     "drama": "flux-cole-en"
   },
   "seating": [
@@ -295,9 +303,16 @@
       "voice": "flux-alexis-en",
       "beat": "Hosts. Opens the show, names the day's headlines, signs off.",
       "persona": "Warm, quick, lightly wry. Keeps the show moving."
+    },
+    {
+      "role": "cohost",
+      "name": "Wade",
+      "voice": "flux-wade-en",
+      "beat": "Second chair. Takes every story with the host and reads the thread with them.",
+      "persona": "Curious and specific. Says the interesting part, not the whole page."
     }
   ],
-  "host": "api.deepgram.com",
+  "host": "api.staging.deepgram.com",
   "families": [
     {
       "id": "flux",
@@ -317,7 +332,9 @@
   "presets": {
     "flux": {
       "anchor": "flux-alexis-en",
+      "cohost": "flux-wade-en",
       "guest": "flux-cole-en",
+      "maker": "flux-wade-en",
       "drama": "flux-cole-en"
     }
   }

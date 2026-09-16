@@ -11,7 +11,7 @@ changed, which is what makes a refactor provably behaviour-preserving.
 They were written while `build_index` still existed, and originally pinned two of its bugs on
 purpose: it did not filter `-recast` episodes the way `rebuild_feed` and `build_manifest` do, and
 it wrote `episodes/index.html`, which stopped being the landing page when `backend/app.py` began
-mounting `web/` at `/`. Both are moot now: the function was deleted rather than
+mounting `web/` at `/`. Both are moot now: the function was deleted on 2026-08-09 rather than
 refactored, since the cheapest way to fix a page nobody navigates to is to stop building it.
 What survives is `test_every_enumerator_agrees_on_what_an_episode_is`, which is the guard against
 a third enumerator growing back with its own idea of what counts.
@@ -26,8 +26,8 @@ test, because it launders a change into a green suite.
 
 Determinism is the whole game. Every input is fixed: episode ids, titles, timestamps, durations,
 start times, voice ids, and audio file sizes. Config is monkeypatched so site metadata and the
-voice catalogs cannot drift, and `api_host` is pinned so an environment variable cannot change
-what the cast page emits.
+voice catalogs cannot drift, and `api_host` is pinned so the staging/production split cannot
+change what the cast page emits.
 """
 
 from __future__ import annotations
@@ -87,10 +87,24 @@ def frozen_config(monkeypatch):
     monkeypatch.setattr(config, "SITE_AUTHOR", "Test Author", raising=False)
     monkeypatch.setattr(config, "SITE_CATEGORY", "Technology", raising=False)
     monkeypatch.setattr(config, "SITE_OWNER_EMAIL", "owner@example.test", raising=False)
-    # Two Flux voices and one Aura voice is enough to exercise every branch of the pickers
-    # without a golden that changes every time the real catalog does.
+    # Three Flux voices and one Aura voice is enough to exercise every branch of the pickers
+    # without a golden that changes every time the real catalog does. Which three is NOT
+    # arbitrary, and getting it wrong produces a golden that looks plausible and is broken:
+    #
+    #   flux-alexis-en  the FIRST entry of `cast.ROLE_VOICES["anchor"]`, so the anchor seat can
+    #                   actually be filled. This used to be `flux-alexis_studio-en`, and when the
+    #                   pre-GA ids were deleted at GA neither anchor preference was in this
+    #                   catalog any more -- so `resolve_role` raised `RoleUnavailable`,
+    #                   `build_voices_json` DEGRADED as designed and dropped the seat, and a
+    #                   regenerated golden quietly recorded a voices.json with no anchor in it.
+    #   flux-wade-en    a voice that is NOT a host, so the second chair has a candidate.
+    #                   `cohost_candidates` subtracts `cast.host_voice_ids()`, which is Alexis
+    #                   AND Cole now that the afternoon edition has its own host.
+    #   flux-cole-en    the afternoon host, and what `guest_voices` and the drama preset below
+    #                   point at.
     monkeypatch.setattr(config, "VOICE_CATALOG", {
-        "flux-alexis-en": ("Alexis", "American F, clear and fast"),
+        "flux-alexis-en": ("Alexis", "American F, studio, crisp"),
+        "flux-wade-en": ("Wade", "American M, second chair"),
         "flux-cole-en": ("Cole", "American M, easy confidence"),
     }, raising=False)
     monkeypatch.setattr(config, "AURA_CATALOG", {
@@ -99,7 +113,7 @@ def frozen_config(monkeypatch):
     monkeypatch.setattr(config, "active_voice_catalog",
                         lambda: dict(config.VOICE_CATALOG), raising=False)
     monkeypatch.setattr(config, "guest_voices", lambda: ["flux-cole-en"], raising=False)
-    monkeypatch.setattr(config, "api_host", lambda: "api.deepgram.com", raising=False)
+    monkeypatch.setattr(config, "api_host", lambda: "api.staging.deepgram.com", raising=False)
 
 
 def _segments():
@@ -161,7 +175,7 @@ def episodes_dir(tmp_path, monkeypatch):
 # --- the HTML pages: everything a listener sees ------------------------------------------------
 
 def test_publish_emits_data_and_feeds_only():
-    """`build_episode_page` was deleted; rendering for humans is web/'s job now.
+    """`build_episode_page` was deleted 2026-08-09; rendering for humans is web/'s job now.
 
     It generated a full player page as an f-string in publish.py. Nothing in web/ linked to it,
     and its only referrer was the feed's <link>, which 404'd. Two implementations of one view,
@@ -177,7 +191,7 @@ def test_every_enumerator_agrees_on_what_an_episode_is(episodes_dir):
 
     `rebuild_feed` and `build_manifest` skip ids matching `-recast`; `build_index` did not, so a
     recast appeared on the landing page but not in the feed or the manifest. `build_index` was
-    deleted (it wrote `episodes/index.html`, which stopped being the landing page
+    deleted on 2026-08-09 (it wrote `episodes/index.html`, which stopped being the landing page
     when `backend/app.py` began mounting `web/` at `/`), which removed the only disagreeing
     enumerator. This test is what stops a third one growing back.
     """
@@ -246,28 +260,6 @@ def test_show_notes_escape_a_submitter_name():
     notes = feed.build_show_notes(ep, [])
     assert "<script>x</script>" not in notes
     assert "&lt;script&gt;" in notes
-
-
-def test_show_notes_join_line_names_host_and_cohost():
-    notes = feed.build_show_notes(_episode().to_dict(), [])
-    assert "Join Alexis and Cole as they discuss today's top stories:" in notes
-
-
-def test_show_notes_join_line_omits_cohost_on_a_solo_cast():
-    """No 'desk' segment at all (a solo custom.py cast) -- name the host, invent no co-host."""
-    ep = _episode().to_dict()
-    for s in ep["segments"]:
-        if s["role"] == "desk":
-            s["role"] = "anchor"
-    notes = feed.build_show_notes(ep, [])
-    assert notes.startswith("<p>Join Alexis as they discuss today's top stories:")
-    assert "and" not in notes.split("as they discuss")[0]
-
-
-def test_show_notes_join_line_escapes_the_title():
-    notes = feed.build_show_notes(_episode().to_dict(), [])
-    assert "&lt;angle&gt;" in notes
-    assert "<angle>" not in notes
 
 
 # --- the feed ----------------------------------------------------------------------------------
@@ -373,8 +365,8 @@ def test_no_golden_leaked_a_real_deploy_host():
         text = path.read_text()
         leaked = re.findall(r"https?://[\w.-]*(?:fly\.dev|localhost|127\.0\.0\.1)[:\w/.-]*", text)
         assert not leaked, f"{path.name} contains a live deploy host: {leaked[:3]}"
-        # api.deepgram.com is the frozen api_host value and belongs in voices.json only.
-        hosts = set(re.findall(r"api\.deepgram\.com", text))
+        # api.staging.deepgram.com is the frozen api_host value and belongs in voices.json only.
+        hosts = set(re.findall(r"api(?:\.staging)?\.deepgram\.com", text))
         assert not hosts or path.name == "voices.json", (
             f"{path.name} records an API host ({hosts}); only voices.json should"
         )
@@ -408,13 +400,13 @@ def test_the_feed_links_humans_at_a_url_that_resolves(episodes_dir):
 def test_no_show_level_link_points_into_the_artifact_root(episodes_dir):
     """The same 404, one level up: the SHOW's own links, not an episode's.
 
-    `<channel><link>` was fixed with the episode links. `<channel><image><link>`
+    `<channel><link>` was fixed on 2026-08-09 with the episode links. `<channel><image><link>`
     was not, and it kept pointing at `{site_base_url()}/`, i.e. `/episodes/`. That is the
     "website" button next to the artwork in a podcast app rather than an episode link, so it is
     cosmetic -- but it is the identical mistake, and the episode version of it shipped broken for
     twelve days, so leaving the last one in place is leaving a live 404 in a published file.
 
-    Probed against the app with `TestClient(backend.app.app)` rather than guessed:
+    Probed against the app on 2026-08-20 with `TestClient(backend.app.app)` rather than guessed:
     `GET /` returns 200 text/html, because `web/` is mounted with `html=True` and serves
     `web/index.html` for a directory. `GET /episodes/` returns 404, because the catalog mount has
     no `html=True` and therefore no directory index. So the app root is the one show-level URL

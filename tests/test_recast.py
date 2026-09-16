@@ -63,7 +63,7 @@ def test_rewrite_names_updates_handoffs_but_not_comments():
                       text="Wade makes a good point here.", voice_id="flux-drew-en"),
     ]
     orig_voice = {"anchor": "flux-haley-en", "maker": "flux-wade-en", "guest": "flux-drew-en"}
-    segs[1].voice_id = "flux-meena-en"   # was `recast.apply_mapping`, deleted
+    segs[1].voice_id = "flux-meena-en"   # was `recast.apply_mapping`, deleted 2026-08-22
     recast.rewrite_names(segs, {"maker": "flux-meena-en"}, orig_voice)
 
     assert config.ALL_VOICES["flux-meena-en"][0] == "Meena"
@@ -72,26 +72,30 @@ def test_rewrite_names_updates_handoffs_but_not_comments():
     assert segs[2].text == "Wade makes a good point here."         # real comment untouched
 
 
-def test_rewrite_names_sees_a_retired_voices_name():
-    """The OLD voice on an archived script is routinely one the show can no longer cast.
+def test_rewrite_names_renames_a_desk_whose_voice_changed():
+    """A staging id has no ALL_VOICES entry, so the old lookup returned "" and skipped silently.
 
-    Marcus and Priya read several episodes on disk before being retired by ear, so they are
-    absent from VOICE_CATALOG. A lookup narrow enough to miss them returns None, and a None
-    makes the rewrite skip in SILENCE: the script keeps saying "Marcus" while Alexis reads it,
-    which is worse than not recasting at all. `config.voice_name` is deliberately wider than the
-    castable catalog for exactly this call site.
+    Recasting a staging episode left the previous correspondent's NAME in the script while the
+    new voice read it, which is worse than not recasting at all: the show introduces Colin and
+    Alexis speaks.
     """
     segs = [
         ScriptSegment(order=0, role="anchor", speaker_key="Haley", desk="anchor",
-                      text="Marcus has the maker desk today.", voice_id="flux-marcus-en"),
-        ScriptSegment(order=1, role="desk", speaker_key="Marcus", desk="maker",
-                      text="Thanks.", voice_id="flux-marcus-en"),
+                      text="Colin has the maker desk today.",
+                      voice_id="flux-colin-en"),
+        ScriptSegment(order=1, role="desk", speaker_key="Colin", desk="maker",
+                      text="Thanks.", voice_id="flux-colin-en"),
     ]
-    orig_voice = {"maker": "flux-marcus-en"}    # retired by ear, not castable
-    mapping = {"maker": "flux-alexis-en"}
+    orig_voice = {"maker": "flux-colin-en"}     # Colin, the GA id
+    mapping = {"maker": "flux-alexis-en"}       # Alexis, the GA id
 
-    assert "flux-marcus-en" not in config.VOICE_CATALOG  # the reason a narrow lookup fails
-    assert config.voice_name("flux-marcus-en") == "Marcus"
+    # Both ids must be NAMEABLE, which is the thing this test is really about: `rewrite_names`
+    # resolves each through `config.ALL_VOICES`, and a voice it cannot name it leaves alone. It
+    # used to assert the opposite -- that the old id was ABSENT from the catalog -- because the
+    # ids here were the pre-GA `ga_candidate`/`_studio` ones and the point was that staging served
+    # names production did not. Those ids were deleted at GA, so with them the rename resolved
+    # nothing and this test was asserting against a no-op.
+    assert "flux-colin-en" in config.ALL_VOICES and "flux-alexis-en" in config.ALL_VOICES
     segs[1].voice_id = "flux-alexis-en"   # was `recast.apply_mapping`
     recast.rewrite_names(segs, mapping, orig_voice)
 

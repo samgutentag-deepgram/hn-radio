@@ -45,6 +45,17 @@ def _comments(story_id, n=2):
 
 
 def _production(monkeypatch):
+    """Pin the catalog these tests reason about.
+
+    It used to patch `config.on_staging` to False as well. That function is GONE (recovered
+    deploy, 2026-09-05): Flux went GA on 2026-08-12, the pre-GA `_studio` ids 400 in production,
+    and the whole staging voice split was deleted as dead code. There is only one catalog now, so
+    "force production" is the default rather than something a test arranges.
+
+    The `active_voice_catalog` patch stays. It is not about staging: it pins the catalog against
+    `VOICE_CATALOG` so a future retirement-by-ear cannot quietly change which voices these
+    rotation tests are reasoning over.
+    """
     monkeypatch.setattr(config, "active_voice_catalog", lambda: dict(config.VOICE_CATALOG))
 
 
@@ -122,14 +133,18 @@ def test_the_recency_window_covers_more_than_one_episode(tmp_path, monkeypatch):
 def test_the_rotation_reuses_a_recent_voice_rather_than_failing(monkeypatch):
     """The recency window is a PREFERENCE, and it has to degrade rather than raise.
 
-    Feed it a catalog where every eligible voice is already "recent" -- any catalog smaller than
-    the window does this. A strict filter would empty the candidate list and raise
-    RoleUnavailable on a show that could perfectly well go out. Same trade `guest_voice_for`
-    makes: a repeated co-host is a worse episode, no episode is worse than that.
+    A strict filter would empty the candidate list and raise RoleUnavailable on a show that could
+    perfectly well go out, any time the eligible pool got smaller than the window. Same trade the
+    retired `guest_voice_for` made: a repeated co-host is a worse episode, no episode is worse
+    than that.
+
+    ELIGIBILITY IS AGAINST `cast.host_voice_ids()`, NOT `config.HOST_VOICE`, and that distinction
+    is new. The show got a second host when it went twice daily: Alexis has the Morning Edition
+    and Cole has the Afternoon, so `host_voice_ids()` is both of them and neither can take the
+    second chair. This test asserted the pool was "everything except HOST_VOICE" and started
+    failing on Cole the moment he became a host, which is the rule working rather than breaking.
     """
     monkeypatch.setattr(config, "active_voice_catalog", lambda: dict(config.VOICE_CATALOG))
-    # Every voice that can hold the second chair: the catalog minus BOTH hosts, since the
-    # afternoon host is kept out of the morning rotation and vice versa (see `host_voice_ids`).
     everyone = [v for v in config.VOICE_CATALOG if v not in cast.host_voice_ids()]
     pool = cast.cohost_candidates(recent_voices=everyone, host_voice=config.HOST_VOICE)
     assert sorted(pool) == sorted(everyone), "a fully-recent pool must still offer everyone"
@@ -140,7 +155,10 @@ def test_the_rotation_reuses_a_recent_voice_rather_than_failing(monkeypatch):
 def test_the_rotation_puts_fresh_voices_ahead_of_recent_ones(monkeypatch):
     """The ordering IS the rule, so assert on it directly rather than only on the outcome."""
     monkeypatch.setattr(config, "active_voice_catalog", lambda: dict(config.VOICE_CATALOG))
-    stale = ["flux-wade-en", "flux-bree-en", "flux-jack-en"]  # not Cole: he hosts the afternoon now
+    # None of these may be a host voice, or it is not in the pool to be ordered within. Cole used
+    # to be here and had to come out: he hosts the Afternoon Edition now.
+    stale = ["flux-wade-en", "flux-meena-en", "flux-jack-en"]
+    assert not (set(stale) & cast.host_voice_ids()), "a host voice is never in the co-host pool"
     pool = cast.cohost_candidates(recent_voices=stale, host_voice=config.HOST_VOICE)
     first_stale = min(pool.index(v) for v in stale)
     assert first_stale == len(pool) - len(stale), (
@@ -263,7 +281,7 @@ def test_the_cold_open_names_the_host(monkeypatch):
 
 
 def test_the_intro_speaks_the_air_date_not_the_story_date(monkeypatch):
-    """THE OFF-BY-ONE Sam caught by ear. Regression guard.
+    """THE OFF-BY-ONE Sam caught by ear on 2026-08-23. Regression guard.
 
     `scripts/daily.py` renders `now(PACIFIC) - 1 day`, because a complete day of front page is the
     point, so `episode_date` is the CONTENT date. The intro used to speak that same date as if it
@@ -285,7 +303,7 @@ def test_the_intro_speaks_the_air_date_not_the_story_date(monkeypatch):
 def test_the_air_date_is_derived_not_read_off_the_clock():
     """A re-render must not re-date the episode. Same trap `generated_at` fell into.
 
-    The archive re-render nearly republished nineteen episodes as if they had aired
+    The archive re-render on 2026-08-21 nearly republished nineteen episodes as if they had aired
     that day, because `_finalize` stamped a fresh `generated_at` and the feed reads it as pubDate.
     Deriving the air date from the episode date means a backfill or a re-render says what the
     episode would have said had it aired on time, however long after the fact it runs.
@@ -471,7 +489,7 @@ def test_claude_writer_comments_keep_the_username_and_get_a_regulars_voice():
     assert all(s.desk is None for s in performed)
 
 
-# `test_the_show_path_no_longer_calls_guest_voice_for` was deleted. It monkeypatched
+# `test_the_show_path_no_longer_calls_guest_voice_for` was deleted 2026-08-22. It monkeypatched
 # `voices.guest_voice_for` to raise, proving the show never reached it. The function is now gone
 # outright, which is a stronger guarantee than a guard: there is nothing left to call. The
 # monkeypatch also passed no `raising=False`, so it would have errored on the missing attribute.
