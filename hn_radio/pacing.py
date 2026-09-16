@@ -325,11 +325,14 @@ CONVERSATIONAL = GapPolicy(
          "a real beat at a story change.",
     exchange=0.16, same_speaker=0.22, into_comment=0.40, out_of_comment=0.30,
     story_change=0.85, show_boundary=0.90,
-    # The same number `set_internal_pauses` spaces headlines by inside one read, and it has to be:
-    # a listener cannot be told which boundaries in the cold open happen to fall between two TTS
-    # calls and which fall inside one. One value, both mechanisms, or the preview goes ragged
-    # exactly where the split lands. See COLD_OPEN_PAUSE_SECONDS for how 0.55 was arrived at.
-    cold_open=COLD_OPEN_PAUSE_SECONDS,
+    # NOT the same as COLD_OPEN_PAUSE_SECONDS, and the first version of this shipped as if it
+    # were. That value spaces one HEADLINE from the next inside a single read. This one is the
+    # tease handing over to the preview: a different and larger event, two people becoming one
+    # person reading a list. Measured off four Up First episodes (research/upfirst/timing.py),
+    # that boundary runs 2.4-3.0s against a show twice this one's length, so 1.20 is the scaled
+    # equivalent. Still well under `story_change`, which is what it should be: the cold open is
+    # changing paragraph, not changing subject.
+    cold_open=1.20,
 )
 
 POLICIES = {p.name: p for p in (UNIFORM, TIGHT, CONVERSATIONAL)}

@@ -308,10 +308,20 @@ def test_boundaries_inside_the_cold_open_get_the_cold_open_beat():
     assert p.cold_open > p.exchange
 
 
-def test_the_cold_open_beat_matches_the_spacing_used_inside_one_read():
-    """One value, both mechanisms. A listener cannot be told which boundaries in the preview
-    happen to fall between two TTS calls and which fall inside one."""
-    assert pacing.CONVERSATIONAL.cold_open == pacing.COLD_OPEN_PAUSE_SECONDS
+def test_the_cold_open_beat_is_bigger_than_a_headline_boundary_but_smaller_than_a_story():
+    """Three different sizes for three different events, and they used to be two.
+
+    COLD_OPEN_PAUSE_SECONDS spaces one headline from the next INSIDE a single read. The
+    policy's cold_open is the tease handing over to the preview, which is a larger event, and
+    shipping them equal made the handover sound like another headline.
+    """
+    from hn_radio import music
+    p = pacing.CONVERSATIONAL
+    # A story change does not use `story_change` when a sting lands on it, and one always does:
+    # the sting IS the gap there. So the thing this has to stay under is the sting's real width,
+    # not the raw policy value, which is smaller than every beat the listener actually hears.
+    story_beat = music.CUE_GAP_SECONDS * 2 + music.STING_SECONDS
+    assert pacing.COLD_OPEN_PAUSE_SECONDS < p.cold_open < story_beat
 
 
 def test_an_untagged_pair_mid_show_is_still_a_conversational_turn():
