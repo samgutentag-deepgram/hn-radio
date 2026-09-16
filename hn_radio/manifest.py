@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from . import config
+from . import config, pricing
 from .jsonio import write_json
 from .models import is_recast
 
@@ -81,8 +81,78 @@ def build_manifest(episodes_dir: Path) -> Path:
             "cost": d.get("cost") or {},
         })
     path = episodes_dir / "index.json"
-    write_json(path, {"episodes": episodes})
+    write_json(path, {"episodes": episodes, "totals": _totals(episodes)})
     return path
+
+
+def _totals(episodes: list) -> dict:
+    """Catalog-wide cost, for the one thing on the landing page no single row can say.
+
+    THE REASON THIS IS NOT DONE IN THE BROWSER. Every per-episode figure the page shows was
+    computed by `pricing.py` and published, and the page only formats it -- that is deliberate,
+    because the show now SAYS its cost out loud and a second implementation of the arithmetic in
+    JavaScript is a second answer to a question the audio already answered. Summing published
+    dollars is admittedly a thinner computation than deriving them, but the aggregate is a fact
+    about the catalog and it belongs next to the definition of what a cost is, not in a page.
+
+    `episodes_per_day` is MEASURED, not read off the cron, because the cron is not a reliable
+    witness: the schedule went from daily to twice daily on 2026-09-04 and the committed crontab
+    and the deployed one still disagree about it. A page that hardcodes a cadence is wrong the
+    next time that changes, so this counts what actually shipped.
+
+    TWO WINDOWING DECISIONS, both of which change the number:
+
+      - THE NEWEST DATE IS EXCLUDED. It is almost always a partial day -- an episode airs at 03:00
+        Pacific and the next at 15:00, so for twelve hours of every day the catalog holds one
+        episode for today. Counting it drags the average toward 1 and makes the credit look like
+        it lasts longer than it will.
+      - SEVEN COMPLETE DATES, not fourteen. A fortnight straddles the daily/twice-daily switch, so
+        it averages two different shows and describes neither. A week is long enough to survive a
+        single missed run and short enough to be about the show as it runs now.
+
+    So this is "the pace it has been publishing at", which is what the page calls it. It is not a
+    promise about the schedule, and the copy does not make one.
+
+    Recasts never reach here: `build_manifest` filtered them out before calling this.
+    """
+    priced = [e for e in episodes if (e.get("cost") or {}).get("usd") is not None]
+    if not priced:
+        # No priced episode means no total. A zero would read as "this catalog was free".
+        return {}
+
+    usd = sum(e["cost"]["usd"] for e in priced)
+    characters = sum(e["cost"].get("characters") or 0 for e in priced)
+    mean = usd / len(priced)
+
+    # `episodes` is newest-first (build_manifest sorts reversed), so the recent window is a head
+    # slice of the dates, not a tail. Ids are `YYYY-MM-DD` with an optional `-am`/`-pm`/edition
+    # suffix, so the date is the first ten characters.
+    seen, ordered = set(), []
+    for e in episodes:
+        day = str(e.get("id", ""))[:10]
+        if day and day not in seen:
+            seen.add(day)
+            ordered.append(day)
+    window = set(ordered[1:8])  # skip today (partial), then seven complete dates
+    in_window = [e for e in episodes if str(e.get("id", ""))[:10] in window]
+    per_day = (len(in_window) / len(window)) if window else 0.0
+
+    return {
+        "episodes": len(priced),
+        "characters": characters,
+        "usd": round(usd, 6),
+        "mean_usd": round(mean, 6),
+        "episodes_per_day": round(per_day, 2),
+        # How long the signup credit runs the show at the measured cadence. The number that makes
+        # the per-episode figure mean something: cents per episode is abstract, "over a year of a
+        # twice-daily podcast" is not.
+        "days_per_credit": int(pricing.FREE_CREDIT_USD // (mean * per_day)) if mean and per_day else 0,
+        "episodes_per_credit": pricing.episodes_per_credit(mean),
+        "rate_usd_per_1k": pricing.rate_usd_per_1k(),
+        "plan": pricing.plan(),
+        "credit_usd": pricing.FREE_CREDIT_USD,
+        "pricing_url": pricing.PRICING_URL,
+    }
 
 
 def build_voices_json(episodes_dir: Path) -> Path:

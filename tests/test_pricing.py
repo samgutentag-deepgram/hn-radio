@@ -489,3 +489,87 @@ def test_the_backfill_does_not_overwrite_a_fresh_render(tmp_path, monkeypatch):
     after = json.loads((tmp_path / "test-ep" / "episode.json").read_text())["cost"]
     assert result["skipped"] == ["test-ep"]
     assert after == before
+
+
+# --- the catalog total -------------------------------------------------------------------------
+#
+# `manifest._totals` is the only cost arithmetic outside pricing.py, and it exists because the
+# landing page needs one fact no single row can state. Its windowing is the interesting part: the
+# cadence it reports changes the headline "the credit runs this show for N days".
+
+def _rows(*ids, usd=0.22, characters=5000):
+    """Index rows, newest-first, the shape `build_manifest` hands `_totals`."""
+    return [{"id": i, "cost": {"usd": usd, "characters": characters}} for i in ids]
+
+
+def test_the_total_sums_the_published_figures():
+    totals = manifest._totals(_rows("2026-09-02", "2026-09-01", usd=0.25, characters=5000))
+    assert totals["episodes"] == 2
+    assert totals["usd"] == pytest.approx(0.50)
+    assert totals["characters"] == 10000
+    assert totals["mean_usd"] == pytest.approx(0.25)
+
+
+def test_an_unpriced_catalog_reports_no_total_rather_than_zero():
+    """A zero would read as "this catalogue was free", which is a claim. Absence is not."""
+    assert manifest._totals([{"id": "2026-09-01", "cost": {}}]) == {}
+    assert manifest._totals([]) == {}
+
+
+def test_an_unpriced_episode_is_left_out_of_the_total_not_counted_as_free():
+    totals = manifest._totals(_rows("2026-09-02", usd=0.20)
+                              + [{"id": "2026-09-01", "cost": {}}])
+    assert totals["episodes"] == 1
+    assert totals["usd"] == pytest.approx(0.20)
+
+
+def test_the_cadence_excludes_todays_partial_day():
+    """An episode airs at 03:00 Pacific and the next at 15:00, so for twelve hours of every day
+    the catalogue holds ONE episode for today. Counting it drags the average toward 1 and makes
+    the signup credit look like it lasts longer than it will."""
+    ids = ["2026-09-16-am"]                                    # today: one so far
+    for day in range(15, 8, -1):                               # seven complete two-episode days
+        ids += [f"2026-09-{day:02d}-pm", f"2026-09-{day:02d}-am"]
+    totals = manifest._totals(_rows(*ids))
+    assert totals["episodes_per_day"] == 2.0
+
+
+def test_the_cadence_window_is_seven_dates_not_the_whole_archive():
+    """A window long enough to straddle the daily/twice-daily switch averages two different shows
+    and describes neither. Seven complete dates is about the show as it runs now."""
+    ids = ["2026-09-16-am"]
+    for day in range(15, 8, -1):                               # seven recent two-episode days
+        ids += [f"2026-09-{day:02d}-pm", f"2026-09-{day:02d}-am"]
+    ids += [f"2026-09-{day:02d}" for day in range(8, 0, -1)]   # older once-daily era
+    totals = manifest._totals(_rows(*ids))
+    assert totals["episodes_per_day"] == 2.0, "the once-daily era must not drag the recent pace"
+
+
+def test_a_missed_run_lowers_the_pace_rather_than_being_hidden():
+    """2026-09-15 really is missing its morning episode on the live host. The pace should show
+    that, because the credit genuinely lasts longer when fewer episodes ship."""
+    ids = ["2026-09-16-am", "2026-09-15-pm"]                   # today, then a day that missed am
+    for day in range(14, 8, -1):
+        ids += [f"2026-09-{day:02d}-pm", f"2026-09-{day:02d}-am"]
+    totals = manifest._totals(_rows(*ids))
+    assert totals["episodes_per_day"] == pytest.approx(13 / 7, abs=0.01)
+
+
+def test_days_per_credit_is_the_headline_the_page_quotes():
+    """$200 at 25 cents an episode, two a day, is 400 days. The figure that makes cents per
+    episode mean something."""
+    ids = ["2026-09-16-am"]
+    for day in range(15, 8, -1):
+        ids += [f"2026-09-{day:02d}-pm", f"2026-09-{day:02d}-am"]
+    totals = manifest._totals(_rows(*ids, usd=0.25))
+    assert totals["days_per_credit"] == 400
+    assert totals["episodes_per_credit"] == 800
+
+
+def test_the_manifest_publishes_the_totals_beside_the_episodes(tmp_path):
+    _write_episode(tmp_path, "2026-08-01", ["a" * 2000])
+    publish.rebuild_site(tmp_path)
+    doc = json.loads((tmp_path / "index.json").read_text())
+    assert doc["totals"]["usd"] == pytest.approx(0.09)
+    assert doc["totals"]["rate_usd_per_1k"] == 0.045
+    assert doc["totals"]["credit_usd"] == 200.0

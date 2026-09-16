@@ -2533,6 +2533,47 @@ html[data-theme="light"] .cost-figure-money .cost-value { color: var(--dg-accent
   font-variant-numeric: tabular-nums;
 }
 
+/* The catalogue's cost line, above the episode list, and the per-row figure.
+   THE ANTI-REPETITION RULE, written down because the obvious build breaks it.
+   Putting "this episode cost $0.24 to render with Deepgram Flux TTS" on every
+   row spells the same sentence twenty times under twenty numbers that differ by
+   two cents, which reads as boilerplate and teaches a reader to skip it. So the
+   SENTENCE is said once, here, above the list, and each row carries only the
+   part that varies: the figure, in mono, quiet, sitting beside the row's one
+   action. The aggregate in this line is then the thing no row can say, which is
+   what earns it the space. */
+.catalog-cost {
+  margin: 0 0 1rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--dg-text-label);
+  max-width: 44rem;
+}
+.catalog-cost b {
+  font-family: var(--dg-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--dg-weight-medium);
+  color: var(--dg-text-body);
+}
+.catalog-cost a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+
+/* Baseline row for the link and the figure, so the cost cannot drift off the
+   link's baseline at any font size. Wraps rather than shrinks on a phone. */
+.ep-foot {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+/* Quiet on purpose. It is a footnote to the row, not a second call to action,
+   and it must not compete with the Listen link it sits next to. */
+.ep-cost {
+  font-family: var(--dg-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.76rem;
+  color: var(--dg-text-label);
+}
+
 /* ============================================================================
    BLOCK 16 -- WHAT WAS REMOVED, AND WHY, SO IT IS NOT RE-ADDED BY ACCIDENT.
 
