@@ -195,13 +195,18 @@ def test_speech_rounds_to_something_a_person_would_say(n, rounded):
 
 def test_the_spoken_line_names_flux_the_cost_and_the_credit():
     """The three facts the ask asked for, in the copy. Pinned because this is read out loud on
-    every episode and a silent rewording is a change to the show, not to a string."""
+    every episode and a silent rewording is a change to the show, not to a string.
+
+    Asserts the FACTS, not the sentence. The wording was shortened once already (294 characters to
+    214, because the line pays for its own length) and will be again; a test that pinned the prose
+    would have to be rewritten every time without ever catching a real loss.
+    """
     text, _total, _usd = pricing.resolve_cost_sentence(5000)
     assert "Deepgram Flux" in text
     assert "text to speech" in text
     assert "cost about" in text
-    assert "two hundred dollars in credit" in text
-    assert "more episodes like this one" in text
+    assert "two hundred dollars" in text
+    assert "more." in text
 
 
 def test_the_returned_total_includes_the_line_itself():

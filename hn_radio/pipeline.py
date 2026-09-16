@@ -340,6 +340,14 @@ def run_panel(
                 raise
             segments = None
             if attempt < attempts:
+                # TELL THE RETRY WHAT IT GOT WRONG. Without this the second attempt is a byte-for-byte
+                # identical request and differs only by sampling, which is a reroll rather than a
+                # correction. `deslop.gate` raises with the rule names and the reason, and that is
+                # exactly the useful thing to hand over. Set on the writer rather than passed as an
+                # argument because `ScriptWriter.write` is a shared interface that `PanelWriter`
+                # implements too, and the deterministic writer has nothing to do with it.
+                if hasattr(writer, "retry_note"):
+                    writer.retry_note = str(e)
                 log(f"      [warn] {type(writer).__name__} failed ({e}); trying it once more")
             else:
                 log(f"      [warn] {type(writer).__name__} failed again ({e}); "
@@ -351,6 +359,10 @@ def run_panel(
     # 173-second fallback episode needed: it read a markdown image tag and an S3 URL aloud. Raises
     # `verify.VerificationError`; the scheduled run treats that as "try again", not as a crash.
     verify.gate_script(segments)
+    # Cleared so a writer reused across runs -- `scripts/backfill.py` builds one and loops over
+    # dates -- cannot carry one night's rejection into the next night's first attempt.
+    if hasattr(writer, "retry_note"):
+        writer.retry_note = None
     log(f"      {len(segments)} segments")
 
     # Wrap the writer's content in the fixed show intro + outro, then renumber.

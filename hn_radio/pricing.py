@@ -239,14 +239,25 @@ def round_for_speech(n: int) -> int:
 # Read by the anchor immediately before the sign-off. Three facts, in the order the ask put them:
 # what rendered the voices, what this episode cost, and what the signup credit buys at that rate.
 #
-# "about", twice, and both are load-bearing. The cost is rounded to the nearest cent and the
+# "about", twice, and neither is decoration. The cost is rounded to the nearest cent and the
 # episode count to two significant figures, so an unhedged figure would be precisely wrong; and
 # the count assumes every future episode is the same length as this one, which is an average, not
 # a promise.
+#
+# SHORTENED ON 2026-09-16, and the reason is the line itself: it is billable text inside the
+# episode it prices, so its own length is a line item. 294 characters to 214, which is 80
+# characters or $0.0036 an episode, $2.63 a year at two shows a day. Cut: "One more thing before
+# we go", which the outro immediately after it already signals, and "more episodes like this one",
+# where "more" carries it. All three facts are still here; nothing was traded for the length.
+#
+# It does not shrink much further, and the floor is the spelled-out numbers. "twenty-three cents"
+# and "eight hundred sixty" are 18 and 19 characters where the digits would be 3 and 3, so about a
+# fifth of this line is the cost of being speakable (see `say_money`). Handing Flux "$0.23" to
+# save it would put "zero point two three dollars" on air, which is not a trade.
 COST_LINE = (
-    "One more thing before we go. Every voice you just heard was rendered by Deepgram Flux "
-    "text to speech, and this entire episode cost about {money} to make. Deepgram hands you "
-    "{credit} in credit when you sign up, which is about {episodes} more episodes like this one."
+    "Every voice in this episode was Deepgram Flux text to speech, and the whole thing cost "
+    "about {money} to make. Deepgram gives you {credit} to start, which covers about "
+    "{episodes} more."
 )
 
 

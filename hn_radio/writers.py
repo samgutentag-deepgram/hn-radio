@@ -403,6 +403,19 @@ class ClaudeWriter(ScriptWriter):
         self._caller_set_substitutions = substitutions is not None
         self._title: Optional[str] = None
         self._summary: Optional[str] = None
+        # What the previous attempt was rejected for, appended to the next user prompt.
+        #
+        # `pipeline.run_panel` gives an LLM writer two tries and, before this existed, the second
+        # try was an identical request: same system prompt, same stories, no indication that the
+        # first sample had been thrown away or why. The retry was a reroll on temperature alone.
+        # The de-slop gate names exactly what it objected to, so handing that to the retry turns
+        # a reroll into a correction, and the failure it avoids is the expensive one -- a fallback
+        # episode is a full render of the deterministic script plus a re-run.
+        #
+        # Deliberately NOT part of the system prompt. The rules live there and are the same every
+        # night; this is a fact about one rejected draft, and mixing the two would make the
+        # standing instructions read differently on a retry than on a first attempt.
+        self.retry_note: Optional[str] = None
 
     def episode_title(self):
         return self._title
@@ -414,6 +427,16 @@ class ClaudeWriter(ScriptWriter):
         import anthropic  # lazy: the LLM path is opt-in, so its dependency is too
 
         system, user = self._build_prompt(stories, top_story, comments, cast, edition, episode_date)
+        if self.retry_note:
+            user += (
+                "\n\nYOUR PREVIOUS DRAFT OF THIS EPISODE WAS REJECTED BEFORE IT WAS RECORDED, "
+                "for this:\n"
+                f"{self.retry_note}\n"
+                "Write it again from the source material above. Same stories, same structure, "
+                "same length. Do not write around the rule by reaching for a synonym of the "
+                "banned construction; say the thing plainly instead. Everything else about the "
+                "draft was fine, so this is not an instruction to change the show."
+            )
         try:
             client = anthropic.Anthropic(api_key=config.get_anthropic_key())
             with client.messages.stream(
@@ -510,13 +533,22 @@ class ClaudeWriter(ScriptWriter):
             "again inside the story: everything after the handoff is governed by HARD RULE 2 "
             "below. The handoff is also NOT the follow-up in HARD RULE 3; every story needs "
             "both.\n"
-            "   USE A DIFFERENT SHAPE EACH TIME, and shapes, not synonyms. Three forms: a "
-            "real question put to them about the substance of the story; a lead-in they "
-            "finish, where you say the setup and stop so their first words complete your "
-            "sentence; a framing they can argue with, where they take the other side. It "
-            "does not have to be a question. Never use the same form on two stories in a "
-            "row; with more stories than forms, reuse one only with genuinely different "
-            "words.\n"
+            "   USE A DIFFERENT SHAPE EACH TIME, and shapes, not synonyms. Three forms, all "
+            "of them things one person actually says to another: a real question about the "
+            "substance of the story; the one specific detail that surprised you, handed over "
+            "for them to react to that detail rather than to the story; or a thought you are "
+            "already halfway through, which they pick up from where you got to. It does not "
+            "have to be a question. Never use the same form on two stories in a row; with "
+            "more stories than forms, reuse one only with genuinely different words.\n"
+            "   NOT A DEBATE FORMAT, AND THIS IS THE ONE TO GET RIGHT. Do not set a story up "
+            "for the other person to defend, and do not set it up for them to knock down. Two "
+            "shapes that did exactly that have been removed from this list: \"a framing they "
+            "can argue with, where they take the other side\", and \"a lead-in they finish\". "
+            "Both produced the same episode -- one person builds a position, the other is "
+            "assigned the opposite one, and nobody is listening to anybody. Neither of them "
+            "has an opinion until the story gives them one, they are allowed to agree, and "
+            "when they disagree it is because they actually read it differently and not "
+            "because the structure needed a disagreement there.\n"
             f"   The FIRST story gets the question, and give it the most room: it is where a "
             f"listener decides whether this is two people or two recordings, so {anchor.name} "
             f"actually asks {cohost.name} something and {cohost.name} opens by answering it, "
@@ -528,6 +560,12 @@ class ClaudeWriter(ScriptWriter):
             "next story. Whoever is about to read a comment must SAY THE COMMENTER'S "
             "USERNAME first, in their own words: the voice does not change for a quote, so "
             "the name is the only cue these are somebody else's words.\n"
+            "   ONE EXCHANGE, NOT TWO READINGS. After a comment is read, the other one answers "
+            "THAT COMMENT -- the specific thing it claims -- before the next one is read. The "
+            "two of them are talking about the thread together; they are not taking it in "
+            "turns to recite it. Keep the whole segment tight: a comment, a real reaction to "
+            "it, the next comment, a reaction that connects the two. No summing up the thread "
+            "afterwards, and no telling the listener the thread was interesting.\n"
             "   Do NOT hold them until the end of the show. The other stories have no "
             "comments and get no comment segment; that lopsidedness is intended, so do not "
             "invent reactions to even it out.\n"
@@ -545,9 +583,11 @@ class ClaudeWriter(ScriptWriter):
             "subject -- and leave it out the rest of the time. No target, no minimum; judge "
             "each on its own. Never have anyone introduce themselves: the fixed opening "
             "already names both of them.\n"
-            "3. Each story gets ONE real follow-up: one of them asks something specific that "
-            "the other's take raised and did not answer, and gets an answer. A real question "
-            "about the substance, never a prompt to keep talking. Either of them can ask.\n"
+            "3. Each story gets ONE real follow-up, and it must read as the conversation "
+            "continuing rather than as a second interview question. One of them picks up "
+            "something specific the other's take raised and did not answer; that can be a "
+            "question, or it can be them saying the thing the other line implied and was too "
+            "quick to reach. Never a prompt to keep talking. Either of them can start it.\n"
             "4. You MAY use a callback: a later story referring to an earlier one in this "
             "episode. Use at most one, and only if the connection is real; a forced callback "
             "is worse than none.\n"
@@ -569,6 +609,15 @@ class ClaudeWriter(ScriptWriter):
             "that username is the show's record of who said it.\n"
             "8. Lively, specific, fast. Warm and a little wry, never fawning. No AI cliches "
             "(no 'delve', 'leverage', 'in today's fast-paced world', 'buckle up').\n"
+            "   BANNED OUTRIGHT, in any wording, because each one has been caught on this show "
+            "or reads as machine-written every time: NOTHING IS EVER 'LOAD-BEARING' -- not a "
+            "line, not an argument, not a detail, not a word; say what it does instead. No "
+            "\"it's not X, it's Y\" and no \"not the X, the Y\"; assert the thing you mean and "
+            "leave the thing you don't out. Nothing is 'worth sitting with' or worth any other "
+            "gerund. Never say 'and that matters' or 'here's the thing': if a line needs to be "
+            "told it was important, write a better line. `hn_radio/deslop.py` rejects a script "
+            "for these AFTER it is written and BEFORE it is rendered, so a hit here costs a "
+            "retry and a second call; not writing them is cheaper.\n"
             f"9. LENGTH (strict): aim for about {words} words and DO NOT exceed {ceiling} "
             f"words (~{self.target_minutes} minutes read aloud). Cover exactly {n_stories} "
             f"{story_word}, every one you are given. Drop none, pad nothing.\n"

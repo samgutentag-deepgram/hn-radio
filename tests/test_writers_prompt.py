@@ -110,8 +110,12 @@ def test_the_cold_open_still_counts_every_story_after_being_shortened():
 def test_prompt_asks_for_exactly_one_follow_up_per_story():
     s = _system()
     assert "ONE real follow-up" in s
-    # and it must be a substantive question, not filler
-    assert "never a prompt to keep talking" in s
+    # and it must be substantive, not filler
+    assert "Never a prompt to keep talking" in s
+    # ...and it must read as the conversation continuing rather than as a second interview
+    # question. Sam, 2026-09-16: "each pass should be more of a conversation".
+    assert "the conversation continuing" in s
+    assert "second interview question" in s
 
 
 def test_prompt_permits_at_most_one_callback():
@@ -274,10 +278,56 @@ def test_the_handoff_shapes_are_enumerated_so_they_cannot_all_be_the_same_questi
     s = _system()
     assert "USE A DIFFERENT SHAPE EACH TIME" in s
     assert "shapes, not synonyms" in s
-    for shape in ("a real question put to them",
-                  "a lead-in they finish",
-                  "a framing they can argue with"):
+    for shape in ("a real question about the substance",
+                  "the one specific detail that surprised you",
+                  "a thought you are already halfway through"):
         assert shape in s, shape
+
+
+def test_the_handoff_is_never_a_debate_setup():
+    """Sam, 2026-09-16: "we don't wanna do the segment where I set it up and you defend it or I
+    set it up and you knock it down."
+
+    Two of the three old shapes did exactly that -- "a framing they can argue with, where they
+    take the other side" and "a lead-in they finish" -- and the writer handed the first one back
+    as dialogue: "I'll take the other side" opens a desk turn in six episodes on the feed. Both
+    are gone from the list, and the prompt now says so outright, because a shape that produced six
+    episodes of the same move needs a named prohibition rather than a quiet deletion.
+    """
+    s = _system()
+    assert "NOT A DEBATE FORMAT" in s
+    assert "do not set it up for them to knock down" in s
+    assert "they are allowed to agree" in s
+    # The removed shapes must not be reachable as instructions any more. They appear only inside
+    # the prohibition that names them, so each may occur at most once.
+    for removed in ("a framing they can argue with", "a lead-in they finish"):
+        assert s.count(removed) == 1, f"{removed!r} should survive only as a banned example"
+
+
+def test_the_prompt_bans_the_phrases_the_gate_rejects():
+    """The gate and the prompt must not disagree about what a good script is.
+
+    `deslop.py` rejects a draft for these AFTER it is written, which costs a retry. Naming them in
+    the prompt is the cheap half; the gate is what catches them coming back.
+    """
+    s = _system()
+    assert "NOTHING IS EVER 'LOAD-BEARING'" in s
+    assert "worth sitting with" in s
+    assert "here's the thing" in s
+    assert "deslop.py" in s, "the prompt should say what enforces this and what a hit costs"
+
+
+def test_the_comment_segment_is_an_exchange_not_two_readings():
+    """Sam, 2026-09-16: tighten the comment theater, the show is a back and forth between hosts.
+
+    The old prompt asked them to read the comments "taking turns", which produced two recitals
+    with a summary after. Now a comment is answered before the next one is read.
+    """
+    s = _system()
+    assert "ONE EXCHANGE, NOT TWO READINGS" in s
+    assert "answers THAT COMMENT" in s
+    assert "not taking it in" in s and "turns to recite it" in s
+    assert "No summing up the thread" in s
 
 
 def test_the_handoff_does_not_have_to_be_a_question():
