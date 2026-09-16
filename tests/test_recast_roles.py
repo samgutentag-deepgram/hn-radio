@@ -10,7 +10,7 @@ different kind of claim:
   - never the same voice on both roles, enforced server-side because a UI rule is bypassable,
   - retired voices are never offered, whatever the published catalog says.
 
-The endpoint tests go through `POST /api/recast` on purpose. Validating in `hn_radio.recast` and
+The endpoint tests went through `POST /api/recast` on purpose. Validating in `hn_radio.recast` and
 trusting the route to call it is exactly the shape of bug this file exists to catch, so the
 assertions are made where a browser (or curl) actually lands.
 """
@@ -75,46 +75,51 @@ def test_no_retired_voice_is_offered():
     assert not stray, f"retired voices offered by the recast picker: {stray}"
 
 
-# --- what the endpoint refuses -----------------------------------------------------------------
+# --- what a mapping must satisfy ---------------------------------------------------------------
+#
+# THESE USED TO GO THROUGH `POST /api/recast`, and the file header explained why: the endpoint
+# held the Deepgram key, anyone could curl it, and every rule the picker showed had to be true on
+# the server as well. That endpoint was deleted on 2026-09-16 with the rest of the recast feature,
+# so there is no HTTP surface left to protect and the seven tests that posted to it are gone.
+#
+# The RULES are not gone, because `recast.validate_mapping` is not: `scripts/recast_archive.py`
+# and the CLI still call it, and it is still the single definition. So each rule is asserted
+# against the function directly. What is genuinely no longer covered, and is worth naming rather
+# than pretending otherwise: that a bad mapping produces a 400 and not a 500, and that the
+# endpoint validated independently of the page. Both were properties of a route that does not
+# exist.
+
+def _refuses(mapping, match):
+    with pytest.raises(ValueError, match=match):
+        recast.validate_mapping(mapping)
+
 
 def test_the_same_voice_on_both_roles_is_refused():
-    """A UI-only rule is bypassable with curl, and two roles on one voice is a one-voice show."""
-    r = _post({"anchor": OTHER, "cohost": OTHER})
-    assert r.status_code == 400, f"expected a 400, got {r.status_code}: {r.text}"
-    assert "same voice" in r.json()["detail"].lower()
+    """One voice in two seats puts the host in conversation with herself, in her own voice."""
+    _refuses({"anchor": ANCHOR, "cohost": ANCHOR}, "(?i)same|both|twice|distinct")
 
 
 def test_an_aura_voice_is_refused():
-    r = _post({"anchor": AURA})
-    assert r.status_code == 400, f"expected a 400, got {r.status_code}: {r.text}"
-    assert "flux" in r.json()["detail"].lower()
+    """Recast exists to show the Flux range. An Aura id renders, and is not what this offers."""
+    _refuses({"anchor": "aura-2-thalia-en"}, "(?i)flux")
 
 
 def test_a_retired_voice_is_refused_as_retired():
-    """"Unknown voice" would be a lie: Priya is in the published docs, we pulled her by ear."""
-    r = _post({"anchor": "flux-priya-en"})
-    assert r.status_code == 400, f"expected a 400, got {r.status_code}: {r.text}"
-    assert "retired" in r.json()["detail"].lower()
+    """Marcus and Priya are in the published docs and were pulled by ear. The refusal says which
+    of the two reasons applies, because "no such voice" would be wrong and confusing."""
+    _refuses({"anchor": "flux-priya-en"}, "(?i)retired")
 
 
 def test_a_slot_that_is_not_one_of_the_two_roles_is_refused():
-    """The themed desks are gone. The picker cannot reach them, so neither can the endpoint."""
-    r = _post({"ai": OTHER})
-    assert r.status_code == 400, f"expected a 400, got {r.status_code}: {r.text}"
-    assert "ai" in r.json()["detail"]
+    """The show has an anchor and a co-host. A `maker` key is a caller describing a show that
+    stopped existing on 2026-08-20."""
+    _refuses({"maker": ANCHOR}, "(?i)role|anchor|cohost")
 
 
 def test_an_empty_mapping_is_refused_rather_than_rendering_a_copy():
-    r = _post({})
-    assert r.status_code == 400, f"expected a 400, got {r.status_code}: {r.text}"
-
-
-def test_a_bad_mapping_never_reaches_a_500():
-    """Every refusal above must be a stated 400. A 500 here means validation raised instead."""
-    for bad in ({"anchor": OTHER, "cohost": OTHER}, {"anchor": AURA}, {"ai": OTHER}):
-        from backend import limits
-        limits.reset()
-        assert _post(bad).status_code == 400
+    """An empty mapping re-renders the episode unchanged: a full Flux bill for a byte-identical
+    show. That is a caller mistake, not a no-op."""
+    _refuses({}, "(?i)empty|at least|no ")
 
 
 # --- what the published catalog offers ---------------------------------------------------------
@@ -126,7 +131,11 @@ def test_voices_json_offers_flux_only(tmp_path):
     families = {v["family"] for v in data["voices"]}
     assert families == {"flux"}, f"voices.json offers non-Flux families: {families - {'flux'}}"
     assert [f["id"] for f in data["families"]] == ["flux"]
-    assert "aura" not in data["presets"], "an Aura preset is a picker route back to Aura voices"
+    # `presets` used to be checked for an "aura" key here, on the grounds that an Aura preset is
+    # a picker route back to the Aura voices. The key is gone with the picker (2026-09-16), so
+    # there is no route to close. The filter that matters is still the one above: `voices` is
+    # built Flux-only AT GENERATION, so a stale published file cannot reintroduce them either.
+    assert "presets" not in data, "the recast picker's preset key should not have come back"
 
 
 def test_voices_json_offers_no_retired_voice(tmp_path):

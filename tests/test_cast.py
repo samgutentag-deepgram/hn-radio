@@ -173,9 +173,9 @@ def test_cast_page_seats_the_two_the_render_path_would(tmp_path, monkeypatch):
         assert "cohost_pool" not in data, "the manifest stopped publishing the pool in 2026-08-22"
         assert seats["cohost"]["voice"] == pool[0]
         assert seats["cohost"]["voice"] != seats["anchor"]["voice"]
-        # the one-click preset must not contradict the seating it sits next to
-        for role, seat in seats.items():
-            assert data["presets"]["flux"][role] == seat["voice"]
+        # `presets.flux` used to be asserted here -- the recast picker's one-click cast, which
+        # had to agree with the seating it sat next to. Both the picker and the key are gone
+        # (2026-09-16). The seating assertions above are what that check was protecting.
 
 
 def test_voice_name_spans_both_catalogs():
@@ -428,4 +428,3 @@ def test_cast_page_never_seats_one_voice_at_two_desks(tmp_path, monkeypatch):
     assert seats["anchor"]["voice"] == "flux-haley-en"
     # The co-host pool excludes the host by id, so the page cannot seat her twice even here.
     assert seats["cohost"]["voice"] != seats["anchor"]["voice"]
-    assert data["presets"]["flux"]["cohost"] != data["presets"]["flux"]["anchor"]

@@ -56,7 +56,7 @@ voice on that page will host a morning show sooner or later, and this is how one
 into `config.RETIRED_VOICES`. It also doubles as a catalog probe. `resolve_role` walks past a voice
 missing from the catalog and announces a substitution, but `config.GUEST_VOICES` is read straight
 through, so a dead id in it is a hard failure rather than a degradation in the two paths that still
-read that pool: the recast picker's guest preset, and a custom edition's comment theater. Anything
+read that pool: a custom edition's comment theater. Anything
 that renders a preview is safe to cast.
 
 If `make episode` fails partway through, use `scripts/local_episode.py` instead. It caches the
@@ -202,7 +202,7 @@ render -> [cache] -> pace -> music -> stitch -> chapters -> publish
 | `sources.py` | Reads what each story actually links to (GitHub README via the API, otherwise the page text) and makes an extractive summary, so the two regulars have something real to say |
 | `writers.py` | `PanelWriter` (deterministic) or `ClaudeWriter` (Opus 5). An LLM failure falls back to the deterministic writer so the show still ships |
 | `normalize.py` | Abbreviation expansion on the input text (HN becomes Hacker News). Nothing phonetic |
-| `voices.py` | Assigns a voice per line from the episode's cast. Performed comments carry a **regular's** voice, pinned by the writer, while keeping the commenter's real username and comment id on the line. `guest_voice_for`, which hashed a username into a separate guest pool so a regular commenter kept their voice between episodes, was deleted on 2026-08-22: the claim here that recast and custom editions still offered a guest voice was false, since `recast.ROLES` is anchor and cohost only. The `GUEST_VOICES` pool itself is still live as the recast picker's guest preset |
+| `voices.py` | Assigns a voice per line from the episode's cast. Performed comments carry a **regular's** voice, pinned by the writer, while keeping the commenter's real username and comment id on the line. `guest_voice_for`, which hashed a username into a separate guest pool so a regular commenter kept their voice between episodes, was deleted on 2026-08-22. The `GUEST_VOICES` pool itself is still live, as a custom edition's comment-theater default |
 | `render.py` | One batch `/v2/speak` call per segment, returning raw PCM |
 | `pacing.py` | How much air sits between two lines. A gap per boundary type, chosen from the script's own structure, after normalizing away the silence Flux bakes into each segment's edges |
 | `music.py` | The theme: an intro cue, a sting at each story's first mention, a bed over the cold open. Levels are set relative to the episode's own speech, never as a fixed gain. Set `HN_RADIO_MUSIC=0` (or pass `--no-music`) to render speech only |
@@ -215,10 +215,10 @@ render -> [cache] -> pace -> music -> stitch -> chapters -> publish
 | `transcript.py` | WebVTT, built from the start times `pacing` and `music` computed |
 | `jsonio.py` | The one way a JSON artifact gets written, so `episode.json` reads the same whichever tool touched it last |
 
-Recasting an episode into different voices, or building a custom one out of past episodes, reuses
-a segment's PCM when it is still on disk and the words and voice are unchanged, and re-renders
-everything else. Since only the MP3 is kept after a render, that means a full re-render in
-practice. Recasts are rare enough that this costs less than storing every episode three times.
+Only `episode.mp3` survives a finished run. The WAV and the per-segment PCM are staged during the
+render as a crash net and deleted once the MP3 exists, which is what stopped the volume filling up
+at 35 episodes. Re-rendering an old episode therefore pays for every line again: the reuse path in
+`render_recast` and `render_custom` is still there and simply never gets a cache hit.
 
 ## What an episode costs
 
@@ -262,10 +262,11 @@ the TTS line item at list price, and the page says so in those words.
 `episodes/` as the catalog, and holds the Deepgram key server-side so the browser never sees it.
 
 - `web/index.html` is the episode list, the subscribe row, and a live status board.
-- `web/episode.html` is the player: sticky console, waveform, chapter dots, and the full script
-  scrolling along with the audio. Its second tab is the recast picker, which offers two roles,
-  Showrunner and Guest host, over the Flux catalog; a voice taken by one is marked taken and
-  refused to the other.
+- `web/episode.html` is the player: sticky console, orb, chapter dots, what the episode cost to
+  render, and the full script scrolling along with the audio. It had a second tab until
+  2026-09-16, a recast picker that re-voiced the episode from the Flux catalog; that feature is
+  gone from the site. `hn_radio/recast.py` and `scripts/recast_archive.py` survive as operator
+  tooling with no route and no page.
 - `web/build.html` is the desk picker, and it is the one place desks survive. The daily show has
   none; a build-your-own edition seats them deliberately, because picking a desk is how a listener
   casts a voice AND filters the topic at once, so the thing picked has to be a subject. Choose the
@@ -277,7 +278,7 @@ the TTS line item at list price, and the page says so in those words.
 
 - `web/stats.html` is the play counter's board, linked from a footer on the landing page.
 
-The rest of the API is `POST /api/recast`, `GET /api/status`, `GET /api/trending`,
+The rest of the API is `GET /api/status`, `GET /api/trending`,
 `POST /api/plays`, `GET /api/stats`, and `GET /api/health`. (`POST /api/generate` was deleted on
 2026-08-22: no caller anywhere, and `make episode` and `scripts/daily.py` already reach the same
 pipeline.)
@@ -305,7 +306,7 @@ for a repo strangers clone; with half a Pushover pair set, the log names the mis
 `HN_RADIO_STALL_SECONDS` tunes the stall threshold, default 900; it is generous because the Claude
 writer and the MP3 transcode are both legitimately silent for a while.
 
-The two endpoints that render -- `/api/recast` and `/api/build` -- are guarded by
+The one endpoint that renders, `/api/build`, is guarded by
 `backend/limits.py`. One render runs at a time process-wide, and a caller gets 3 per hour; both
 refusals are a 429 with `Retry-After`. This is availability before cost: each render is one Claude
 call plus ~20 Flux calls held in memory on the same `shared-cpu-1x` machine that serves the site, so

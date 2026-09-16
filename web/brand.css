@@ -1619,26 +1619,6 @@ button.btn.primary {
 button.btn.primary:hover { filter: brightness(1.08); }
 button.btn.primary:disabled { opacity: 0.45; cursor: default; filter: none; }
 
-.tab {
-  font: inherit;
-  font-size: 0.84rem;
-  padding: 0.35rem 0.9rem;
-  color: var(--dg-text-label);
-  background: transparent;
-  border: 1px solid var(--dg-border);
-  border-radius: var(--dg-shape-pill);
-  cursor: pointer;
-  transition: color var(--dg-anim-fast) var(--dg-anim-ease),
-              border-color var(--dg-anim-fast) var(--dg-anim-ease);
-}
-.tab:hover { color: var(--dg-text-primary); border-color: var(--dg-border-hover); }
-/* The active tab is bolder AND brighter AND outlined, three cues, so it is not
-   colour doing the work on its own. */
-.tab.active {
-  color: var(--dg-text-primary);
-  border-color: var(--dg-border-selected);
-  font-weight: var(--dg-weight-medium);
-}
 
 .preset-btn {
   font: inherit;
@@ -1701,7 +1681,7 @@ progress { accent-color: var(--dg-accent); }
 audio { width: 100%; margin: 0.6rem 0 0.4rem; }
 
 /* ============================================================================
-   BLOCK 11 -- EPISODE CONSOLE. Player, chapter dots and the Recast call to
+   BLOCK 11 -- EPISODE CONSOLE. Player and chapter dots. The Recast call to
    action, pinned as one block. It has to be contiguous to stick as a unit,
    which is why the disclaimer and summary sit below it.
    ========================================================================= */
@@ -1746,8 +1726,6 @@ audio { width: 100%; margin: 0.6rem 0 0.4rem; }
    used to be that spacer; with it gone the readout would otherwise sit glued to
    the orb, and a player's elapsed time belongs at the far end of its row. */
 .transport-time { flex: none; margin-left: auto; font-size: 0.76rem; color: var(--dg-text-label); }
-.console-actions { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.55rem; flex-wrap: wrap; }
-.console-hint { font-size: 0.72rem; color: var(--dg-text-label); }
 .console .chapter-strip { margin: 0.55rem 0 0; }
 
 /* Narrow, the console keeps sticking but the viewport it sticks to is short and
@@ -1771,17 +1749,6 @@ audio { width: 100%; margin: 0.6rem 0 0.4rem; }
    discoverable. It is decoration on a control, not a signal about data, so an
    idle loop is honest here. Reuses the pack's 6s identity cycle rather than
    inventing a third tempo. */
-.recast-cta {
-  color: var(--dg-text-primary);
-  border-color: var(--dg-border-selected);
-  font-weight: var(--dg-weight-medium);
-  animation: dg-cta-glow var(--dg-anim-breathe) var(--dg-anim-ease) infinite;
-}
-@keyframes dg-cta-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(var(--dg-accent-rgb), 0.4); }
-  50%      { box-shadow: 0 0 0 5px rgba(var(--dg-accent-rgb), 0); }
-}
-.recast-cta:hover { background: rgba(var(--dg-accent-rgb), 0.1); }
 
 /* Chapter strip: one numbered dot per chapter, replacing the old repeated list
    of titles. The titles already head each block below, so repeating them at the
@@ -1946,54 +1913,6 @@ audio { width: 100%; margin: 0.6rem 0 0.4rem; }
 .seg[data-desk] .icon:hover { color: var(--v-on); border-color: var(--v-on); }
 
 .summary { font-size: 0.94rem; color: var(--dg-text-body); margin: 0.7rem 0 0; }
-
-/* ============================================================================
-   BLOCK 13 -- RECAST TABLE.
-   ========================================================================= */
-.recast-table { width: 100%; border-collapse: collapse; margin: 0.6rem 0; }
-.recast-table th {
-  text-align: left;
-  font-size: 0.66rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--dg-text-label);
-  border-bottom: 1px solid var(--dg-border);
-  padding: 0.4rem;
-}
-.recast-table td { padding: 0.45rem 0.4rem; border-bottom: 1px solid var(--dg-border); vertical-align: middle; }
-.recast-table tbody tr:last-child td { border-bottom: none; }
-.slot-row .c-slot { font-weight: var(--dg-weight-medium); font-size: 0.86rem; white-space: nowrap; }
-/* Name, family badge and a sample button on one line. Flex rather than three
-   inline children with text nodes between them: the cell wrapped its button onto
-   a second row for whichever seat had a family label, so two structurally
-   identical rows sat at different heights. */
-.slot-row .c-current { white-space: nowrap; }
-.slot-row .c-current .vn { font-size: 0.86rem; }
-.slot-row .c-current .fam { font-family: var(--dg-font-mono); font-size: 0.64rem; color: var(--dg-text-disabled); }
-.slot-row .c-current button.btn { padding: 0.2rem 0.5rem; font-size: 0.7rem; vertical-align: middle; }
-.slot-row .c-recast { width: 42%; }
-.slot-row .c-recast select { width: 100%; min-width: 11rem; }
-.slot-row .c-sample { width: 2.4rem; text-align: right; }
-/* The row's state is carried by the WORDS in .c-mark ("will re-render" /
-   "unchanged" / "no lines to recast"), and a voice already held by the other
-   seat is a disabled <option> whose label says "(taken by the Showrunner)". The
-   tint and the brighter text below are redundant with those, never the only
-   signal: this page has to be readable with no colour perception at all. */
-.slot-row .c-mark { width: 8.5rem; }
-.slot-row .c-mark .mark {
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--dg-text-label);
-}
-.slot-row.changed { background: rgba(var(--dg-accent-rgb), 0.09); }
-.slot-row.changed .c-slot { color: var(--dg-text-primary); }
-.slot-row.changed .c-mark .mark { color: var(--dg-text-primary); font-weight: var(--dg-weight-bold); }
-/* A role with no lines in this episode, so nothing to recast. Struck through as
-   well as dimmed, so "this seat is not available" is legible without relying on
-   the opacity reading as "off". */
-.slot-row .c-recast select:disabled { opacity: 0.5; cursor: not-allowed; text-decoration: line-through; }
-.recast-actions { display: flex; gap: 0.5rem; align-items: center; margin-top: 1rem; flex-wrap: wrap; }
 
 /* ============================================================================
    BLOCK 14 -- CAST CARDS.
@@ -2676,6 +2595,26 @@ html[data-theme="light"] .ep-cell--upcoming .ep-slot { color: var(--dg-accent-on
 
 /* ============================================================================
    BLOCK 16 -- WHAT WAS REMOVED, AND WHY, SO IT IS NOT RE-ADDED BY ACCIDENT.
+
+   THE RECAST FEATURE went on 2026-09-16 (Sam: "remove all of the recast
+   your own episode features. I still want the meet the cast page, but I
+   don't need any of the features around recasting"), and took a whole
+   block with it:
+   .recast-table   the two-role picker, one row per seat, with a "Currently"
+   .recast-table th   column, a <select> of the Flux catalog, a per-row
+   .recast-table td   sample button and a status cell.
+   .slot-row
+   .c-recast
+   .recast-actions the reset / recast / stop button row under it.
+   .recast-cta     the console's "Recast this episode" call to action.
+   .console-actions the row that held it, deleted rather than left empty:
+   .console-hint   it was display:flex with a gap, so an empty one holds
+                   open a strip of dead space under the chapter dots.
+   .tab            the panel switcher's buttons. The episode page has one
+   .tab.active     panel now, so there is nothing to switch between.
+   The cast page is untouched and is block 14; `voices.json` still
+   publishes `catalog`, `seating`, `hosts` and `host_voice` for it. What it
+   stopped publishing is `roles` and `presets`, which only the picker read.
 
    .ep-cost        a per-episode price on each row of the landing page, and
    .hero-cost      the same figure on the hero. Both shipped 2026-09-16 and were

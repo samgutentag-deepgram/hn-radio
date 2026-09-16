@@ -45,21 +45,16 @@
     <span class="transport-time" id="transport-time">0:00 / 0:00</span>
   </div>
   <div id="chapters"></div>
-  <div class="console-actions">
-    <!-- Both carry class="tab": the panel switcher binds on that selector, so dropping it here
-         would leave a button that looks live and does nothing. The play tab is hidden because the
-         console's own transport is the way back, but it still has to exist for the switcher. -->
-    <button class="tab active" data-tab="play" role="tab" type="button" hidden>Play</button>
-    <button class="tab btn recast-cta" id="recast-cta" data-tab="recast" role="tab" type="button">
-      &#9835; Recast this episode
-    </button>
-    <button class="tab btn" id="back-to-play" data-tab="play" role="tab" type="button" hidden>
-      &#8592; Back to the script
-    </button>
-    <span class="console-hint">Hear it in different voices</span>
-  </div>
+  <!-- The console's action row held a "Recast this episode" call to action, a hidden play tab
+       and a "back to the script" button, all three carrying class="tab" for the panel switcher.
+       All of it went with the recast feature on 2026-09-16. The row itself is gone rather than
+       left empty: it was `display: flex` with a gap, so an empty one holds open a strip of dead
+       space under the chapter dots. -->
 </div>
 
+<!-- One panel, so nothing hides or shows it. It kept its id through the recast removal because
+     brand.css and the console's layout both reference it, and renaming a live hook to celebrate
+     a deletion is how a stylesheet quietly stops matching. -->
 <section id="panel-play">
   <audio id="player" preload="metadata"></audio>
   <!-- The cost receipt. Populated by app.js from episode.json's `cost` block and hidden when
@@ -77,33 +72,6 @@
   <div id="script"></div>
 </section>
 
-<section id="panel-recast" hidden>
-  <p class="muted">Two seats, every voice in the Deepgram Flux catalog. Pick a
-  <strong>Showrunner</strong> and a <strong>Guest host</strong>, sample them, then recast. They
-  cannot be the same person, so a voice taken by one seat is marked <em>taken</em> and cannot be
-  chosen for the other.</p>
-  <div class="recast-actions">
-    <button class="btn" id="recast-reset" type="button">Reset to this episode's cast</button>
-  </div>
-  <table class="recast-table">
-    <thead><tr><th>Role</th><th>Currently</th><th>Recast as</th><th>Sample</th><th>Status</th></tr></thead>
-    <tbody id="slots"></tbody>
-  </table>
-  <!-- Where a change to the episode's SHAPE gets stated out loud. Episodes written before the
-       two-person format carry themed desks and a separate voice on the quoted comments, and the
-       Guest host absorbs all of them, so an old episode comes back as two voices. That is a
-       complete recast, but it is not what the listener heard, so the page says it before the
-       click rather than letting it be a surprise. -->
-  <p class="note" id="recast-coverage" hidden></p>
-  <div class="recast-actions">
-    <button class="btn primary" id="recast-run" type="button">Recast changed</button>
-    <button class="btn" id="recast-stop" type="button" title="Stop preview + playback">Stop</button>
-    <span class="status" id="recast-status" role="status"></span>
-  </div>
-  <p class="muted" style="margin-top:1rem;">No backend running? Run this in a shell instead:</p>
-  <pre id="recast-cmd" class="note"></pre>
-  <audio id="preview" preload="none"></audio>
-</section>
 
 <script src="theme.js"></script>
 <!-- Classic script, before app.js, because three callers need it and one of them is a module:

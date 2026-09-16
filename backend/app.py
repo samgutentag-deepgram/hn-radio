@@ -22,7 +22,6 @@ from pydantic import BaseModel
 
 from hn_radio import config, publish
 from .limits import play_beacon, render_slot
-from hn_radio import recast as recast_mod
 
 ROOT = Path(__file__).resolve().parent.parent
 WEB = ROOT / "web"
@@ -41,33 +40,22 @@ def _startup() -> None:
     _rebuild_static()
 
 
-class RecastReq(BaseModel):
-    episode_id: str
-    mapping: dict  # {role: voice_id}, roles being `anchor` (Showrunner) and `cohost` (Guest host)
-
-
-@app.post("/api/recast", dependencies=[Depends(render_slot)])
-def api_recast(req: RecastReq):
-    # Validated here and NOT trusted from the browser. The page disables a voice already taken by
-    # the other role and offers Flux only, but the endpoint holds the Deepgram key and anyone can
-    # post to it with curl, so every rule the picker shows has to be true on this side as well.
-    # `recast_mod.validate_mapping` is the single definition of those rules; this call is stricter
-    # than the CLI's on purpose, accepting only the two roles the show actually has.
-    try:
-        mapping = recast_mod.validate_mapping(req.mapping)
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-    try:
-        episode = recast_mod.recast(req.episode_id, mapping, log=lambda *a: None)
-    except FileNotFoundError:
-        raise HTTPException(404, f"episode {req.episode_id!r} not found")
-    except ValueError as e:  # a mapping the episode's own script cannot satisfy
-        raise HTTPException(400, str(e))
-    except Exception as e:  # Flux/render error, etc.
-        raise HTTPException(500, str(e))
-    _rebuild_static()
-    return {"id": episode.id, "audio_url": f"/episodes/{episode.id}/episode.mp3"}
-
+# `POST /api/recast` was deleted 2026-09-16, with the picker that was its only caller. Sam:
+# "remove all of the recast your own episode features." What it did: took `{episode_id, mapping}`,
+# validated the mapping against `recast.validate_mapping` (server-side, because the endpoint held
+# the Deepgram key and anyone could curl it), re-rendered the episode into `<id>-recast` and
+# handed back the audio url.
+#
+# TWO THINGS SURVIVE IT AND ARE UNREACHABLE FROM THE SITE ON PURPOSE. `hn_radio/recast.py` and
+# `pipeline.render_recast` are still here, and so is `scripts/recast_archive.py`; they are
+# operator tooling now, run by hand, with no HTTP route and no page. That is a deliberate
+# half-measure rather than an oversight: deleting a render path that has never misbehaved is a
+# separate decision from taking a feature off the website, and the archive scripts are the only
+# way to re-voice an old episode at all.
+#
+# `models.is_recast` and the `-recast` filtering in `feed.py` and `manifest.py` also stay. There
+# may be `<id>-recast` directories on the volume from when the feature was live, and they must
+# keep being excluded from the feed and the manifest whether or not anything can create new ones.
 
 # `POST /api/generate` was deleted. Zero callers anywhere: no frontend fetch, no test,
 # no script, no documented curl. It was also the only render route with no test of its own, and

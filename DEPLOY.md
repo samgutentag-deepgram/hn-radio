@@ -1,7 +1,7 @@
 # Deploying HN Radio to Fly.io
 
 HN Radio is a single **FastAPI service** (uvicorn) that serves the app plus the episode data, holds
-the Deepgram key server-side for one-click recast, and runs its own in-container cron that generates
+the Deepgram key server-side for the build-your-own-edition render, and runs its own in-container cron that generates
 an episode twice a day, at 3am and 3pm Pacific. Deploying means building the Docker image and running it on Fly.
 
 ## What's in the repo for this

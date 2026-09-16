@@ -232,15 +232,6 @@ def build_voices_json(episodes_dir: Path) -> Path:
     from . import recast as recast_roles
     from .recast import selectable_voices
     voices = entries(selectable_voices(), "flux")
-    # Same resolution as the seating below, so the one-click preset cannot offer a voice the
-    # page has just told the listener sits somewhere else.
-    flux_preset = {role: desk.voice_id for role, desk in seats.items()}
-    flux_preset["guest"] = config.guest_voices()[0]
-    # The build-your-own picker (web/build.html) still offers the topic desks, because
-    # `custom.py` still seats them: picking one is both the topic filter and the casting choice.
-    # The daily show has no such desks any more, so nothing resolves a voice for them; these are
-    # a starting suggestion for the picker and nothing else reads them.
-    _fill_topic_desks(flux_preset, selectable_voices(), custom.ROUTABLE_DESKS)
     # Seating for the cast page: who sits where, and what they cover.
     seating = [
         {"role": d.role, "name": d.name, "voice": d.voice_id, "beat": d.beat, "persona": d.persona}
@@ -307,16 +298,26 @@ def build_voices_json(episodes_dir: Path) -> Path:
         "build_preset": build_preset,
         "seating": seating,
         "host": config.api_host(),
-        # One family, kept as a list rather than collapsed away: both pickers group their <option>
-        # elements by it, and a page that reads `doc.families` and finds nothing renders an empty
-        # select. One entry is also the honest shape for the day a second family comes back.
+        # One family, kept as a list rather than collapsed away: `web/build.html` groups its
+        # <option> elements by it, and a page that reads `doc.families` and finds nothing renders
+        # an empty select. One entry is also the honest shape for the day a second family comes
+        # back.
         "families": [{"id": "flux", "label": "Flux"}],
-        # The two roles the recast picker offers, with the labels the page must use. Published
-        # rather than hardcoded in app.js for the same reason the presets are: a literal in the
-        # browser is a second source of truth that drifts silently when the show changes shape.
-        "roles": [{"id": role, "label": recast_roles.ROLE_LABELS[role]}
-                  for role in recast_roles.ROLES],
-        "presets": {"flux": flux_preset},
+        # TWO KEYS WERE DROPPED HERE on 2026-09-16, with the recast picker that was their only
+        # consumer:
+        #
+        #   "roles"    [{id, label}] for the two seats the picker offered, Showrunner and Guest
+        #              host, published rather than hardcoded in app.js so the labels could not
+        #              drift from `recast.ROLES`.
+        #   "presets"  {"flux": {anchor, cohost, guest, + topic desks}}, the one-click starting
+        #              cast, resolved against the same seating published below so the picker could
+        #              not offer a voice the page had just said sits elsewhere.
+        #
+        # `presets` was already dead before this: `web/build.html` stopped reading it on
+        # 2026-08-21 (it seeds from `build_preset`, gated on `buildable`) and `web/app.js` never
+        # read it at all. Only tests referenced it, which is the shape a published key takes on
+        # its way to being a second source of truth nobody maintains -- the same way `cohost_pool`
+        # went. `_fill_topic_desks` still has one caller, `build_preset` below.
     }
     path = episodes_dir / "voices.json"
     write_json(path, data)

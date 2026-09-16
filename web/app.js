@@ -1,6 +1,9 @@
-// HN Radio episode page: Play + Recast. Reads the pipeline JSON; recasts via the FastAPI backend
-// (falls back to a copy-able CLI command if no backend is running). No build step: this is a
-// native ES module, loaded with <script type="module">, so `import` works without a bundler.
+// HN Radio episode page: the player, the chapter strip, the cost receipt and the transcript.
+// Reads the pipeline JSON. No build step: this is a native ES module, loaded with
+// <script type="module">, so `import` works without a bundler.
+//
+// It used to carry a Recast panel as a second tab. Removed 2026-09-16; see the note at the
+// bottom of `render` for what that was and what its one surviving dependency is.
 import { mmss, usd, count } from './format.js';
 
 (function () {
@@ -113,8 +116,11 @@ import { mmss, usd, count } from './format.js';
       + '. It excludes the model that writes the script, and it leaves out the Flux credit match,'
       + ' which would halve it until the promotion ends. ';
     if (c.billed_characters != null && c.billed_characters !== c.characters) {
-      // Only a recast or a custom build reaches this. Saying "this run cost less" without saying
-      // WHY reads as an error in the bigger number directly above it.
+      // Only a custom build or a CLI recast reaches this, and in practice not even those: the
+      // per-segment audio cache they reused was deleted when the volume filled up, so a re-render
+      // now pays for every line. Kept because it reports what was billed rather than asserting a
+      // reuse rate. Saying "this run cost less" without saying WHY would read as an error in the
+      // bigger number directly above it.
       fine.textContent +=
         'This particular render billed only ' + count(c.billed_characters) + ' characters ('
         + usd(c.billed_usd, 4) + '): the rest came from the per-segment audio cache, because those'
@@ -173,7 +179,10 @@ import { mmss, usd, count } from './format.js';
     // together. Segments are now emitted inside the chapter whose time range contains them, so the
     // structure of the episode is visible while reading it.
     var scriptEl = document.getElementById('script');
-    var vname = {};  // voice_id -> catalog name, so anchor/desk names reflect the CURRENT voice (incl. after recast)
+    // voice_id -> catalog name, so a script line's speaker is named by the voice that read it
+    // rather than by a seat this build may no longer have. This is the ONLY thing the episode
+    // page still needs voices.json for, now that the recast picker is gone.
+    var vname = {};
     voicesDoc.voices.forEach(function (v) { vname[v.id] = v.name; });
     var starts = [];
 
@@ -415,331 +424,24 @@ import { mmss, usd, count } from './format.js';
       });
     })();
 
-    // --- tabs ---
-    var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab'));
-    var cta = document.getElementById('recast-cta');
-    var backBtn = document.getElementById('back-to-play');
-    tabs.forEach(function (tab) {
-      tab.addEventListener('click', function () {
-        var name = tab.getAttribute('data-tab');
-        document.getElementById('panel-play').hidden = name !== 'play';
-        document.getElementById('panel-recast').hidden = name !== 'recast';
-        // Swap the console's own button rather than showing both: on the recast panel the call to
-        // action has already been taken, so what you need there is the way back.
-        if (cta) cta.hidden = name === 'recast';
-        if (backBtn) backBtn.hidden = name !== 'recast';
-      });
-    });
-
-    // --- recast tab: two roles (Showrunner, Guest host) over the Flux catalog ------------------
+    // THE RECAST PANEL, THE TAB SWITCHER AND THE VOICE PICKER WERE ALL DELETED HERE on
+    // 2026-09-16, about 320 lines of it. Sam: "remove all of the recast your own episode
+    // features. I still want the meet the cast page, but I don't need any of the features around
+    // recasting."
     //
-    // The show is two-person as of 2026-08-20, so this is two rows, not one per script slot. The
-    // ROLE labels come from voices.json rather than a literal here, and the role IDS stay the
-    // internal slot names (`anchor`, `cohost`) because that is what `desk=` says in every
-    // script.json on disk and what /api/recast validates.
+    // What went with it, so nobody goes looking: the two-role picker (Showrunner and Guest host)
+    // over the Flux catalog, the per-row voice samples, the legacy-coverage notice that warned a
+    // five-desk episode would come back as two voices, the copy-able CLI fallback for when no
+    // backend is running, and the `POST /api/recast` call.
     //
-    // Three rules the page has to make VISIBLE, not merely obey:
-    //   - Flux only: voices.json now publishes one family, so there is nothing else to offer.
-    //   - never the same voice twice: the voice a seat holds is DISABLED in the other seat's
-    //     select and relabelled "(taken by the Showrunner)". Disabled + words, never colour.
-    //   - a role this episode does not have, and any slot the two roles cannot reach, is stated
-    //     in the row and in the coverage note under the table.
-    var slotsEl = document.getElementById('slots');    // a <tbody>
-    var preview = document.getElementById('preview');
-    var statusEl = document.getElementById('recast-status');
-    var coverageEl = document.getElementById('recast-coverage');
-    var cmdEl = document.getElementById('recast-cmd');
-
-    var ROLES = (voicesDoc.roles || []).length
-      ? voicesDoc.roles
-      : [{ id: 'anchor', label: 'Showrunner' }, { id: 'cohost', label: 'Guest host' }];
-
-    // Mirrors hn_radio/recast.py's SLOT_LABELS, for naming an absorbed seat in the notice.
-    var SLOT_LABEL = {
-      anchor: 'Showrunner', cohost: 'Guest host', ai: 'AI desk', maker: 'Maker desk',
-      security: 'Security desk', drama: 'Comment theater', guest: 'Quoted comments'
-    };
-    function slotLabel(slot) { return SLOT_LABEL[slot] || slot; }
-
-    // `vname` only covers voices voices.json still OFFERS, and several episodes on disk lead with
-    // a voice that has since been retired, so a lookup there returns nothing for them. The script
-    // itself records the name: `speaker_key` on that voice's own (non-quote) lines. Falling back
-    // to it means the page says "Priya" where the episode says Priya, instead of printing an id.
-    var nameOfVoice = {};
-    segments.forEach(function (seg) {
-      if (seg.role === 'commenter' || !seg.voice_id || !seg.speaker_key) return;
-      if (!(seg.voice_id in nameOfVoice)) nameOfVoice[seg.voice_id] = seg.speaker_key;
-    });
-    function voiceLabel(vid) { return vname[vid] || nameOfVoice[vid] || vid; }
-
-    // recast.role_of, in the browser. The two must agree: the page decides what to SHOW and the
-    // server decides what to render, and a disagreement is a page that promises the wrong result.
-    var anchorRole = ROLES[0].id, cohostRole = (ROLES[1] || ROLES[0]).id;
-    var anchorVoice = '';
-    segments.forEach(function (seg) {
-      if (!anchorVoice && slotFor(seg) === anchorRole && seg.voice_id) anchorVoice = seg.voice_id;
-    });
-    function roleOf(seg) {
-      if (slotFor(seg) === anchorRole) return anchorRole;
-      if (seg.role === 'commenter' && anchorVoice && seg.voice_id === anchorVoice) return anchorRole;
-      return cohostRole;
-    }
-
-    // Per role, the (slot, voice) pairs it covers, first appearance first. Same as
-    // recast.role_coverage: the first pair is what the "Currently" column shows, and a role that
-    // covers more than one is a role taking over seats the old show had, which has to be said.
-    var coverage = {};
-    ROLES.forEach(function (r) { coverage[r.id] = []; });
-    segments.forEach(function (seg) {
-      if (!slotFor(seg) || !seg.voice_id) return;
-      var list = coverage[roleOf(seg)];
-      var key = slotFor(seg) + '\u0000' + seg.voice_id;
-      if (list.indexOf(key) === -1) list.push(key);
-    });
-    ROLES.forEach(function (r) {
-      coverage[r.id] = coverage[r.id].map(function (k) {
-        var parts = k.split('\u0000');
-        return { slot: parts[0], voice: parts[1] };
-      });
-    });
-
-    var voiceList = voicesDoc.voices || [];
-    var famOf = {};
-    voiceList.forEach(function (v) { famOf[v.id] = v.family; });
-    function familyLabel(fam) {
-      var f = (voicesDoc.families || []).filter(function (x) { return x.id === fam; })[0];
-      return f ? f.label : (fam || '');
-    }
-    // Built as real <option> nodes, not an innerHTML string, because the same-voice rule has to
-    // toggle `disabled` and rewrite the text on individual options after every change.
-    function buildOptions(sel) {
-      var made = [];
-      voiceList.forEach(function (v) {
-        var o = document.createElement('option');
-        o.value = v.id;
-        // Not every Flux voice has a published description; omit the dash when it is empty.
-        o.setAttribute('data-label', v.note ? v.name + ', ' + v.note : v.name);
-        o.textContent = o.getAttribute('data-label');
-        sel.appendChild(o);
-        made.push(o);
-      });
-      return made;
-    }
-
-    var rows = {};
-    ROLES.forEach(function (role) {
-      var cover = coverage[role.id] || [];
-      var current = cover.length ? cover[0].voice : '';
-      var tr = document.createElement('tr'); tr.className = 'slot-row';
-      var tdRole = document.createElement('td'); tdRole.className = 'c-slot'; tdRole.textContent = role.label;
-
-      var tdCur = document.createElement('td'); tdCur.className = 'c-current';
-      var vn = document.createElement('span'); vn.className = 'vn';
-      vn.textContent = current ? voiceLabel(current) : 'no lines in this episode';
-      tdCur.appendChild(vn);
-      if (current) {
-        var fam = document.createElement('span'); fam.className = 'fam'; fam.textContent = familyLabel(famOf[current]);
-        var curSamp = document.createElement('button'); curSamp.className = 'btn'; curSamp.type = 'button';
-        curSamp.textContent = '▶';
-        curSamp.title = 'Sample ' + voiceLabel(current) + ', the current voice';
-        curSamp.setAttribute('aria-label', curSamp.title);
-        curSamp.addEventListener('click', function () { preview.src = '/episodes/samples/' + current + '.wav'; preview.play(); });
-        tdCur.appendChild(document.createTextNode(' ')); tdCur.appendChild(fam);
-        tdCur.appendChild(document.createTextNode(' ')); tdCur.appendChild(curSamp);
-      }
-
-      var tdSel = document.createElement('td'); tdSel.className = 'c-recast';
-      var sel = document.createElement('select');
-      sel.setAttribute('data-slot', role.id);
-      sel.setAttribute('aria-label', 'Recast the ' + role.label);
-      var opts = buildOptions(sel);
-      tdSel.appendChild(sel);
-      var tdSamp = document.createElement('td'); tdSamp.className = 'c-sample';
-      var tdMark = document.createElement('td'); tdMark.className = 'c-mark';
-      // The row marker is TEXT. `.slot-row.changed` also tints the row, but the tint is redundant
-      // with this cell, never the only signal that a row will re-render.
-      var mark = document.createElement('span'); mark.className = 'mark';
-      tdMark.appendChild(mark);
-
-      if (current) {
-        // The current voice may not be OFFERED: it was retired by ear (Priya and Marcus lead
-        // several episodes on disk), or the episode was rendered against a catalog this page is
-        // not being served. Either way `sel.value = <not an option>` is a SILENT no-op that
-        // leaves option 0 selected, so the page would have shown a voice the episode does not
-        // use and called it current.
-        //
-        // Added back as a disabled option, worded for what the page can actually verify: it is
-        // not in the catalog being offered. Saying "retired" would claim more than voices.json
-        // can support.
-        if (!opts.some(function (o) { return o.value === current; })) {
-          var gone = document.createElement('option');
-          gone.value = current;
-          gone.disabled = true;
-          gone.setAttribute('data-gone', '1');
-          gone.setAttribute('data-label',
-            voiceLabel(current) + ', this episode\'s voice, not in the catalog now');
-          gone.textContent = gone.getAttribute('data-label');
-          sel.insertBefore(gone, sel.firstChild);
-          opts.unshift(gone);
-        }
-        sel.value = current;
-        var samp = document.createElement('button'); samp.className = 'btn'; samp.type = 'button';
-        samp.textContent = '▶';
-        samp.title = 'Sample the selected voice';
-        samp.setAttribute('aria-label', 'Sample the voice selected for the ' + role.label);
-        samp.addEventListener('click', function () { preview.src = '/episodes/samples/' + sel.value + '.wav'; preview.play(); });
-        tdSamp.appendChild(samp);
-        sel.addEventListener('change', refresh);
-      } else {
-        // No lines to recast, so no choice to offer. Disable rather than hide: a missing row
-        // reads as a page that forgot the role, a disabled one with a reason reads as an answer.
-        sel.disabled = true;
-        opts.forEach(function (o) { o.disabled = true; });
-        mark.textContent = 'no lines to recast';
-      }
-
-      tr.appendChild(tdRole); tr.appendChild(tdCur); tr.appendChild(tdSel);
-      tr.appendChild(tdSamp); tr.appendChild(tdMark);
-      slotsEl.appendChild(tr);
-      rows[role.id] = { tr: tr, sel: sel, opts: opts, mark: mark, current: current || '' };
-    });
-
-    var live = ROLES.filter(function (r) { return rows[r.id].current; });
-
-    function changed() {
-      return live.filter(function (r) { return rows[r.id].sel.value !== rows[r.id].current; });
-    }
-    function mapping() {
-      var m = {};
-      changed().forEach(function (r) { m[r.id] = rows[r.id].sel.value; });
-      return m;
-    }
-
-    /** Mark every voice held by another seat as taken, and say which seat holds it.
-     *
-     * `disabled` is what actually prevents the choice (a disabled <option> cannot be selected by
-     * mouse or keyboard); the "(taken by X)" suffix is what tells a reader why. Neither is a
-     * colour, which is the requirement: the state has to survive being read in greyscale. */
-    function markTaken() {
-      live.forEach(function (r) {
-        var others = {};
-        live.forEach(function (o) { if (o.id !== r.id) others[rows[o.id].sel.value] = o.label; });
-        rows[r.id].opts.forEach(function (o) {
-          var holder = others[o.value];
-          var taken = !!holder && o.value !== rows[r.id].sel.value;
-          // A retired voice stays disabled whatever else is going on: it is on the row because
-          // the episode uses it, not because it is a choice.
-          o.disabled = taken || o.getAttribute('data-gone') === '1';
-          o.textContent = o.getAttribute('data-label') + (taken ? ' (taken by the ' + holder + ')' : '');
-        });
-      });
-    }
-
-    function refresh() {
-      markTaken();
-      live.forEach(function (r) {
-        var row = rows[r.id];
-        var isChanged = row.sel.value !== row.current;
-        row.tr.classList.toggle('changed', isChanged);
-        row.mark.textContent = isChanged ? 'will re-render' : 'unchanged';
-      });
-      var ch = changed();
-      // A collision can only happen if the episode's own script already had one voice on both
-      // seats, which the cast invariant forbids. Handled anyway, because the endpoint refuses it
-      // and a button that fails on submit is exactly what markTaken exists to avoid.
-      var values = live.map(function (r) { return rows[r.id].sel.value; });
-      var clash = values.length > 1 && values[0] === values[1];
-      cmdEl.textContent = ch.length
-        ? 'python -m hn_radio.recast ' + id + ' \\\n    ' + ch.map(function (r) { return '--' + r.id + ' ' + rows[r.id].sel.value; }).join(' \\\n    ')
-        : '# pick a different voice for the Showrunner or the Guest host';
-      var runBtn = document.getElementById('recast-run');
-      if (runBtn) runBtn.disabled = clash;
-      statusEl.textContent = clash
-        ? 'The Showrunner and the Guest host cannot use the same voice. Change one of them.'
-        : (ch.length ? (ch.length === 1 ? '1 role will change' : ch.length + ' roles will change') : '');
-    }
-
-    // Say what a role is taking over, when it is taking over more than its own seat. This is the
-    // whole archive right now: every episode on disk predates the two-person format, so the Guest
-    // host absorbs the themed desks and the quoted comments. Recasting reduces the old episode to
-    // two voices, which is complete but is a change to its SHAPE, so it is stated before the click
-    // rather than discovered by listening to the result.
-    // recast.role_takeovers, in the browser. A role covering two slots is not by itself a
-    // takeover: in the current show the host reads some of the quotes, so her coverage is
-    // `anchor` plus `guest` ON HER OWN VOICE. What counts is a seat the two-person show does not
-    // have -- a themed desk, or a quote that had its own separate voice.
-    var takeovers = ROLES.filter(function (r) {
-      var pairs = coverage[r.id] || [];
-      if (!pairs.length) return false;
-      var lead = pairs[0].voice;
-      return pairs.some(function (c) { return c.slot !== r.id && c.voice !== lead; });
-    })
-      .map(function (r) {
-        // Grouped by slot, so two commenters do not read as "Quoted comments (Brooke),
-        // Quoted comments (Marcelo)". One seat, the voices that sat in it.
-        var order = [], bySlot = {};
-        coverage[r.id].forEach(function (c) {
-          if (!(c.slot in bySlot)) { bySlot[c.slot] = []; order.push(c.slot); }
-          bySlot[c.slot].push(voiceLabel(c.voice));
-        });
-        return r.label + ' takes over ' + order.map(function (slot) {
-          // A quoted comment's voice is not a character anyone knows by name, and its
-          // `speaker_key` is the commenter's HN username, so there is no name to print and the
-          // raw id is noise. Count them instead; the desks get named.
-          if (slot === 'guest') {
-            var n = bySlot[slot].length;
-            return slotLabel(slot) + ' (' + n + (n === 1 ? ' voice' : ' voices') + ')';
-          }
-          return slotLabel(slot) + ' (' + bySlot[slot].join(', ') + ')';
-        }).join(', ');
-      });
-    if (takeovers.length) {
-      coverageEl.hidden = false;
-      coverageEl.textContent = 'This episode was made before the show went two-person, so one role '
-        + 'covers several of its old seats: ' + takeovers.join('; ')
-        + '. Recasting reduces it to two voices, and every line is re-rendered.';
-    }
-
-    function runRecast(m) {
-      if (!m || !Object.keys(m).length) { statusEl.textContent = 'No changes to render. Pick a different voice for one of the two roles first.'; return; }
-      var runBtn = document.getElementById('recast-run');
-      if (runBtn) runBtn.disabled = true;
-      statusEl.textContent = 'Rendering with Deepgram… (~30–60s; only changed voices re-render)';
-      fetch('/api/recast', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ episode_id: id, mapping: m })
-      }).then(function (r) {
-        // A refusal that carries a `detail` is a STATED reason -- 400 for the cast itself (same
-        // voice, not a Flux voice, retired), 429 from backend/limits.py when a render is already
-        // running or the caller is out of quota. Show it. The old code showed "no backend
-        // reachable" for every non-200, which blamed the server for a bad ask and told a
-        // rate-limited visitor the app was down.
-        //
-        // Flagged on the error rather than sniffed from its message: a rejected fetch arrives as
-        // an Error too, and matching on text put a raw "NetworkError" in front of the reader.
-        if (!r.ok) {
-          return r.json().catch(function () { return {}; }).then(function (b) {
-            var err = new Error(b.detail || 'The server refused that cast (HTTP ' + r.status + ').');
-            err.stated = true;
-            throw err;
-          });
-        }
-        return r.json();
-      })
-        .then(function (out) { statusEl.textContent = 'Done. Opening the recast…'; location.href = 'episode.html?id=' + encodeURIComponent(out.id); })
-        .catch(function (e) {
-          if (runBtn) runBtn.disabled = false;
-          statusEl.textContent = (e && e.stated)
-            ? e.message
-            : 'No backend reachable. Run the command below instead.';
-        });
-    }
-
-    document.getElementById('recast-reset').addEventListener('click', function () {
-      live.forEach(function (r) { rows[r.id].sel.value = rows[r.id].current; }); refresh();
-    });
-    document.getElementById('recast-stop').addEventListener('click', function () { preview.pause(); player.pause(); });
-    document.getElementById('recast-run').addEventListener('click', function () { runRecast(mapping()); });
-    refresh();
+    // The tab switcher went too, and that is why `#panel-play` is no longer hidden or shown by
+    // anything: there is one panel now, so it is just the page. If a second panel ever returns,
+    // the thing to know is that the switcher keyed off `.tab` and `data-tab`, and that the
+    // console swapped its own call-to-action button for a "back to the script" button rather
+    // than showing both.
+    //
+    // The episode page still reads `voices.json`, for one thing only: `voicesDoc.voices` is how a
+    // `voice_id` on a script line becomes a name in the transcript (see `vname` above). That is
+    // not a recast feature and the file is still published for it.
   }
 })();

@@ -318,24 +318,5 @@
       "id": "flux",
       "label": "Flux"
     }
-  ],
-  "roles": [
-    {
-      "id": "anchor",
-      "label": "Showrunner"
-    },
-    {
-      "id": "cohost",
-      "label": "Guest host"
-    }
-  ],
-  "presets": {
-    "flux": {
-      "anchor": "flux-alexis-en",
-      "cohost": "flux-wade-en",
-      "guest": "flux-cole-en",
-      "maker": "flux-wade-en",
-      "drama": "flux-cole-en"
-    }
-  }
+  ]
 }
