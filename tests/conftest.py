@@ -29,8 +29,11 @@ from hn_radio import config
 # HN_RADIO_TTS_PLAN joined it on 2026-09-16 with the cost figures: it changes the rate every
 # spoken and published cost is computed on, so a laptop set to `growth` would quote a different
 # number in the outro and fail the pinned figures in tests/test_pricing.py.
+# HN_RADIO_PUBLIC_URL joined it on 2026-09-17 with the share cards: it is the origin printed on
+# every card, so a developer pointing it at their own fork would change the picture the card tests
+# assert on.
 _MASKED_FROM_DOT_ENV = {"DEEPGRAM_API_HOST", "HN_RADIO_MUSIC", "HN_RADIO_BASE_URL",
-                        "HN_RADIO_TTS_PLAN"}
+                        "HN_RADIO_TTS_PLAN", "HN_RADIO_PUBLIC_URL"}
 
 
 @pytest.fixture(autouse=True)

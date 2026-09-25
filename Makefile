@@ -1,4 +1,4 @@
-.PHONY: help require-uv check install lock upgrade start test clean status episode
+.PHONY: help require-uv check install lock upgrade start test clean status episode cards
 
 help:
 	@echo "make install   - sync .venv from uv.lock on the pinned Python"
@@ -6,6 +6,7 @@ help:
 	@echo "make upgrade   - re-resolve the lock to newer versions, then re-sync"
 	@echo "make start     - run HN Radio at http://localhost:8000"
 	@echo "make episode   - generate today's Makers episode (needs DEEPGRAM_API_KEY)"
+	@echo "make cards     - share-card samples + a contact sheet of the whole archive"
 	@echo "make test      - run the unit tests"
 	@echo "make status    - show episode count"
 
@@ -76,3 +77,10 @@ clean:
 
 status:
 	@echo "episodes: $$(ls -d episodes/*/ 2>/dev/null | wc -l | tr -d ' ')"
+
+# The per-episode cards are built by the pipeline (publish.rebuild_site), not by a target. This
+# is the SAMPLE set: real episodes at both ends of what the show costs plus two forced rates, for
+# someone to look at and react to. Writes to docs/share-cards/, which is tracked.
+cards: require-uv
+	uv run python scripts/make_share_cards.py --samples
+	uv run python scripts/make_share_cards.py --contact-sheet

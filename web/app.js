@@ -7,8 +7,14 @@
 import { mmss, usd, count } from './format.js';
 
 (function () {
+  // Two ways in, and both are real. `episode.html?id=<id>` is the page the site links to;
+  // `/e/<id>` is the same page served by backend/app.py with this episode's OG tags in the head,
+  // and it is the short form printed on the share cards for someone retyping it off an image.
+  // The path is read here rather than by a redirect so the unfurler that reads those tags and the
+  // reader who lands on the page get the same URL.
   var params = new URLSearchParams(location.search);
-  var id = params.get('id');
+  var path = location.pathname.match(/^\/e\/([^/]+)\/?$/);
+  var id = params.get('id') || (path ? decodeURIComponent(path[1]) : null);
   if (!id) { document.getElementById('title').textContent = 'No episode id'; return; }
 
   var base = '/episodes/' + encodeURIComponent(id) + '/';

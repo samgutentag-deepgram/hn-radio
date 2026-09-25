@@ -83,3 +83,9 @@ OPEN-ITEMS.html
 # Redundant with sample.env, which is the fuller and more current of the two. Shipping both left a
 # reader to guess which one to copy.
 .env.example
+
+# The share-card contact sheet is DERIVED and about a megabyte of inlined thumbnails. The samples
+# beside it are committed on purpose -- they are the thing a reviewer opens in a pull request --
+# but a regenerated picture of every episode in the archive is a build artifact, and it changes
+# every time an episode airs. `make cards` rebuilds it in seconds.
+docs/share-cards/contact-sheet.html

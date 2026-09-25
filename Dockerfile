@@ -5,7 +5,13 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # ffmpeg: chaptered-MP3 transcode. tzdata: DST-aware cron. curl: fetch supercronic.
+# fonts-dejavu-core is for the per-episode share cards. python:3.12-slim ships no TrueType
+# font at all, and hn_radio/cards deliberately has no bitmap fallback -- a card with
+# Pillow's default font looks broken rather than unbranded, and these go to marketing.
+# About 1 MB, and it is the whole difference between a card and a log line saying there
+# were no fonts.
 RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg tzdata curl \
+      fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 # supercronic: a cron runner designed for containers (runs alongside uvicorn).

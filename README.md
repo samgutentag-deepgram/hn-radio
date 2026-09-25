@@ -209,6 +209,7 @@ render -> [cache] -> pace -> music -> stitch -> chapters -> publish
 | `stitch.py` | Concatenates the PCM with the per-boundary gaps and writes one correct WAV header |
 | `chapters.py` | Derives chapters from the script, writes `chapters.json`, and bakes ID3 CHAP frames into the MP3 with ffmpeg |
 | `pricing.py` | What an episode costs in Flux TTS, and the line the show reads about it. Characters times the published rate, from the script itself |
+| `cards/` | That cost as a picture: two share cards per episode plus their alt text. `tokens.py` holds every colour and dimension, `facts.py` reads the four facts off `episode.json`, `paint.py` is the only file that imports Pillow, `layout.py` places them |
 | `publish.py` | A table of contents: what happens when. Knows the order, not the formats |
 | `feed.py` | RSS 2.0, plus the show notes that go inside it as the item description |
 | `manifest.py` | The JSON `web/` reads: the episode list and the voice catalog. With no build step, these two files *are* the frontend's API |
@@ -255,6 +256,66 @@ What the figure deliberately leaves out, because each would make it wrong in a w
 cannot see: the Flux 1:1 credit match (a promotion with an end date, which would halve every
 number and then stop being true), the Anthropic spend for the script, and retried segments. It is
 the TTS line item at list price, and the page says so in those words.
+
+## Share cards
+
+Every episode also gets that cost as a picture. Lifecycle marketing wanted HN Radio inside the
+Flux TTS promo emails as proof of what a developer's credits actually buy, and a link was
+explicitly not the deliverable: *"as opposed to having a button or a link, something to show
+them."*
+
+```
+episodes/<id>/card-social.png    1200x630, the Open Graph / social shape
+episodes/<id>/card-email.png     1200x800, rendered at 2x and displayed at 600
+episodes/<id>/card.json          the paths, the sizes, and the alt text
+```
+
+Four facts on each, in reading order: what rendered it, what it is, what **this** episode cost,
+what that rate buys on the $200 signup credit, and where to go next as visible text. The two
+voices on the episode are painted as their own orbs, in the same per-voice runs the site uses, so
+the card shows the product rather than describing it. The cast changes every episode; so does the
+number.
+
+A static raster and nothing else: no iframe, no player, no web font, no JavaScript at view time,
+because half of email clients would strip all four. `card.json` carries alt text that repeats the
+cost and the pitch in words, because many clients block images and those readers are the ones a
+lifecycle email most needs to reach. Per-recipient credit balances are deliberately absent; that
+is a merge field in the email tool, not a pixel in an image people forward.
+
+```
+uv run python scripts/make_share_cards.py                  # what every card would say, read-only
+uv run python scripts/make_share_cards.py --samples        # the review set, at four cost values
+uv run python scripts/make_share_cards.py --contact-sheet  # every episode's card on one page
+make cards                                                 # both review pages
+```
+
+Both review pages come out of `scripts/templates/share-cards-preview.html`, so the theme chrome is
+written once and they cannot drift apart. The samples are committed, because they are what a
+reviewer opens in a pull request. The contact sheet is not: it inlines all 58 cards at full
+resolution, it is four megabytes, and it changes every time an episode airs.
+
+Like the pricing it draws from, the archive pictures itself: `publish.rebuild_site` runs
+`cards.backfill` right after `pricing.backfill`, on every publish and every boot, and rebuilds a
+card only when the strings on it would change. A cold boot with no cards spends about twenty
+seconds; every boot after that spends milliseconds.
+
+**Every colour, font size and spacing value is in `hn_radio/cards/tokens.py`**, and the colours in
+it are read out of `web/brand.css` rather than copied. Deepgram is mid-rebrand, the guidelines are
+the brand team's, and a restyle should be one file. Two tests enforce that seal by parsing
+`layout.py` and `paint.py` for stray literals. The cards land on Arial or DejaVu, not the real
+brand faces, for the same reason the site lands on system-ui: this repo ships no font binaries.
+`python:3.12-slim` ships none either, so the Dockerfile apt-installs `fonts-dejavu-core`; on a
+machine with no usable TrueType the build logs one line and makes no cards, rather than shipping
+Pillow's bitmap font to marketing.
+
+The URL printed on the card is the short form, `/e/<id>`, on the origin
+`config.public_app_url()` returns: `HN_RADIO_PUBLIC_URL` if set, else the deploy's own
+`HN_RADIO_BASE_URL`, else `https://dg-devrel-hn-radio.fly.dev`. Deliberately **not**
+`site_app_url()`, which answers "where am I" and on a laptop says `localhost:8000` -- right for a
+feed enclosure and never right on a picture that gets mailed to strangers. `backend/app.py` serves
+that path as `episode.html` with the episode's tags in the head, `og:image` included. That is the other half
+of the same problem: `web/` has no build step, so one static `episode.html` served every episode
+and an unfurl in Slack or LinkedIn came back blank.
 
 ## The web app
 

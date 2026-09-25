@@ -195,6 +195,37 @@ def site_app_url() -> str:
     """
     base = site_base_url()
     return base[: -len("/episodes")] if base.endswith("/episodes") else base
+
+
+# Where this show actually lives on the internet. Duplicated from fly.toml's HN_RADIO_BASE_URL
+# ON PURPOSE and checked against it by tests/test_cards.py, because fly.toml is in .dockerignore
+# and cannot be read at runtime -- an image that parsed it would work locally and fail deployed.
+DEFAULT_PUBLIC_APP_URL = "https://dg-devrel-hn-radio.fly.dev"
+
+
+def public_app_url() -> str:
+    """The origin to PRINT, as opposed to the one being served from. Used by the share cards.
+
+    THE DIFFERENCE FROM `site_app_url` IS THE WHOLE REASON THIS EXISTS, and it is not a style
+    choice. `site_app_url()` answers "where am I", and on a laptop the honest answer is
+    `localhost:8000` -- correct for a feed enclosure, correct for an og:url on a page actually
+    being served, and never correct on a share card. A card is a picture that gets mailed to
+    strangers, and a card that prints `localhost:8000/e/2026-09-16-am` across the bottom is not a
+    card with a local URL on it, it is a broken card that looks exactly like a working one. Every
+    card ever generated on a developer machine had that on it until 2026-09-17.
+
+    Precedence, most specific first:
+      1. `HN_RADIO_PUBLIC_URL`, for someone running a fork or a staging copy.
+      2. `HN_RADIO_BASE_URL`, which a real deploy sets -- so the deployed app names itself rather
+         than the constant below, and a rename in fly.toml needs no code change.
+      3. The constant, which is what a laptop with neither gets.
+    """
+    explicit = _read_env_var("HN_RADIO_PUBLIC_URL")
+    if explicit:
+        return explicit.rstrip("/")
+    if _read_env_var("HN_RADIO_BASE_URL"):
+        return site_app_url()
+    return DEFAULT_PUBLIC_APP_URL
 SITE_TITLE = "HN Radio"
 SITE_DESCRIPTION = "The Hacker News front page, read to you morning and afternoon. Made with Deepgram Flux TTS."
 # Podcast channel metadata (placeholder for the demo)

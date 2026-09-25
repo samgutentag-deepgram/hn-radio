@@ -6,6 +6,7 @@ and nothing about the formats:
     feed        RSS 2.0 + the show notes inside it       hn_radio/feed.py
     manifest    the JSON web/ reads (episodes, voices)   hn_radio/manifest.py
     pricing     what an episode's Flux TTS costs         hn_radio/pricing.py
+    cards       the share image for that cost            hn_radio/cards/
     transcript  WebVTT, from the script's start times    hn_radio/transcript.py
     jsonio      how any JSON artifact gets written       hn_radio/jsonio.py
 
@@ -21,7 +22,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from . import feed, manifest, pricing, transcript
+from . import cards, feed, manifest, pricing, transcript
 from .jsonio import write_json
 from .models import Episode
 
@@ -87,8 +88,10 @@ def rebuild_site(episodes_dir: Path) -> dict:
     it explicitly, and a hidden config read inside a function documented as a pure function of its
     argument is the kind of second path that only shows up when a test writes to the real tree.
 
-    ONE WRITE THAT IS NOT AN ARTIFACT, and it is called out here because the paragraph above
-    promised there were none. `pricing.backfill` goes FIRST and it edits `episode.json` in place,
+    TWO WRITES THAT ARE NOT SITE-WIDE ARTIFACTS, and they are called out here because the
+    paragraph above promised there were none.
+
+    `pricing.backfill` goes FIRST and it edits `episode.json` in place,
     adding the `cost` block to any episode missing one or holding one computed on a rate that is
     no longer current. It stays in this function rather than becoming a step every caller has to
     remember, for the reason this function exists at all: there are five entry points, and the one
@@ -100,13 +103,29 @@ def rebuild_site(episodes_dir: Path) -> dict:
     cost of an episode is arithmetic on the `script.json` sitting next to it. It runs before the
     manifest because `build_manifest` copies the block it writes into `index.json`.
 
-    Its result is deliberately DROPPED rather than added to the returned dict. Every key in here
-    is a path a caller can open, three characterization tests assert exactly that set, and a count
-    of repriced episodes is neither a path nor something any caller acts on. The backfill reports
-    through its own `log` (silent here, by default), and `scripts/episode_costs.py` is the command
-    that exists to look at the numbers.
+    `cards.backfill` goes SECOND, and it is second because it reads the block pricing just wrote:
+    the whole point of the card is the dollar figure on it, and it is an input rather than a
+    constant. It writes `card-social.png`, `card-email.png` and `card.json` into each episode
+    directory, and only for episodes whose card would come out different from the one on disk.
+
+    It is here rather than in the render stage for the reason pricing is: the 58 episodes that
+    aired before either module existed have to get one too, and the card has to survive a restyle.
+    A cold boot with no cards on the volume spends about twenty seconds building the archive's,
+    and every boot after that spends milliseconds confirming they are current.
+
+    Still no network and still no Deepgram key. It does need Pillow and a TrueType font on the
+    machine, and it has neither on a box with no fonts installed -- in which case it logs one line
+    and builds nothing, rather than raising inside the app's startup hook.
+
+    Both results are deliberately DROPPED rather than added to the returned dict. Every key in
+    here is a path a caller can open, three characterization tests assert exactly that set, and a
+    count of repriced or repictured episodes is neither a path nor something any caller acts on.
+    Each backfill reports through its own `log` (silent here, by default);
+    `scripts/episode_costs.py` looks at the numbers and `scripts/make_share_cards.py` at the
+    pictures.
     """
     pricing.backfill(episodes_dir)
+    cards.backfill(episodes_dir)
     return {
         "feed_xml": str(feed.rebuild_feed(episodes_dir)),
         "index_json": str(manifest.build_manifest(episodes_dir)),

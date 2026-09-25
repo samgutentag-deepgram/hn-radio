@@ -24,15 +24,14 @@ near-black ground, with the voice's glow bled outward.
 
 THE PALETTES are read at runtime out of web/brand.css block 1, not duplicated here. That block is
 itself lifted from the official per-voice orb SVGs the team supplied, so there is exactly one place
-in this repo where a voice's colours live and the cover cannot drift from the site. If the regex
-below stops matching, the cover fails loudly rather than shipping wrong colours.
+in this repo where a voice's colours live and the cover cannot drift from the site. The reader now
+lives in `hn_radio/cards/tokens.py`, because the per-episode share cards paint the same orbs; it
+fails loudly on a block 1 that stopped matching rather than shipping wrong colours.
 
-Run it with `uv run python scripts/make_cover.py`. Pillow is in the `dev` dependency group, so
-`uv sync` installs it locally and `uv sync --no-dev` keeps it out of the container.
+Run it with `uv run python scripts/make_cover.py`.
 """
 from __future__ import annotations
 
-import re
 import sys
 from pathlib import Path
 
@@ -40,6 +39,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from hn_radio import config  # noqa: E402
+from hn_radio.cards import tokens  # noqa: E402
 
 S = 3000  # Apple's maximum, and the size every other platform downscales from.
 
@@ -51,34 +51,11 @@ ORB_GROUND = (16, 16, 20)      # #101014, the reference's own orb fill
 INK = (251, 251, 255)          # --dg-ink-primary, deliberately not pure white
 FAINT = (148, 148, 152)        # --dg-ink-muted
 GREEN = (19, 239, 147)         # --dg-accent, the one brand signal on the cover
-# The one hardcoded run is gone: `palettes()` reads all 36 out of brand.css block 1, which is
-# itself lifted from the official orb SVGs. One source of truth for a voice's colours.
-BRAND_CSS = Path(__file__).resolve().parent.parent / "web" / "brand.css"
-VOICE_RULE = re.compile(
-    r'\[data-voice="(flux-[^"]+)"\]\s*\{\s*--v-l:\s*(#\w{6});\s*--v-m:\s*(#\w{6});'
-    r'\s*--v-d:\s*(#\w{6});\s*--v-g:\s*([\d, ]+);')
-
-
-def _rgb(h: str):
-    h = h.lstrip("#")
-    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
-
-
-def palettes() -> dict:
-    """voice id -> (light, mid, deep, glow), read from web/brand.css.
-
-    Fails loudly on an empty match rather than falling back to a default: a cover that silently
-    ships the wrong colours looks fine and is wrong, which is the worst failure this script has.
-    """
-    css = BRAND_CSS.read_text()
-    out = {}
-    for vid, light, mid, deep, glow in VOICE_RULE.findall(css):
-        out[vid] = (_rgb(light), _rgb(mid), _rgb(deep),
-                    tuple(int(x) for x in glow.split(",")))
-    if len(out) < 30:
-        raise SystemExit(f"only {len(out)} voice palettes matched in {BRAND_CSS}; "
-                         "block 1's shape changed and this regex needs updating")
-    return out
+# The one hardcoded run is gone, and so is the copy of the reader that replaced it. All 36
+# palettes come from `hn_radio.cards.tokens`, which reads them out of web/brand.css block 1 --
+# itself lifted from the official orb SVGs. One source of truth for a voice's colours, and one
+# implementation of reading it, now that the share cards paint the same orbs.
+palettes = tokens.voice_palettes
 
 # ---- orb geometry --------------------------------------------------------------------------
 # The reference lays these out in a 144px box; every value here is that number over 144, so

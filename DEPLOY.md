@@ -121,6 +121,18 @@ trusting the command, same as with deploys.
   `scripts/daily.py` refuses to render with under `config.MIN_FREE_DISK_BYTES` free and alerts
   instead, before any TTS is bought. The picture version of this change is
   [`docs/eli5/episode-storage.html`](docs/eli5/episode-storage.html).
+- **The cards print `HN_RADIO_BASE_URL`'s origin**, so renaming the Fly app moves every card's
+  URL with no code change. `HN_RADIO_PUBLIC_URL` overrides it for a fork or a vanity domain. A
+  machine with neither falls back to the constant in `hn_radio/config.py`, which a test pins
+  against this repo's `fly.toml`.
+- **The image carries fonts now.** `fonts-dejavu-core`, about 1 MB, for the per-episode share
+  cards. `python:3.12-slim` ships no TrueType font at all and `hn_radio/cards` has no bitmap
+  fallback on purpose, so without it the boot logs one line and builds no cards. If a deploy ever
+  drops that package, that log line is the symptom: the site keeps working and the emails lose
+  their picture.
+- **A cold boot builds the archive's cards**, roughly twenty seconds for sixty-odd episodes, once.
+  `publish.rebuild_site` rebuilds a card only when the strings on it would change, so every boot
+  after that is milliseconds. Two PNGs per episode, about 300 KB together, against a 6 MB MP3.
 - **Keys are Fly secrets**, read at runtime by `hn_radio.config`; no secrets in the image.
 - **Music can be turned off without a deploy.** `fly secrets set HN_RADIO_MUSIC=0` restarts the
   machine and the next render picks it up. Setting it in `fly.toml`'s `[env]` works too but needs a

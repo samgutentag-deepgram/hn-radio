@@ -3,6 +3,7 @@ Deepgram key server-side for one-click recast / generate. Follows the fastapi-fl
 
 It serves:
   /                -> web/ (the vanilla app: index.html, episode.html, app.js, brand.css)
+  /e/<id>          -> episode.html with this episode's OG tags in the head (the share-card link)
   /episodes/...    -> the generated data + audio + samples (episode.json, script.json, *.wav, feed.xml)
   POST /api/recast -> reload an episode's script, remap voices, re-render (calls Flux batch)
   GET  /api/health
@@ -13,14 +14,18 @@ The Deepgram key is read from the environment / .env by hn_radio.config; it neve
 
 from __future__ import annotations
 
+import html
+import json as _json
+import re
 from pathlib import Path
 from typing import Dict, Optional
 
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from hn_radio import config, publish
+from hn_radio import cards, config, publish
 from .limits import play_beacon, render_slot
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -293,6 +298,91 @@ class RevalidatingStatic(StaticFiles):
         response = super().file_response(*args, **kwargs)
         response.headers.setdefault("Cache-Control", "no-cache")
         return response
+
+
+# --- the shareable episode link ------------------------------------------------------------
+
+# `episode.html?id=<id>` is the real page and it stays the real page. This is a second door onto
+# it that exists because of what goes on the share cards: a URL printed on an image is a URL
+# somebody retypes off a phone, and `.../episode.html?id=2026-09-16-am` is four extra tokens of
+# punctuation to get wrong. `hn_radio/cards` prints this form.
+#
+# It also fixes the thing a redirect could not. `web/` has no build step and no server rendering,
+# so `episode.html` is one static file for every episode and its <head> cannot name any of them.
+# Link unfurlers -- Slack, LinkedIn, X, iMessage -- read the <head> and do not run the JavaScript
+# that fills the page in, so an episode shared anywhere produced a blank card. This route injects
+# that episode's tags, including `og:image`, which is exactly the 1200x630 card the same commit
+# generates. The episode page keeps its own JSON fetches; nothing else is server-rendered.
+_ID_OK = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+
+
+def _meta(tag: str, key: str, value: str) -> str:
+    return f'<meta {tag}="{html.escape(key)}" content="{html.escape(value or "")}">'
+
+
+@app.get("/e/{episode_id}", response_class=HTMLResponse)
+def episode_page(episode_id: str) -> HTMLResponse:
+    """Serve `web/episode.html` for one episode with its own <head>.
+
+    The id is pattern-checked BEFORE it is joined to a path. It arrives from a URL, it is used to
+    open files, and `..%2f..%2fetc%2fpasswd` is the reason this is not a bare `/ `join: the check
+    rejects a separator outright rather than trying to normalise one away.
+    """
+    if not _ID_OK.match(episode_id):
+        raise HTTPException(status_code=404, detail="no such episode")
+    episode_json = config.EPISODES_DIR / episode_id / "episode.json"
+    if not episode_json.is_file():
+        raise HTTPException(status_code=404, detail="no such episode")
+    try:
+        episode = _json.loads(episode_json.read_text())
+    except (OSError, ValueError):
+        raise HTTPException(status_code=404, detail="no such episode")
+
+    app_url = config.site_app_url()
+    title = episode.get("title") or config.SITE_TITLE
+    summary = (episode.get("summary") or config.SITE_DESCRIPTION).strip()
+    page_url = f"{app_url}/e/{episode_id}"
+
+    # The card and its alt text, when `hn_radio.cards` has built them. Absent is a normal state --
+    # a machine with no fonts builds no cards -- and an `og:image` pointing at a 404 is worse than
+    # no `og:image`, so the tags are added together or not at all.
+    card = config.EPISODES_DIR / episode_id / cards.CARD_JSON
+    og_image = []
+    if card.is_file():
+        try:
+            doc = _json.loads(card.read_text())
+            social = doc["cards"]["social"]
+            src = f"{app_url}/episodes/{episode_id}/{social['file']}"
+            og_image = [
+                _meta("property", "og:image", src),
+                _meta("property", "og:image:width", str(social["width"])),
+                _meta("property", "og:image:height", str(social["height"])),
+                _meta("property", "og:image:alt", doc.get("alt", "")),
+                _meta("name", "twitter:card", "summary_large_image"),
+            ]
+        except (OSError, ValueError, KeyError):
+            og_image = []
+
+    head = "\n".join([
+        # Every other asset in episode.html is referenced relatively, and this page is served one
+        # path segment deep. One <base> is the whole fix; rewriting five href attributes at
+        # request time would be five chances to miss one.
+        '<base href="/">',
+        _meta("name", "description", summary),
+        _meta("property", "og:type", "article"),
+        _meta("property", "og:site_name", config.SITE_TITLE),
+        _meta("property", "og:title", title),
+        _meta("property", "og:description", summary),
+        _meta("property", "og:url", page_url),
+        *og_image,
+    ])
+
+    page = (WEB / "episode.html").read_text()
+    page = page.replace("<title>HN Radio: Episode</title>",
+                        f"<title>{html.escape(title)}</title>\n{head}", 1)
+    # Same revalidate-don't-cache posture as the static files: an episode's title and summary can
+    # be rewritten by `scripts/retitle.py`, and a cached head would keep unfurling the old one.
+    return HTMLResponse(page, headers={"Cache-Control": "no-cache"})
 
 
 # Static mounts LAST so they don't shadow the /api routes above.

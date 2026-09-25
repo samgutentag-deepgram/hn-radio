@@ -1,0 +1,62 @@
+[
+  {
+    "episode_id": "2026-08-13",
+    "why": "cheapest real episode in the archive",
+    "forced_usd": null,
+    "hero": "$0.10",
+    "credit_line": "$200 of Deepgram signup credit covers 1,992 episodes like this one",
+    "alt": "Hacker News Radio, August 13, 2026. This episode cost $0.10 to render end to end with Deepgram Flux text to speech. $200 of Deepgram signup credit covers 1,992 episodes like this one. Listen at dg-devrel-hn-radio.fly.dev/e/2026-08-13",
+    "files": {
+      "social": "2026-08-13-social.png",
+      "email": "2026-08-13-email.png"
+    }
+  },
+  {
+    "episode_id": "2026-09-16-am",
+    "why": "a typical morning episode",
+    "forced_usd": null,
+    "hero": "$0.24",
+    "credit_line": "$200 of Deepgram signup credit covers 819 episodes like this one",
+    "alt": "Hacker News Radio, Morning Edition for September 16, 2026. This episode cost $0.24 to render end to end with Deepgram Flux text to speech. $200 of Deepgram signup credit covers 819 episodes like this one. Listen at dg-devrel-hn-radio.fly.dev/e/2026-09-16-am",
+    "files": {
+      "social": "2026-09-16-am-social.png",
+      "email": "2026-09-16-am-email.png"
+    }
+  },
+  {
+    "episode_id": "2026-09-06-pm",
+    "why": "dearest real episode in the archive",
+    "forced_usd": null,
+    "hero": "$0.27",
+    "credit_line": "$200 of Deepgram signup credit covers 734 episodes like this one",
+    "alt": "Hacker News Radio, Afternoon Edition for September 6, 2026. This episode cost $0.27 to render end to end with Deepgram Flux text to speech. $200 of Deepgram signup credit covers 734 episodes like this one. Listen at dg-devrel-hn-radio.fly.dev/e/2026-09-06-pm",
+    "files": {
+      "social": "2026-09-06-pm-social.png",
+      "email": "2026-09-06-pm-email.png"
+    }
+  },
+  {
+    "episode_id": "2026-09-16-am",
+    "why": "FORCED: the low end of the unconfirmed rate",
+    "forced_usd": 0.06,
+    "hero": "$0.06",
+    "credit_line": "$200 of Deepgram signup credit covers 3,333 episodes like this one",
+    "alt": "Hacker News Radio, Morning Edition for September 16, 2026. This episode cost $0.06 to render end to end with Deepgram Flux text to speech. $200 of Deepgram signup credit covers 3,333 episodes like this one. Listen at dg-devrel-hn-radio.fly.dev/e/2026-09-16-am",
+    "files": {
+      "social": "2026-09-16-am-at-006-social.png",
+      "email": "2026-09-16-am-at-006-email.png"
+    }
+  },
+  {
+    "episode_id": "2026-09-16-am",
+    "why": "FORCED: the high end of the unconfirmed rate",
+    "forced_usd": 0.2,
+    "hero": "$0.20",
+    "credit_line": "$200 of Deepgram signup credit covers 999 episodes like this one",
+    "alt": "Hacker News Radio, Morning Edition for September 16, 2026. This episode cost $0.20 to render end to end with Deepgram Flux text to speech. $200 of Deepgram signup credit covers 999 episodes like this one. Listen at dg-devrel-hn-radio.fly.dev/e/2026-09-16-am",
+    "files": {
+      "social": "2026-09-16-am-at-020-social.png",
+      "email": "2026-09-16-am-at-020-email.png"
+    }
+  }
+]
