@@ -100,7 +100,7 @@ def test_the_afternoon_intro_is_coles_and_names_the_edition(monkeypatch):
     w = EpisodeWindow.ending_at(_at(2026, 9, 5, 15))
     ep_cast, _ = cast.episode_cast(before=w.episode_id("frontpage"))
     intro = pipeline._intro_segments(ep_cast, w)[0].text
-    assert intro.startswith("Hi, this is Cole.")
+    assert intro.startswith("I'm Cole.")
     assert "the Afternoon Edition of Hacker News Radio" in intro
 
 
@@ -140,7 +140,7 @@ def test_the_calendar_shape_is_untouched(monkeypatch):
     ep_cast, _ = cast.episode_cast(before="2026-08-22")
     intro = pipeline._intro_segments(ep_cast, date(2026, 8, 22))[0].text
     outro = pipeline._outro_segments(ep_cast)[0].text
-    assert "listening to Hacker News Radio, read by" in intro
+    assert "this is Hacker News Radio, read by" in intro
     assert "Edition" not in intro and "Edition" not in outro
 
 
