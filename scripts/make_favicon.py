@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Render the site's favicon: ONE orb, not the album art shrunk down.
 
-WHY NOT THE COVER. `episodes/cover.png` is a 36-orb honeycomb with a wordmark knocked out across
+WHY NOT THE COVER. `episodes/cover.jpg` is a 36-orb honeycomb with a wordmark knocked out across
 the middle. That composition is tuned for 55px in a podcast subscription list and it barely
 survives there. A browser tab is 16px. At 16px the honeycomb is four grey pixels of noise and the
 wordmark is gone entirely, so downscaling the cover produces a favicon that is indistinguishable

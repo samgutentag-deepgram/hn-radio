@@ -27,7 +27,7 @@ venv
 .superseded-samples/
 episodes/*
 !episodes/.gitkeep
-!episodes/cover.png
+!episodes/cover.jpg
 
 # macOS
 .DS_Store

@@ -65,7 +65,7 @@ for what is genuinely missing. That matters because `_finalize` stages the per-s
 after every segment has rendered, so one failed call late in an episode discards every successful
 call before it.
 
-`scripts/make_cover.py` writes `episodes/cover.png`, the image every podcast player shows for the
+`scripts/make_cover.py` writes `episodes/cover.jpg`, the image every podcast player shows for the
 show. It is the only thing here that imports Pillow, so Pillow sits in the `dev` dependency group:
 `uv sync` installs it locally, and `uv sync --no-dev` -- what the image and the (dormant) GitHub
 workflow both run --

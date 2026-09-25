@@ -10,6 +10,11 @@ if [ -d /app/episodes ] && [ ! -e "$EP/index.json" ]; then
   mkdir -p "$EP"
   cp -a /app/episodes/. "$EP/"
 fi
+# The seed above runs once, so a new cover committed to the repo would never reach the volume.
+# The image's copy is authoritative: refresh it on every boot.
+if [ -f /app/episodes/cover.jpg ]; then
+  cp /app/episodes/cover.jpg "$EP/cover.jpg"
+fi
 
 echo "[entrypoint] starting daily cron (supercronic) + web server..."
 supercronic /app/crontab &

@@ -152,8 +152,8 @@ def cover_url(episodes_dir: Path) -> str:
     the unit tests, and in the container before the volume is mounted. A missing cover must not
     take the feed build down.
     """
-    base = f"{config.site_base_url()}/cover.png"
-    cover = episodes_dir / "cover.png"
+    base = f"{config.site_base_url()}/{config.COVER_FILE}"
+    cover = episodes_dir / config.COVER_FILE
     if not cover.exists():
         return base
     return f"{base}?v={hashlib.sha256(cover.read_bytes()).hexdigest()[:8]}"
@@ -182,9 +182,10 @@ def rebuild_feed(episodes_dir: Path) -> Path:
             pub = datetime.now(timezone.utc)
         items.append(_rss_item(data, pub, audio_name, audio_bytes, audio_type, chapters))
     feed = f"""<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0">
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>{html.escape(config.SITE_TITLE)}</title>
+    <atom:link href="{config.site_base_url()}/feed.xml" rel="self" type="application/rss+xml"/>
     <link>{config.site_app_url()}/</link>
     <description>{html.escape(config.SITE_DESCRIPTION)}</description>
     <language>en-us</language>
@@ -193,8 +194,11 @@ def rebuild_feed(episodes_dir: Path) -> Path:
     <itunes:type>episodic</itunes:type>
     <itunes:explicit>false</itunes:explicit>
     <itunes:category text="{html.escape(config.SITE_CATEGORY)}"/>
+    <itunes:category text="{html.escape(config.SITE_CATEGORY_SECONDARY[0])}"><itunes:category text="{html.escape(config.SITE_CATEGORY_SECONDARY[1])}"/></itunes:category>
     <itunes:image href="{art}"/>
     <itunes:owner><itunes:name>{html.escape(config.SITE_AUTHOR)}</itunes:name><itunes:email>{config.SITE_OWNER_EMAIL}</itunes:email></itunes:owner>
+    <podcast:guid>{config.PODCAST_GUID}</podcast:guid>
+    <podcast:locked owner="{config.SITE_OWNER_EMAIL}">yes</podcast:locked>
     <image><url>{art}</url><title>{html.escape(config.SITE_TITLE)}</title><link>{config.site_app_url()}/</link></image>
 {chr(10).join(items)}
   </channel>

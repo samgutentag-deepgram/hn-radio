@@ -87,7 +87,7 @@ def test_feed_uses_base_url_cover_and_podcast_tags(tmp_path, monkeypatch):
     assert "https://example.test/episodes/2026-08-04/episode.mp3" in xml
     assert 'type="audio/mpeg"' in xml
     assert '<podcast:chapters url="https://example.test/episodes/2026-08-04/chapters.json"' in xml
-    assert 'href="https://example.test/episodes/cover.png"' in xml
+    assert 'href="https://example.test/episodes/cover.jpg"' in xml
     assert "<itunes:author" in xml and "<itunes:category" in xml and "<itunes:owner" in xml
     assert "A summary." in xml  # show notes in the item description
 
@@ -128,19 +128,19 @@ def test_the_cover_url_carries_a_content_hash(tmp_path):
 
     Overcast caches channel artwork server-side keyed on the URL, so unsubscribing and
     resubscribing returns the stored copy. The 36-orb cover shipped to the same
-    `cover.png` path and was invisible to any client that had already seen the old one.
+    `cover.jpg` path and was invisible to any client that had already seen the old one.
     """
     from hn_radio import feed
 
-    (tmp_path / "cover.png").write_bytes(b"first art")
+    (tmp_path / "cover.jpg").write_bytes(b"first art")
     first = feed.cover_url(tmp_path)
-    assert "cover.png?v=" in first
+    assert "cover.jpg?v=" in first
     assert len(first.rsplit("=", 1)[1]) == 8
 
-    (tmp_path / "cover.png").write_bytes(b"second art")
+    (tmp_path / "cover.jpg").write_bytes(b"second art")
     assert feed.cover_url(tmp_path) != first, "new bytes must produce a new URL"
 
-    (tmp_path / "cover.png").write_bytes(b"first art")
+    (tmp_path / "cover.jpg").write_bytes(b"first art")
     assert feed.cover_url(tmp_path) == first, "the hash must be content-addressed, not a counter"
 
 
@@ -149,7 +149,7 @@ def test_a_missing_cover_does_not_break_the_feed(tmp_path):
     from hn_radio import feed
 
     url = feed.cover_url(tmp_path)
-    assert url.endswith("/cover.png"), url
+    assert url.endswith("/cover.jpg"), url
     assert "?v=" not in url
 
 
@@ -161,7 +161,7 @@ def test_both_artwork_elements_use_the_same_hashed_url(tmp_path, monkeypatch):
 
     monkeypatch.setattr(config, "EPISODES_DIR", tmp_path)
     monkeypatch.setenv("HN_RADIO_BASE_URL", "https://example.test/episodes")
-    (tmp_path / "cover.png").write_bytes(b"art bytes")
+    (tmp_path / "cover.jpg").write_bytes(b"art bytes")
     d = tmp_path / "2026-08-04"
     d.mkdir()
     (d / "episode.json").write_text(json.dumps({
@@ -176,3 +176,21 @@ def test_both_artwork_elements_use_the_same_hashed_url(tmp_path, monkeypatch):
     assert hrefs and urls
     assert set(hrefs) == set(urls), (hrefs, urls)
     assert "?v=" in hrefs[0]
+
+
+def test_the_channel_carries_what_the_directories_check_for(tmp_path, monkeypatch):
+    """Apple, Spotify and Podcast Index each validate a different slice of the channel."""
+    from hn_radio import feed
+
+    monkeypatch.setattr(config, "EPISODES_DIR", tmp_path)
+    monkeypatch.setenv("HN_RADIO_BASE_URL", "https://example.test/episodes")
+    xml = feed.rebuild_feed(tmp_path).read_text()
+    assert '<atom:link href="https://example.test/episodes/feed.xml" rel="self"' in xml
+    assert f"<podcast:guid>{config.PODCAST_GUID}</podcast:guid>" in xml
+    assert f'<podcast:locked owner="{config.SITE_OWNER_EMAIL}">yes</podcast:locked>' in xml
+    assert '<itunes:category text="News"><itunes:category text="Tech News"/></itunes:category>' in xml
+
+
+def test_the_podcast_guid_is_frozen():
+    """It must survive the move to a real domain, so it is a literal, not derived at build time."""
+    assert config.PODCAST_GUID == "7e200d35-4344-5796-9a34-f2fec41ce97c"

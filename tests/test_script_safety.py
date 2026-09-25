@@ -101,7 +101,7 @@ def test_the_real_episodes_dir_has_nothing_deletable_by_accident():
     """Belt and braces against the actual archive on this disk.
 
     On a clean checkout this passes vacuously rather than skipping: `episodes/` is committed
-    (`.gitkeep` and `cover.png`), so the directory exists and simply holds no variants. The skip
+    (`.gitkeep` and `cover.jpg`), so the directory exists and simply holds no variants. The skip
     below is only for a checkout where `episodes/` has been deleted outright.
     """
     if not config.EPISODES_DIR.is_dir():

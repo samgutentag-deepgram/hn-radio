@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0">
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>HN Radio</title>
+    <atom:link href="https://example.test/episodes/feed.xml" rel="self" type="application/rss+xml"/>
     <link>https://example.test/</link>
     <description>The front page, read aloud.</description>
     <language>en-us</language>
@@ -10,9 +11,12 @@
     <itunes:type>episodic</itunes:type>
     <itunes:explicit>false</itunes:explicit>
     <itunes:category text="Technology"/>
-    <itunes:image href="https://example.test/episodes/cover.png"/>
+    <itunes:category text="News"><itunes:category text="Tech News"/></itunes:category>
+    <itunes:image href="https://example.test/episodes/cover.jpg"/>
     <itunes:owner><itunes:name>Test Author</itunes:name><itunes:email>owner@example.test</itunes:email></itunes:owner>
-    <image><url>https://example.test/episodes/cover.png</url><title>HN Radio</title><link>https://example.test/</link></image>
+    <podcast:guid>7e200d35-4344-5796-9a34-f2fec41ce97c</podcast:guid>
+    <podcast:locked owner="owner@example.test">yes</podcast:locked>
+    <image><url>https://example.test/episodes/cover.jpg</url><title>HN Radio</title><link>https://example.test/</link></image>
     <item>
       <title>A title with &lt;angle&gt; &amp; ampersand</title>
       <guid isPermaLink="false">https://example.test/episodes/2026-08-02/</guid>

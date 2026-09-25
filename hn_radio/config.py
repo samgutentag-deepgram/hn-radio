@@ -232,6 +232,16 @@ SITE_DESCRIPTION = "The Hacker News front page, read to you morning and afternoo
 SITE_AUTHOR = "Deepgram DevRel"
 SITE_OWNER_EMAIL = "devrel@deepgram.com"
 SITE_CATEGORY = "Technology"
+# A second Apple category. Technology has no subcategories in Apple's list; News > Tech News is
+# where a daily read of the front page sits for someone browsing rather than searching.
+SITE_CATEGORY_SECONDARY = ("News", "Tech News")
+# The show's permanent identity for Podcast Index apps (podcast:guid). Derived ONCE, per the spec,
+# as uuid5 of the feed URL minus its scheme at the time it was minted, then frozen here: it must
+# not change when the feed moves to its own domain, which is the whole point of it.
+PODCAST_GUID = "7e200d35-4344-5796-9a34-f2fec41ce97c"
+# The channel artwork, as a JPEG. The PNG it replaced was 2.98 MB at 3000x3000, which some
+# directories time out fetching; quality 88 is about 500 KB with no visible banding on the orbs.
+COVER_FILE = "cover.jpg"
 
 # --- Voices (Flux TTS launch catalog; model string = flux-{voice}-en) ---
 # Alexis, and only Alexis. This said flux-haley-en for a while, while `cast.ROLE_VOICES`

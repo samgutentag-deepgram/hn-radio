@@ -268,8 +268,8 @@ def main() -> int:
     d.text((S / 2, WORDMARK_Y), "HN RADIO", font=wordmark_font, fill=INK, anchor="ma")
 
     config.EPISODES_DIR.mkdir(parents=True, exist_ok=True)
-    out = config.EPISODES_DIR / "cover.png"
-    img.save(out)
+    out = config.EPISODES_DIR / config.COVER_FILE
+    img.convert("RGB").save(out, "JPEG", quality=88, optimize=True)
     print(f"wrote {out} ({img.size[0]}x{img.size[1]}), {len(order)} orbs")
     return 0
 
