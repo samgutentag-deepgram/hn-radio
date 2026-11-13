@@ -51,6 +51,27 @@ def _fill_topic_desks(preset: dict, catalog, routable) -> None:
 
 
 
+def episode_cast(d: dict) -> list:
+    """The voices that read an episode, host first, then everyone else in order of first line.
+
+    The host is whoever holds the anchor desk (the first anchor line), which is how the two
+    editions tell Alexis from Cole without a field of their own. The site draws this as the
+    episode's group bubble, so the order is the seating: biggest seat first.
+    """
+    segs = d.get("segments") or []
+    order = []
+    anchor = next((s.get("voice_id") for s in segs
+                   if s.get("voice_id") and (s.get("desk") == "anchor" or s.get("role") in ("anchor", "host"))),
+                  None)
+    if anchor:
+        order.append(anchor)
+    for s in segs:
+        v = s.get("voice_id")
+        if v and v not in order:
+            order.append(v)
+    return order
+
+
 def build_manifest(episodes_dir: Path) -> Path:
     """Write episodes/index.json: a flat list of canonical episodes, newest first.
 
@@ -82,6 +103,8 @@ def build_manifest(episodes_dir: Path) -> Path:
             # The feed page shows this under each title, NPR-style. Blank on episodes whose
             # writer did not produce show notes, which is visible rather than hidden.
             "summary": (d.get("summary") or "").strip(),
+            # Voice ids, host first: the row's group bubble on the landing page reads this.
+            "cast": episode_cast(d),
         })
     path = episodes_dir / "index.json"
     write_json(path, {"episodes": episodes, "totals": _totals(costs)})
