@@ -508,7 +508,7 @@ def make_episode_art(ep_dir: Path) -> Path:
     d = ImageDraw.Draw(img)
     margin = 104
 
-    d.text((margin, 96), "HN RADIO", font=font("mono", 34, 500), fill=OFF_WHITE, anchor="lt")
+    d.text((margin, 96), "HACKER NEWS RADIO", font=font("mono", 34, 500), fill=OFF_WHITE, anchor="lt")
     mark = logo(30)
     if mark is not None:
         img.alpha_composite(mark, (size - margin - mark.width, 96))

@@ -378,7 +378,7 @@ def episode_page(episode_id: str) -> HTMLResponse:
     ])
 
     page = (WEB / "episode.html").read_text()
-    page = page.replace("<title>HN Radio: Episode</title>",
+    page = page.replace("<title>Hacker News Radio: Episode</title>",
                         f"<title>{html.escape(title)}</title>\n{head}", 1)
     # Same revalidate-don't-cache posture as the static files: an episode's title and summary can
     # be rewritten by `scripts/retitle.py`, and a cached head would keep unfurling the old one.
