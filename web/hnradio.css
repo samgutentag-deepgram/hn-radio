@@ -121,7 +121,7 @@ body.page-wide { --dg-col: min(84rem, 100vw - 2rem); }
   box-shadow: 0 4px 12px color-mix(in srgb, var(--dg-surface-deep) 35%, transparent);
   transition: box-shadow var(--dg-anim-base) var(--dg-anim-ease), transform var(--dg-anim-base) var(--dg-anim-ease);
 }
-.cast-avatar img { width: 82%; height: 82%; object-fit: contain; }
+.cast-avatar img { width: calc(var(--avatar-size) * 0.82); height: calc(var(--avatar-size) * 0.82); object-fit: contain; }
 .cast-avatar.is-initial {
   font-family: var(--dg-font-display);
   font-weight: var(--dg-weight-bold);
@@ -202,3 +202,7 @@ body.page-wide { --dg-col: min(84rem, 100vw - 2rem); }
 .build-avatar.is-playing {
   box-shadow: 0 0 0 2px var(--dg-accent), 0 6px 18px color-mix(in srgb, var(--dg-surface-deep) 45%, transparent);
 }
+
+/* Five columns do not fit a phone. The table scrolls inside itself rather than pushing the page
+   sideways. */
+@media (max-width: 40rem) { .build-table { display: block; overflow-x: auto; } }
