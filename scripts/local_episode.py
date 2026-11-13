@@ -29,7 +29,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import pathlib
 import sys
@@ -72,7 +71,7 @@ def _install_resumable_render(seg_cache: pathlib.Path, log) -> None:
     def resumable_render_all(segments, api_key, on_progress=None):
         out, hits, n = [], 0, len(segments)
         for i, seg in enumerate(segments, 1):
-            key = hashlib.sha256(f"{seg.voice_id}\x00{seg.text}".encode()).hexdigest()[:32]
+            key = render.take_key(seg.voice_id, seg.text)
             f = seg_cache / f"{key}.pcm"
             if f.exists():
                 out.append(f.read_bytes())

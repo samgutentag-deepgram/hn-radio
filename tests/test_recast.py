@@ -29,6 +29,9 @@ def test_render_recast_reuses_unchanged_segments(tmp_path, monkeypatch):
         {"order": 1, "role": "desk", "speaker_key": "Wade", "text": "b", "desk": "maker",
          "voice_id": "flux-wade-en", "source_hn_id": None, "start_seconds": 1.0},
     ]
+    # Takes made at today's expressivity, so expressivity is not what forces a re-render here.
+    for d in orig_segs:
+        d["expressivity"] = render.effective_expressivity(d["voice_id"])
     (orig / "script.json").write_text(json.dumps(orig_segs))
     (orig / "segments" / "0.pcm").write_bytes(b"CACHED0")
     (orig / "segments" / "1.pcm").write_bytes(b"CACHED1")
@@ -49,6 +52,30 @@ def test_render_recast_reuses_unchanged_segments(tmp_path, monkeypatch):
     assert captured["pcm"][0] == b"RENDERED"   # changed segment -> rendered
     assert captured["pcm"][1] == b"CACHED1"    # unchanged segment -> reused from cache
     assert calls == ["flux-cole-en"]           # exactly one render call, for the changed voice
+
+
+def test_render_recast_rerenders_takes_made_at_another_expressivity(tmp_path, monkeypatch):
+    """An archive line saved before expressivity existed is a take at the API default, so it is
+    not the line a render at expressivity 1 would produce and must not be reused for one."""
+    monkeypatch.setattr(config, "EPISODES_DIR", tmp_path)
+    monkeypatch.setattr(config, "get_api_key", lambda: "x")
+    monkeypatch.setattr(config, "SPEAK_EXPRESSIVITY", 1)
+    orig = tmp_path / "ep"
+    (orig / "segments").mkdir(parents=True)
+    line = {"order": 0, "role": "anchor", "speaker_key": "Cole", "text": "a", "desk": "anchor",
+            "voice_id": "flux-cole-en", "source_hn_id": None, "start_seconds": 0.0}
+    (orig / "script.json").write_text(json.dumps([line]))
+    (orig / "segments" / "0.pcm").write_bytes(b"CACHED0")
+    monkeypatch.setattr(render, "render_segment", lambda text, vid, key: b"RENDERED")
+    captured = {}
+    monkeypatch.setattr(pipeline, "_finalize",
+                        lambda segs, pcm, **kw: captured.update(pcm=pcm, segs=segs) or "EP")
+
+    pipeline.render_recast([ScriptSegment(**line)], original_id="ep", episode_id="ep-recast",
+                           title="t", source_items=[], cast=DEFAULT_CAST, edition="",
+                           log=lambda *a: None)
+    assert captured["pcm"] == [b"RENDERED"]
+    assert captured["segs"][0].expressivity == 1
 
 
 def test_rewrite_names_updates_handoffs_but_not_comments():

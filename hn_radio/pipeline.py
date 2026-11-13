@@ -633,6 +633,19 @@ def discard_render_intermediates(out_dir: Path) -> int:
     return freed
 
 
+def _cache_line(d: dict) -> tuple:
+    """What a cached take is keyed on: the words, the voice, and the expressivity it was read at.
+
+    A line saved before expressivity existed has no field, which is the API default (None here),
+    so it is never reused for a render at any other setting.
+    """
+    return (d.get("text"), d.get("voice_id"), d.get("expressivity"))
+
+
+def _wanted_line(seg) -> tuple:
+    return (seg.text, seg.voice_id, render.effective_expressivity(seg.voice_id))
+
+
 def render_recast(segments, *, original_id, episode_id, title, source_items, cast, edition="", summary="", log=print) -> Episode:
     """Incremental recast: re-render only segments whose voice changed vs the original; reuse the
     cached PCM for the rest (falling back to rendering if a cache is missing, e.g. older episodes)."""
@@ -645,20 +658,23 @@ def render_recast(segments, *, original_id, episode_id, title, source_items, cas
 
     orig_seg_dir = config.EPISODES_DIR / original_id / "segments"
     orig_script = config.EPISODES_DIR / original_id / "script.json"
-    orig = {}  # order -> (text, voice_id) from the original, to reuse only truly-unchanged lines
+    orig = {}  # order -> (text, voice_id, expressivity), to reuse only truly-unchanged lines
     if orig_script.exists():
         for d in json.loads(orig_script.read_text()):
-            orig[d["order"]] = (d.get("text"), d.get("voice_id"))
+            orig[d["order"]] = _cache_line(d)
 
     pcm, reused, rendered, billed = [], 0, 0, 0
     total = len(segments)
     for i, seg in enumerate(segments):
         cache = orig_seg_dir / f"{seg.order}.pcm"
-        # reuse the cached audio only if BOTH the voice and the exact words are unchanged
-        if orig.get(seg.order) == (seg.text, seg.voice_id) and cache.exists():
+        # reuse the cached audio only if the voice, the exact words and the expressivity all match
+        want = _wanted_line(seg)
+        if orig.get(seg.order) == want and cache.exists():
             pcm.append(cache.read_bytes()); reused += 1
+            seg.expressivity = want[2]
         else:
             pcm.append(render.render_segment(seg.text, seg.voice_id, api_key)); rendered += 1
+            seg.expressivity = render.effective_expressivity(seg.voice_id)
             billed += len(seg.text)  # only a re-rendered line is a request, and requests are the bill
         status.stage("rendering", f"recasting segment {i + 1}/{total}", i + 1, total)
     log(f"[recast] reused {reused} cached segments, re-rendered {rendered}")
@@ -684,7 +700,7 @@ def render_custom(segments, *, episode_id, title, source_items, cast, provenance
     voices.assign_voices(segments, cast)  # respects voice_ids already set from the config
     api_key = config.get_api_key()
 
-    scripts = {}  # source episode id -> {order: (text, voice_id)}
+    scripts = {}  # source episode id -> {order: (text, voice_id, expressivity)}
 
     def _source_line(src_id, src_order):
         if src_id not in scripts:
@@ -693,7 +709,7 @@ def render_custom(segments, *, episode_id, title, source_items, cast, provenance
             if path.exists():
                 try:
                     for d in json.loads(path.read_text()):
-                        table[d["order"]] = (d.get("text"), d.get("voice_id"))
+                        table[d["order"]] = _cache_line(d)
                 except (OSError, json.JSONDecodeError):
                     pass
             scripts[src_id] = table
@@ -707,12 +723,15 @@ def render_custom(segments, *, episode_id, title, source_items, cast, provenance
         if src:
             src_id, src_order = src
             cache = config.EPISODES_DIR / src_id / "segments" / f"{src_order}.pcm"
-            if _source_line(src_id, src_order) == (seg.text, seg.voice_id) and cache.exists():
+            want = _wanted_line(seg)
+            if _source_line(src_id, src_order) == want and cache.exists():
                 pcm.append(cache.read_bytes())
+                seg.expressivity = want[2]
                 reused += 1
                 hit = True
         if not hit:
             pcm.append(render.render_segment(seg.text, seg.voice_id, api_key))
+            seg.expressivity = render.effective_expressivity(seg.voice_id)
             rendered += 1
             billed += len(seg.text)  # a cache miss is a request; a hit costs nothing
         status.stage("rendering", f"building segment {i + 1}/{total}", i + 1, total)

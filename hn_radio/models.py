@@ -64,6 +64,10 @@ class ScriptSegment:
     # commenter line as its "guest" slot and `custom.py` reads `desk` to find a story's coverage.
     desk: Optional[str] = None
     start_seconds: Optional[float] = None  # start offset in the stitched episode; set at render
+    # The Flux expressivity this line was rendered at, or None for the API default (every line
+    # rendered before 2026-11-12, and any voice the API refused it for). Part of the cache key:
+    # a take is only reused at the setting it was made at.
+    expressivity: Optional[int] = None
 
     def to_dict(self) -> dict:
         return asdict(self)

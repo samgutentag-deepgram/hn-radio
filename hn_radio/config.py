@@ -141,6 +141,37 @@ SAMPLE_RATE = 24000    # Hz, mono, 16-bit
 # than the fastest legible one. Set to None to send no `speed` at all, which is what every episode
 # before 2026-09-16 was rendered at.
 SPEAK_SPEED = 1.10
+
+# How animated Flux reads. Batch /v2/speak takes `expressivity` as a query parameter, beta, whole
+# numbers from -2 (calm) to 2 (animated); omitting it is the same as 0, the voice's tuned default.
+# Checked 2026-11-12 against developers.deepgram.com/docs/flux-tts/batch and /docs/tts-expressivity.
+# This is NOT the -5..5 scale of FLUX_SUGGESTED_EXPRESSIVITY below; see the note there.
+#
+# 1, proposed from the by-ear comparison in docs/expressivity-compare.html (Alexis, Cole and three
+# second-chair voices at 0, 1 and 2), and the same value the changelog show settled on by ear on
+# 2026-09-25. Every episode before this setting read at the default. Set to None to send nothing.
+SPEAK_EXPRESSIVITY: Optional[int] = 1
+
+# Per-voice pullbacks, so one voice that runs hot at the show default can be set back without
+# moving everyone. Keyed by voice id; a value of None sends no expressivity for that voice.
+SPEAK_EXPRESSIVITY_OVERRIDES: dict = {}
+
+
+def expressivity_for(voice_id: str) -> Optional[int]:
+    """The expressivity a Flux voice is rendered at, or None to send no parameter at all.
+
+    Aura-2 (/v1/speak) has no such control, so it always gets None.
+    """
+    if voice_family(voice_id) != "flux":
+        return None
+    value = SPEAK_EXPRESSIVITY_OVERRIDES.get(voice_id, SPEAK_EXPRESSIVITY)
+    if value is None:
+        return None
+    if not isinstance(value, int) or isinstance(value, bool) or not -2 <= value <= 2:
+        raise ValueError(f"expressivity for {voice_id} must be a whole number from -2 to 2, got {value!r}")
+    return value
+
+
 SAMPLE_WIDTH = 2       # bytes per sample (16-bit)
 CHANNELS = 1
 
@@ -457,8 +488,8 @@ VOICE_CATALOG = {
 #
 # Kept for the same reason as before: the docs state both transports serve this same catalog, so
 # these values describe the voices themselves and stay usable the day a render path wants them,
-# and a high value hints at how animated a voice is when casting by ear. The app sends neither
-# parameter today, and this correction does not change that.
+# and a high value hints at how animated a voice is when casting by ear. The app sends both now
+# (SPEAK_SPEED and SPEAK_EXPRESSIVITY above), and neither reads from this table.
 FLUX_SUGGESTED_EXPRESSIVITY = {
     "flux-bruce-en": 2.0, "flux-cole-en": 2.0, "flux-drew-en": 2.0, "flux-heather-en": 1.0,
     "flux-jack-en": 1.0,

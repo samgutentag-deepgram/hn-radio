@@ -113,7 +113,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import pathlib
 import re
@@ -224,7 +223,7 @@ def _cache_path(voice_id: str, text: str) -> pathlib.Path:
     """Where a (voice, text) pair's PCM lives. Content-addressed, so nothing about the episode or
     the segment order is in the key: a retry after a 500 is free, and so is a line two episodes
     happen to share."""
-    return SEG_CACHE / (hashlib.sha256(f"{voice_id}\x00{text}".encode()).hexdigest()[:32] + ".pcm")
+    return SEG_CACHE / (render.take_key(voice_id, text) + ".pcm")
 
 
 def _install_render_cache(log) -> None:
