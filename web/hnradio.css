@@ -216,3 +216,20 @@ body.page-wide { --dg-col: min(84rem, 100vw - 2rem); }
 .ep-head-art { display: block; width: 7.5rem; height: 7.5rem; border-radius: var(--dg-shape-panel);
   border: 1px solid var(--dg-border); }
 @media (max-width: 640px) { .ep-head-art { width: 5rem; height: 5rem; } }
+
+/* ============================================================================
+   SHOW NAME. "Hacker News Radio" with "read by Deepgram Flux" under it, Deepgram drawn as the
+   wordmark (a mask, so it takes the ink token) rather than typed. Same lockup as the cover.
+   ========================================================================= */
+.show-name { margin-bottom: 0.15rem; }
+.show-subtitle {
+  display: flex; align-items: baseline; gap: 0.32em; flex-wrap: wrap;
+  margin: 0 0 1rem; font-size: clamp(1.15rem, 0.9rem + 1vw, 1.6rem);
+  font-weight: var(--dg-weight-medium); color: var(--dg-text-label);
+}
+.show-wordmark {
+  display: inline-block; width: 5.2em; height: 1em; transform: translateY(0.2em);
+  background: var(--dg-text-primary);
+  -webkit-mask: url("/brand/deepgram-logo-2026-dark.svg") no-repeat left center / contain;
+          mask: url("/brand/deepgram-logo-2026-dark.svg") no-repeat left center / contain;
+}
