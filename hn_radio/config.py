@@ -147,9 +147,9 @@ SPEAK_SPEED = 1.10
 # Checked 2026-11-12 against developers.deepgram.com/docs/flux-tts/batch and /docs/tts-expressivity.
 # This is NOT the -5..5 scale of FLUX_SUGGESTED_EXPRESSIVITY below; see the note there.
 #
-# 1, proposed from the by-ear comparison in docs/expressivity-compare.html (Alexis, Cole and three
-# second-chair voices at 0, 1 and 2), and the same value the changelog show settled on by ear on
-# 2026-09-25. Every episode before this setting read at the default. Set to None to send nothing.
+# 1, proposed from a by-ear comparison rendered 2026-11-12 (Alexis, Cole and three second-chair
+# voices at 0, 1 and 2 on one real line), and the same value the changelog show settled on by ear
+# on 2026-09-25. Every episode before this setting read at the default. Set to None to send nothing.
 SPEAK_EXPRESSIVITY: Optional[int] = 1
 
 # Per-voice pullbacks, so one voice that runs hot at the show default can be set back without
