@@ -404,7 +404,8 @@ def cluster(img, cx: float, cy: float, diameter: int, names: Sequence[str], max_
 # ---- the show cover ----------------------------------------------------------------------------
 
 def make_cover(out: Optional[Path] = None, max_kb: int = 560) -> Path:
-    """3000x3000: the logo alone, the show name, and the bench in one bubble, over felt.
+    """3000x3000: the show name, its "read by Deepgram Flux" subtitle with the wordmark, and the
+    bench in one bubble, over felt.
 
     It has to survive 55px in a subscription list, so it carries two words of type at size and one
     object; the description belongs in the feed. Saved as JPEG (config.COVER_FILE) and stepped
@@ -420,22 +421,36 @@ def make_cover(out: Optional[Path] = None, max_kb: int = 560) -> Path:
     d = ImageDraw.Draw(img)
     margin = 230
 
-    mark = logo(118)
-    if mark is not None:
-        img.alpha_composite(mark, (margin, 230))
-    else:
-        d.text((margin, 230), "Deepgram", font=font("sans", 120, 600), fill=OFF_WHITE, anchor="lt")
-
-    d.text((margin, 560), "TWICE DAILY  ·  MORNING AND AFTERNOON", font=font("mono", 72, 500),
+    d.text((margin, 260), "TWICE DAILY  ·  MORNING AND AFTERNOON", font=font("mono", 72, 500),
            fill=LIGHT_GRAY, anchor="lt")
-    big = fit("HN Radio", "sans", 600, 600, size - 2 * margin)
-    d.text((margin - big.size * 0.04, 690), "HN Radio", font=big, fill=OFF_WHITE, anchor="lt")
 
-    cluster(img, size - margin - 700, size - margin - 640, 1400, COVER_CAST, max_seats=6)
+    # The name on two lines, so each word stays big enough to read at 55px in a subscription list.
+    big = fit("Hacker News", "sans", 470, 600, size - 2 * margin)
+    for i, word in enumerate(("Hacker News", "Radio")):
+        d.text((margin - big.size * 0.04, 400 + i * big.size), word, font=big, fill=OFF_WHITE, anchor="lt")
 
-    d.text((margin, size - margin - 100), "THE HACKER NEWS FRONT PAGE,", font=font("mono", 70, 500),
+    # The subtitle, "read by Deepgram Flux", with Deepgram as the wordmark rather than typed out.
+    sub = font("sans", 130, 500)
+    base = 400 + 2 * big.size + 230
+    x = margin
+    d.text((x, base), "read by", font=sub, fill=LIGHT_GRAY, anchor="ls")
+    x += sub.getlength("read by ")
+    mark = logo(126)
+    if mark is not None:
+        # The wordmark's box runs from cap height to the bottom of the p and g; sit its baseline,
+        # about 78% of the way down, on the text's.
+        img.alpha_composite(mark, (int(x), int(base - mark.height * 0.78)))
+        x += mark.width + sub.getlength(" ")
+    else:
+        d.text((x, base), "Deepgram", font=sub, fill=OFF_WHITE, anchor="ls")
+        x += sub.getlength("Deepgram ")
+    d.text((x, base), "Flux", font=sub, fill=OFF_WHITE, anchor="ls")
+
+    cluster(img, size - margin - 640, size - margin - 600, 1280, COVER_CAST, max_seats=6)
+
+    d.text((margin, size - margin - 100), "THE HACKER NEWS", font=font("mono", 70, 500),
            fill=LIGHT_GRAY, anchor="ls")
-    d.text((margin, size - margin), "READ BY DEEPGRAM FLUX", font=font("mono", 70, 500),
+    d.text((margin, size - margin), "FRONT PAGE, ALOUD", font=font("mono", 70, 500),
            fill=OFF_WHITE, anchor="ls")
 
     out.parent.mkdir(parents=True, exist_ok=True)

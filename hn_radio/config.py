@@ -257,7 +257,12 @@ def public_app_url() -> str:
     if _read_env_var("HN_RADIO_BASE_URL"):
         return site_app_url()
     return DEFAULT_PUBLIC_APP_URL
-SITE_TITLE = "HN Radio"
+# The show's name, and the subtitle that goes with it. The feed and link unfurls carry them as one
+# line (text has no second line); the cover and the home page set the subtitle under the name,
+# with "Deepgram" drawn as the wordmark.
+SITE_NAME = "Hacker News Radio"
+SITE_SUBTITLE = "read by Deepgram Flux"
+SITE_TITLE = f"{SITE_NAME}, {SITE_SUBTITLE}"
 SITE_DESCRIPTION = "The Hacker News front page, read to you morning and afternoon. Made with Deepgram Flux TTS."
 # Podcast channel metadata (placeholder for the demo)
 SITE_AUTHOR = "Deepgram DevRel"
