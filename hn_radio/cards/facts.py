@@ -97,7 +97,7 @@ def _speakers(segments: List[dict]) -> Tuple[Speaker, ...]:
 
     DEGRADES TO THE OLD SHOW RATHER THAN FAILING ON IT. Episodes before the two-hander have three
     topic desks sharing one voice, so "the co-host" is not a thing they have; the first desk
-    segment is the honest answer and its orb is the right colour, which is all the card claims.
+    segment is the honest answer and its voice card is the right one, which is all the card claims.
     Returns one speaker, or none, rather than padding with a stand-in.
     """
     anchor = next((s for s in segments if s.get("role") == "anchor" and s.get("voice_id")), None)
@@ -126,7 +126,7 @@ def _alt(edition: str, when: str, hero: str, credit_line: str, url: str) -> str:
 
     It is not a description of the picture. A reader whose client dropped the image should end up
     with the same four facts a reader who saw it got, in a sentence they can act on; "a dark card
-    with two glowing orbs" would be a faithful description and a wasted impression.
+    with two voice cards on felt" would be a faithful description and a wasted impression.
     """
     said = " for ".join(filter(None, (edition, when))) or "an episode"
     return (f"Hacker News Radio, {said}. This episode cost {hero} to render end to end with "

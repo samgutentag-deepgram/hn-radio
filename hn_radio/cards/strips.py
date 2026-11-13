@@ -18,7 +18,7 @@ waveform, a bench of voices, a run that has not been touched since August.
     scoreboard  it is real and it has been running unattended
     latest      the most recent episode, evergreen, for a weekly send
 
-Same tokens as the cards, same orbs, same 2x rule: 1200x400, shown at 600x200.
+Same tokens as the cards, same felt, same voice cards, same 2x rule: 1200x400, shown at 600x200.
 
 No literals here either; see `tokens.py`. Positions are DERIVED from the frame rather than spelled
 out, which is the one thing these do differently from `layout.py` -- six fixed grids would have
@@ -102,13 +102,19 @@ def _frame(facts: CardFacts):
     """Ground, eyebrow and footer. Every strip opens and closes the same way so the six read as
     one set rather than six unrelated pictures."""
     f, p = tokens.STRIP, tokens.palette()
-    img = paint.canvas(f.size, p)
+    img = paint.canvas(f.size, p, facts.episode_id)
     draw = ImageDraw.Draw(img)
     paint.tracked(draw, (f.pad_x, f.eyebrow_y), EYEBROW,
-                  tokens.font("display", f.eyebrow_size), p.accent, f.eyebrow_track)
+                  tokens.font("mono", f.eyebrow_size), p.accent, f.eyebrow_track)
+    _footer(img, draw, f, p, facts)
+    return img, draw, f, p
+
+
+def _footer(img, draw, f, p, facts: CardFacts) -> None:
+    """The URL on the left and the Deepgram logo alone at the right, the same on every strip."""
     paint.text(draw, (f.pad_x, f.footer_y), facts.url_text,
                tokens.font("mono", f.footer_size), p.accent)
-    return img, draw, f, p
+    paint.logo(img, f.width - f.pad_x, f.footer_y + f.footer_size, f.logo_h, p.ink)
 
 
 def _headline(draw, f, p, text: str) -> int:
@@ -125,14 +131,36 @@ def _columns(f, count: int) -> List[Tuple[int, int]]:
     return [(f.pad_x + i * (width + tokens.STRIP_COL_GAP), width) for i in range(count)]
 
 
-def _stat(draw, x: int, y: int, p, value: str, label: str, sub: Optional[str] = None) -> None:
-    """A number with its unit under it. The shape every figure on these strips takes."""
-    paint.text(draw, (x, y), value, tokens.font("display", tokens.STRIP_HERO), p.ink)
+def _stat(draw, x: int, y: int, p, value: str, label: str, sub: Optional[str] = None,
+          w: Optional[int] = None) -> None:
+    """A number with its unit under it. The shape every figure on these strips takes.
+
+    `w` is the column it lives in. Work Sans runs wider than the system faces these strips were
+    first laid out in, so each line steps its size down to fit rather than running into the next
+    column.
+    """
+    w = w or tokens.STRIP.content_width
+    paint.text(draw, (x, y), value,
+               _fit(draw, value, "display", tokens.STRIP_HERO, w, tokens.STRIP_HERO_MIN), p.ink)
     below = y + tokens.STRIP_HERO + tokens.STRIP_RULE_GAP
-    paint.text(draw, (x, below), label, tokens.font("ui", tokens.STRIP_LABEL), p.ink_secondary)
+    paint.text(draw, (x, below), label,
+               _fit(draw, label, "ui", tokens.STRIP_LABEL, w, tokens.STRIP_SMALL_MIN),
+               p.ink_secondary)
     if sub:
-        paint.text(draw, (x, below + tokens.STRIP_LABEL + tokens.STRIP_RULE_GAP), sub,
-                   tokens.font("ui", tokens.STRIP_SMALL), p.ink_muted)
+        _small(draw, (x, below + tokens.STRIP_LABEL + tokens.STRIP_RULE_GAP), sub, p.ink_muted, w)
+
+
+def _fit(draw, text: str, role: str, size: int, width: int, min_size: int):
+    """The largest font from `size` down to `min_size` that fits; `min_size` if none does."""
+    return paint.fitted(draw, text, role, size, width, min_size) or tokens.font(role, min_size)
+
+
+def _small(draw, xy, text: str, fill, width: int) -> None:
+    """A caption in the small size, stepped down to fit `width`, and cut with an ellipsis only
+    if it still does not fit at the floor. Nothing runs off the strip."""
+    font = _fit(draw, text, "ui", tokens.STRIP_SMALL, width, tokens.STRIP_SMALL_MIN)
+    line = paint.wrapped(draw, text, font, width, max_lines=1)
+    paint.text(draw, xy, line[0] if line else "", font, fill)
 
 
 # --- 1. the ladder -------------------------------------------------------------------
@@ -159,7 +187,7 @@ def ladder(facts: CardFacts, archive: Archive, **_) -> Image.Image:
          f"{months} months at the pace it has been publishing"),
     ]
     for (x, _w), (value, label, sub) in zip(_columns(f, len(rungs)), rungs):
-        _stat(draw, x, y, p, value, label, sub)
+        _stat(draw, x, y, p, value, label, sub, w=_w)
     return img
 
 
@@ -266,25 +294,21 @@ def bench(facts: CardFacts, archive: Archive, **_) -> Image.Image:
                f"for {COHOST_RECENCY_WINDOW} episodes.",
                tokens.font("ui", tokens.STRIP_SMALL), p.ink_muted)
 
-    # Two offset rows that bleed off the right edge. A grid that fits inside the frame reads as a
-    # diagram of orbs; one that runs off it reads as a crowd, which is the point being made.
+    # The crowd is the voices with an official 2026 card, and only those: a voice without one is
+    # left out of group art rather than given an invented face. The headline still counts every
+    # voice in the rotation, which is the claim. Two offset rows that bleed off the right edge, so
+    # it reads as a crowd rather than a diagram.
+    carded = [v for v in voices if tokens.voice_card(v) is not None]
     d = tokens.STRIP_BENCH_D
     step = int(d * tokens.STRIP_BENCH_OVERLAP)
-    per_row = -(-len(voices) // len(("top", "bottom")))
-    placed = []
-    for i, vid in enumerate(voices):
+    per_row = -(-len(carded) // len(("top", "bottom")))
+    for i, vid in enumerate(carded):
         row, col = divmod(i, per_row)
-        cx = f.pad_x + col * step + (step // 2 if row else 0)
+        cx = f.pad_x + d // 2 + col * step + (step // 2 if row else 0)
         cy = tokens.STRIP_BENCH_TOP + int(row * d * tokens.STRIP_BENCH_ROW_STEP)
-        placed.append((cx, cy, vid))
-    for cx, cy, vid in placed:
-        paint.bleed(img, cx, cy, d, palettes[vid][3])
-    for cx, cy, vid in placed:
-        light, mid, deep, glow = palettes[vid]
-        paint.place_orb(img, cx, cy, d, (light, mid, deep), glow, p.orb_ground)
-    # The crowd is painted over the footer the frame laid down, so the URL goes back on top of it.
-    paint.text(draw, (f.pad_x, f.footer_y), facts.url_text,
-               tokens.font("mono", f.footer_size), p.accent)
+        paint.place_bubble(img, cx, cy, d, vid, p)
+    # The crowd is painted over the footer the frame laid down, so it goes back on top of it.
+    _footer(img, draw, f, p, facts)
     return img
 
 
@@ -314,11 +338,11 @@ def scoreboard(facts: CardFacts, archive: Archive, **_) -> Image.Image:
     stats = [
         (f"{archive.episodes:,}", "episodes"),
         ("2", "editions a day"),
-        ("3am+3pm", "Pacific"),
+        ("3am", "and 3pm, Pacific"),
         ("0", "manual steps"),
     ]
     for (x, _w), (value, label) in zip(_columns(f, len(stats)), stats):
-        _stat(draw, x, y, p, value, label)
+        _stat(draw, x, y, p, value, label, w=_w)
     return img
 
 
@@ -347,15 +371,12 @@ def latest(facts: CardFacts, archive: Archive, episode: Optional[dict] = None,
     # The cast and the cost, right-aligned, in the same shape the share card uses.
     palettes = tokens.voice_palettes()
     seats = [s for s in facts.speakers if s.voice_id in palettes]
-    d = tokens.STRIP_ORB_D
+    d = tokens.STRIP_CAST_D
     edge = f.width - f.pad_x
     centres = [(edge - d // 2 - i * (d + tokens.STRIP_RULE_GAP), s)
                for i, s in enumerate(reversed(seats))]
     for cx, speaker in centres:
-        paint.bleed(img, cx, f.body_y + d // 2, d, palettes[speaker.voice_id][3])
-    for cx, speaker in centres:
-        light, mid, deep, glow = palettes[speaker.voice_id]
-        paint.place_orb(img, cx, f.body_y + d // 2, d, (light, mid, deep), glow, p.orb_ground)
+        paint.place_bubble(img, cx, f.body_y + d // 2, d, speaker.voice_id, p, speaker.name)
     paint.text(draw, (edge, f.body_y + d + tokens.STRIP_RULE_GAP), facts.hero,
                tokens.font("display", tokens.STRIP_HERO), p.ink, anchor="ra")
     paint.text(draw, (edge, f.body_y + d + tokens.STRIP_RULE_GAP + tokens.STRIP_HERO
@@ -402,9 +423,10 @@ def _code(draw, f, p, lines: Sequence[Tuple[str, tuple]], y: int, size: int) -> 
 
 
 def _voice_colour(p, palettes, voice_id, fallback=None):
-    """The mid shade of a voice's run: the one that reads as "that speaker" at small sizes."""
-    run = palettes.get(voice_id)
-    return run[1] if run else (fallback or p.ink_muted)
+    """A voice's card tile, the colour the site's transcript gives that speaker's rows."""
+    if voice_id not in palettes:
+        return fallback or p.ink_muted
+    return tokens.voice_tile(voice_id)
 
 
 # --- cost ----------------------------------------------------------------------------
@@ -429,7 +451,7 @@ def perminute(facts: CardFacts, archive: Archive, episode: Optional[dict] = None
         (f"${per_minute * 60:.2f}", "per finished hour", "same rate, longer show"),
     ]
     for (x, _w), (value, label, sub) in zip(cols, figures):
-        _stat(draw, x, y, p, value, label, sub)
+        _stat(draw, x, y, p, value, label, sub, w=_w)
     return img
 
 
@@ -462,7 +484,7 @@ def yearly(facts: CardFacts, archive: Archive, **_) -> Image.Image:
          else "covers the year exactly" if archive.credit_usd == spend
          else f"covers {archive.credit_usd / spend:.0%} of the year"),
     ]):
-        _stat(draw, x, y, p, value, label, sub)
+        _stat(draw, x, y, p, value, label, sub, w=_w)
     return img
 
 
@@ -480,7 +502,7 @@ def archive_total(facts: CardFacts, archive: Archive, **_) -> Image.Image:
         (f"${archive.mean_usd * archive.episodes:,.2f}", "total, all of it",
          "less than one team lunch"),
     ]):
-        _stat(draw, x, y, p, value, label, sub)
+        _stat(draw, x, y, p, value, label, sub, w=_w)
     return img
 
 
@@ -493,28 +515,24 @@ def schedule(facts: CardFacts, archive: Archive, **_) -> Image.Image:
     and produces two different shows, because the cast is a function of the episode id.
     """
     img, draw, f, p = _frame(facts)
-    palettes = tokens.voice_palettes()
     y = _headline(draw, f, p, "Two editions a day, two different chairs")
     cols = _columns(f, len(("am", "pm")))
-    d = tokens.STRIP_ORB_D
+    d = tokens.STRIP_CAST_D
     for (x, _w), (when, who, vid, what) in zip(cols, [
         ("3:00 AM Pacific", "Alexis", "flux-alexis-en", "Morning Edition"),
         ("3:00 PM Pacific", "Cole", "flux-cole-en", "Afternoon Edition"),
     ]):
-        run = palettes.get(vid)
-        if run:
-            paint.bleed(img, x + d // 2, y + d // 2, d, run[3])
-            paint.place_orb(img, x + d // 2, y + d // 2, d, run[:3], run[3], p.orb_ground)
+        paint.place_bubble(img, x + d // 2, y + d // 2, d, vid, p, who)
         tx = x + d + tokens.STRIP_COL_GAP
         paint.text(draw, (tx, y), what, tokens.font("display", tokens.STRIP_LABEL), p.ink)
         paint.text(draw, (tx, y + tokens.STRIP_LEADING), when,
                    tokens.font("ui", tokens.STRIP_SMALL), p.ink_secondary)
         paint.text(draw, (tx, y + tokens.STRIP_LEADING * len(("a", "b"))),
                    f"{who} anchors", tokens.font("ui", tokens.STRIP_SMALL), p.ink_muted)
-    paint.text(draw, (f.pad_x, y + d + tokens.STRIP_RULE_GAP + tokens.STRIP_RULE_GAP),
-               "One cron line: 0 3,15 * * *. The cast is a function of the episode id, so the "
-               "two shows are cast differently without a second config.",
-               tokens.font("ui", tokens.STRIP_SMALL), p.ink_muted)
+    _small(draw, (f.pad_x, y + d + tokens.STRIP_RULE_GAP + tokens.STRIP_RULE_GAP),
+           "One cron line: 0 3,15 * * *. The cast is a function of the episode id, so the "
+           "two shows are cast differently without a second config.", p.ink_muted,
+           f.content_width)
     return img
 
 
@@ -533,14 +551,13 @@ def recast(facts: CardFacts, archive: Archive, script: Optional[Sequence[dict]] 
     short = paint.wrapped(draw, line, mono, f.content_width, max_lines=len(("one",)))
     paint.text(draw, (f.pad_x, y), short[0] if short else "", mono, p.ink_secondary)
 
-    d = tokens.STRIP_ORB_D
+    d = tokens.STRIP_CAST_D
     row_y = y + tokens.STRIP_LEADING + tokens.STRIP_RULE_GAP
-    picks = [v for v in ("flux-alexis-en", "flux-kelsey-en", "flux-cole-en", "flux-wes-en")
+    # Four voices that have official cards, so the row is four faces rather than letters.
+    picks = [v for v in ("flux-alexis-en", "flux-heather-en", "flux-cole-en", "flux-meena-en")
              if v in palettes]
     for (x, _w), vid in zip(_columns(f, len(picks)), picks):
-        run = palettes[vid]
-        paint.bleed(img, x + d // 2, row_y + d // 2, d, run[3])
-        paint.place_orb(img, x + d // 2, row_y + d // 2, d, run[:3], run[3], p.orb_ground)
+        paint.place_bubble(img, x + d // 2, row_y + d // 2, d, vid, p)
         paint.text(draw, (x, row_y + d + tokens.STRIP_BAND_GAP), f"model={vid}", 
                    tokens.font("mono", tokens.STRIP_SMALL), p.ink_muted)
     return img
@@ -591,7 +608,7 @@ def stdlib(facts: CardFacts, archive: Archive, **_) -> Image.Image:
         ("wave", "stitch and header", "Python standard library"),
         ("ffmpeg", "the chaptered MP3", "one system binary"),
     ]):
-        _stat(draw, x, y, p, value, label, sub)
+        _stat(draw, x, y, p, value, label, sub, w=_w)
     return img
 
 
@@ -645,13 +662,11 @@ def castlist(facts: CardFacts, archive: Archive, episode: Optional[dict] = None,
                          if s.get("role") == "commenter" and s.get("speaker_key")})
     y = _headline(draw, f, p, "Two regulars, and everyone they quote")
 
-    d = tokens.STRIP_ORB_D
+    d = tokens.STRIP_CAST_D
     roles = ("anchor", "second chair")
     for (x, _w), speaker, role in zip(_columns(f, len(("a", "b", "c"))), facts.speakers, roles):
-        run = palettes.get(speaker.voice_id)
-        if run:
-            paint.bleed(img, x + d // 2, y + d // 2, d, run[3])
-            paint.place_orb(img, x + d // 2, y + d // 2, d, run[:3], run[3], p.orb_ground)
+        if speaker.voice_id in palettes:
+            paint.place_bubble(img, x + d // 2, y + d // 2, d, speaker.voice_id, p, speaker.name)
         tx = x + d + tokens.STRIP_BAND_GAP * len(("pad",)) + tokens.STRIP_RULE_GAP
         paint.text(draw, (tx, y + tokens.STRIP_RULE_GAP), speaker.name,
                    tokens.font("display", tokens.STRIP_LABEL), p.ink)
@@ -664,10 +679,9 @@ def castlist(facts: CardFacts, archive: Archive, episode: Optional[dict] = None,
     paint.text(draw, (third, y + tokens.STRIP_RULE_GAP + tokens.STRIP_LEADING),
                ", ".join(commenters)[:len("a" * 40)] or "quoted from the thread",
                tokens.font("ui", tokens.STRIP_SMALL), p.ink_muted)
-    paint.text(draw, (f.pad_x, y + d + tokens.STRIP_RULE_GAP),
-               "Comments are read by a regular and credited to the real username. No voice is "
-               "invented for somebody who did not consent to one.",
-               tokens.font("ui", tokens.STRIP_SMALL), p.ink_muted)
+    _small(draw, (f.pad_x, y + d + tokens.STRIP_RULE_GAP),
+           "Comments are read by a regular and credited to the real username. No voice is "
+           "invented for somebody who did not consent to one.", p.ink_muted, f.content_width)
     return img
 
 
@@ -737,22 +751,24 @@ def _code_frame(facts: CardFacts, headline: str, lines: Sequence[str], footnote:
     if name:
         CODE_SNIPPETS[name] = (headline, tuple(lines), footnote)
     f, p = tokens.STRIP_TALL, tokens.palette()
-    img = paint.canvas(f.size, p)
+    img = paint.canvas(f.size, p, facts.episode_id)
     draw = ImageDraw.Draw(img)
     paint.tracked(draw, (f.pad_x, f.eyebrow_y), EYEBROW,
-                  tokens.font("display", f.eyebrow_size), p.accent, f.eyebrow_track)
+                  tokens.font("mono", f.eyebrow_size), p.accent, f.eyebrow_track)
     paint.text(draw, (f.pad_x, f.body_y), headline,
                tokens.font("display", tokens.STRIP_HEADLINE), p.ink)
 
-    font = tokens.font("mono", tokens.STRIP_CODE_SIZE)
+    # One size for the whole snippet, the largest at which its LONGEST line fits, so a request URL
+    # that grew a parameter shrinks the block rather than running off the strip.
+    longest = max(lines, key=lambda ln: draw.textlength(ln, font=tokens.font("mono", tokens.STRIP_CODE_SIZE)),
+                  default="")
+    font = _fit(draw, longest, "mono", tokens.STRIP_CODE_SIZE, f.content_width, tokens.STRIP_CODE_MIN)
     y = f.body_y + tokens.STRIP_HEADLINE + tokens.STRIP_RULE_GAP + tokens.STRIP_RULE_GAP
     for line in lines:
         paint.code_line(draw, (f.pad_x, y), paint.code_spans(line, p), font)
         y += tokens.STRIP_CODE_LEADING
-    paint.text(draw, (f.pad_x, y + tokens.STRIP_RULE_GAP), footnote,
-               tokens.font("ui", tokens.STRIP_SMALL), p.ink_muted)
-    paint.text(draw, (f.pad_x, f.footer_y), facts.url_text,
-               tokens.font("mono", f.footer_size), p.accent)
+    _small(draw, (f.pad_x, y + tokens.STRIP_RULE_GAP), footnote, p.ink_muted, f.content_width)
+    _footer(img, draw, f, p, facts)
     return img
 
 

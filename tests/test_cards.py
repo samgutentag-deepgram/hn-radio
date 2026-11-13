@@ -12,7 +12,7 @@ asset goes wrong quietly, because every one of them produces a file that opens a
   - A VALUE MOVES OUT OF `tokens.py`. Deepgram is mid-rebrand and the brand team owns the
     guidelines, so the promise is that a restyle is one file. A hex code that drifts into
     `layout.py` breaks that promise months before anyone finds out. `brand.css` protects its own
-    seal with a grep in `make check`; this is the same gate for the raster.
+    seal with a grep in `make check`; this is the same check for the raster.
 """
 
 from __future__ import annotations
@@ -310,19 +310,83 @@ def test_no_colour_literal_lives_outside_the_tokens_module(name):
 
 
 def test_the_colours_come_from_brand_css_and_not_from_a_second_copy():
-    """One source for the palette, so a card and the page it links to cannot disagree. This is the
-    same block `scripts/make_cover.py` reads, through the same function, since 2026-09-16."""
+    """One source for the palette, so a card and the page it links to cannot disagree."""
     p = tokens.palette()
     css = tokens.BRAND_CSS.read_text()
-    assert "--dg-accent: #13ef95;" in css
-    assert p.accent == (0x13, 0xef, 0x95)
+    assert "--dg-accent: #e042ff;" in css                  # the 2026 kit's fuchsia
+    assert p.accent == (0xe0, 0x42, 0xff)
+    assert p.ink == tokens.token("dg-ink-primary") == (0xfc, 0xfa, 0xf8)
     assert len(tokens.voice_palettes()) >= 36
 
 
+def test_every_card_tile_is_a_tile_the_pack_declares():
+    """voices.json carries hexes; each must be a --dg-tile-* token, or it is a stray colour."""
+    tiles = json.loads(tokens.AVATAR_TILES.read_text())
+    assert len(tiles) == 17
+    for key in tiles:
+        assert tokens.voice_card(f"flux-{key}-en") is not None, key
+        assert tokens.voice_tile(f"flux-{key}-en") != tokens.token("dg-tile-neutral")
+
+
+def test_a_voice_with_no_card_gets_the_neutral_tile_and_no_object():
+    """Twenty Flux voices have no official card. They are never given an invented one."""
+    assert tokens.voice_card("flux-kelsey-en") is None
+    assert tokens.voice_tile("flux-kelsey-en") == tokens.token("dg-tile-neutral")
+
+
+def test_both_editions_of_a_day_share_a_felt_and_the_next_day_moves_on():
+    """Per day, not per week: the archive is a grid of days, two editions each."""
+    am, pm = tokens.felt_colorway("2026-09-16-am"), tokens.felt_colorway("2026-09-16-pm")
+    assert am == pm
+    assert tokens.felt_colorway("2026-09-17-am") != am
+    assert tokens.felt_path("2026-09-16-am").is_file()
+
+
+def test_the_cards_set_type_in_the_kits_faces():
+    """Work Sans and Azeret Mono ship in web/fonts; the cards use them, not Arial."""
+    assert tokens.font("ui", 20).path.endswith("WorkSans-Variable.ttf")
+    assert tokens.font("mono", 20).path.endswith("AzeretMono-Variable.ttf")
+    assert tokens.LOGO_MASK.is_file()
+
+
 def test_a_voice_missing_from_brand_css_is_skipped_rather_than_drawn_grey(tmp_path):
-    """Colour is reinforcement and never the only signal (brand.css block 1). An orb in a default
-    palette under a real name would be a quiet lie about what the show sounds like."""
+    """A voice block 1 does not know is not a voice the show has. Drawing it under a real-looking
+    name would be a quiet lie about what the show sounds like."""
     d = _write(tmp_path, _episode(segments=[
         {"role": "anchor", "desk": "anchor", "speaker_key": "Nobody", "voice_id": "flux-ghost-en"},
     ]))
-    assert cards.build_cards(d, APP_URL) is not None       # renders; it just has no orb on it
+    assert cards.build_cards(d, APP_URL) is not None       # renders; it just has no cast on it
+
+
+def _luminance(rgb) -> float:
+    def ch(v):
+        v /= 255
+        return v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
+    r, g, b = rgb[:3]
+    return 0.2126 * ch(r) + 0.7152 * ch(g) + 0.0722 * ch(b)
+
+
+@pytest.mark.parametrize("colorway", range(1, tokens.COLORWAYS + 1))
+def test_type_clears_aa_on_every_felt_colorway(colorway):
+    """The felt is a photograph, so contrast is measured, not assumed. Under every line of type on
+    the social card, the BRIGHTEST patch of scrimmed felt still gives 4.5:1."""
+    from hn_radio.cards import paint
+    episode_id = next(f"2026-11-{d:02d}" for d in range(1, 8)
+                      if tokens.felt_colorway(f"2026-11-{d:02d}") == colorway)
+    p = tokens.palette()
+    img = paint.canvas(tokens.SOCIAL.size, p, episode_id)
+    L = tokens.SOCIAL
+    regions = {   # (box, the ink set there)
+        "eyebrow": ((L.pad_x, L.eyebrow_y, 400, L.eyebrow_y + L.eyebrow_size), p.accent),
+        "dateline": ((670, L.dateline_y, 1136, L.dateline_y + L.dateline_size), p.ink_secondary),
+        "label": ((L.pad_x, L.hero_label_y, 700, L.hero_label_y + 2 * L.hero_label_leading),
+                  p.ink_secondary),
+        "names": ((840, L.cast_name_y, 1136, L.meta_y + L.meta_size), p.ink_secondary),
+        "url": ((L.pad_x, L.url_y, 760, L.url_y + L.url_size), p.accent),
+    }
+    for name, (box, ink) in regions.items():
+        patch = img.crop(box).resize((60, 8))
+        pixels = [patch.getpixel((x, y)) for y in range(patch.height) for x in range(patch.width)]
+        worst = max(_luminance(px) for px in pixels)
+        ratio = (_luminance(ink) + 0.05) / (worst + 0.05)
+        assert ratio >= 4.5, f"colorway {colorway}, {name}: {ratio:.2f}:1"

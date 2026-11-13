@@ -7,7 +7,7 @@ designer who does not read Python (see `tokens.py`'s header).
 THE READING ORDER THE LAYOUT IS BUILT AROUND, top to bottom, because it is the whole argument the
 card makes and the geometry only exists to serve it:
 
-    DEEPGRAM · FLUX TTS            what rendered this
+    READ BY FLUX TTS               what rendered this
     HACKER NEWS RADIO              what it is
     $0.24                          what this episode cost
     to render this whole episode
@@ -16,9 +16,12 @@ card makes and the geometry only exists to serve it:
     covers 819 episodes            what the rate means to someone holding credits
     dg-devrel-hn-radio.fly.dev/... where to go, in text, because an image is not a link
 
-The cast orbs are not decoration and not a fourth fact. They are painted in the two voices' real
-per-voice runs out of `brand.css` block 1, so the card shows the product rather than describing
-it, and they change every episode because the co-host rotates. Marketing asked for "something to
+The Deepgram logo stands alone at the far end of that last line, per the 2026 kit: never locked
+up with the show's name, so it sits as far from the wordmark as the card allows.
+
+The cast is not decoration and not a fourth fact. It is the two voices' official 2026 voice cards,
+so the card shows the product rather than describing it, and it changes every episode because the
+co-host rotates. Marketing asked for "something to
 show them, as opposed to having a button or a link"; a stat card with a wordmark on it is the
 thing that ask was rejecting.
 """
@@ -32,9 +35,9 @@ from PIL import Image, ImageDraw
 from . import paint, tokens
 from .facts import CardFacts
 
-# Fixed copy, as opposed to the per-episode strings in `facts.py`. Two lines, and the cover art
-# carries the same two: the eyebrow is the attribution and the wordmark is the show.
-EYEBROW = "DEEPGRAM · FLUX TTS"
+# Fixed copy, as opposed to the per-episode strings in `facts.py`. The eyebrow is the attribution
+# and the wordmark is the show. "Deepgram" is the logo's job, so it is not spelled out up here too.
+EYEBROW = "READ BY FLUX TTS"
 WORDMARK = "HACKER NEWS RADIO"
 
 
@@ -44,17 +47,17 @@ class CopyTooWide(ValueError):
 
 def compose(layout: tokens.Layout, facts: CardFacts) -> Image.Image:
     p = tokens.palette()
-    img = paint.canvas(layout.size, p)
+    img = paint.canvas(layout.size, p, facts.episode_id)
     draw = ImageDraw.Draw(img)
     right = layout.width - layout.pad_x
 
-    # The cast goes down on the bare ground, before a single glyph. Their glows are blends, and a
-    # blend over type is type that got darker.
+    # The cast goes down before a single glyph: each card sits on a soft shadow, and a shadow
+    # over type is type that got darker.
     _paint_cast(img, draw, layout, facts, p, right)
 
     # --- band A: the lockup ---------------------------------------------------------
     paint.tracked(draw, (layout.pad_x, layout.eyebrow_y), EYEBROW,
-                  tokens.font("display", layout.eyebrow_size), p.accent, layout.eyebrow_track)
+                  tokens.font("mono", layout.eyebrow_size), p.accent, layout.eyebrow_track)
     paint.text(draw, (layout.pad_x, layout.wordmark_y), WORDMARK,
                tokens.font("display", layout.wordmark_size), p.ink)
 
@@ -98,7 +101,9 @@ def compose(layout: tokens.Layout, facts: CardFacts) -> Image.Image:
     # Mono, and in the accent. A URL nobody can click is a URL somebody has to retype, and a
     # proportional face is where `1`, `l` and `I` stop being distinguishable by eye.
     url_font = tokens.font("mono", layout.url_size)
-    if draw.textlength(facts.url_text, font=url_font) > layout.content_width:
+    logo_w = paint.logo(img, right, layout.url_y + layout.url_size, layout.logo_h, p.ink)
+    room = layout.content_width - logo_w - layout.cast_gap
+    if draw.textlength(facts.url_text, font=url_font) > room:
         raise CopyTooWide(f"the URL overruns the {layout.name} card: {facts.url_text!r}")
     paint.text(draw, (layout.pad_x, layout.url_y), facts.url_text, url_font, p.accent)
 
@@ -107,36 +112,28 @@ def compose(layout: tokens.Layout, facts: CardFacts) -> Image.Image:
 
 def _paint_cast(img: Image.Image, draw: ImageDraw.ImageDraw, layout: tokens.Layout,
                 facts: CardFacts, p: tokens.Palette, right: int) -> None:
-    """The episode's two voices as their own orbs, right-aligned, named underneath.
+    """The episode's two voices as their voice cards, right-aligned, named underneath.
 
-    NAMED, not just coloured. That is `brand.css` block 1's standing rule, quoted here because it
-    is easy to lose in a raster: colour is reinforcement and never the only signal, so a reader
-    with no colour perception loses decoration and no information.
+    NAMED, not just pictured. That is `brand.css` block 1's standing rule, quoted here because it
+    is easy to lose in a raster: the picture is reinforcement and never the only signal.
 
-    A voice missing from block 1 is SKIPPED rather than drawn in a default palette. Every GA voice
-    is in there; one that is not means the catalog moved, and a grey orb labelled with a name
-    would be a quiet lie about what the show sounds like.
+    A voice with no official card gets its initial on the neutral tile, the same as the site's
+    transcript, because the card names it. A voice missing from block 1 entirely is SKIPPED: every
+    GA voice is in there, and one that is not means the catalog moved.
     """
-    palettes = tokens.voice_palettes()
-    seats = [s for s in facts.speakers if s.voice_id in palettes]
+    known = tokens.voice_palettes()
+    seats = [s for s in facts.speakers if s.voice_id in known]
     if not seats:
         return
 
-    d = layout.orb_d
-    name_font = tokens.font("ui", layout.orb_name_size)
+    d = layout.cast_d
+    name_font = tokens.font("ui", layout.cast_name_size)
     # Laid out from the right edge inward, so one seat sits where the second of two would.
-    placed = [(right - d // 2 - i * (d + layout.orb_gap), s)
+    placed = [(right - d // 2 - i * (d + layout.cast_gap), s)
               for i, s in enumerate(reversed(seats))]
-
-    # THREE PASSES, not one per orb, and each boundary is load-bearing. A `bleed` darkens what it
-    # covers (see `paint.bleed`), so one orb's glow must not wash over the neighbour already
-    # painted beside it or the name already set beneath it. Glows, then spheres, then names.
     for cx, speaker in placed:
-        paint.bleed(img, cx, layout.orb_center_y, d, palettes[speaker.voice_id][3])
-    for cx, speaker in placed:
-        light, mid, deep, glow = palettes[speaker.voice_id]
-        paint.place_orb(img, cx, layout.orb_center_y, d, (light, mid, deep), glow, p.orb_ground)
+        paint.place_bubble(img, cx, layout.cast_center_y, d, speaker.voice_id, p, speaker.name)
     for cx, speaker in placed:
         if speaker.name:
-            paint.text(draw, (cx, layout.orb_name_y), speaker.name, name_font,
+            paint.text(draw, (cx, layout.cast_name_y), speaker.name, name_font,
                        p.ink_secondary, anchor="ma")

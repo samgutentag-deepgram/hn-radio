@@ -4,16 +4,15 @@ It knows how to make marks and nothing about what a card says. Every colour and 
 arrives as an argument from `layout.py`, which reads them from `tokens.py`. There is not a hex
 value or a pixel offset in this file, which is the seal `tokens.py`'s header describes.
 
-TWO THINGS ARE COPIED FROM `scripts/make_cover.py` AND THE COPY IS DELIBERATE. The orb geometry
-and its additive compositing are the design language's, and the cover script is a standalone tool
-Sam runs by hand a couple of times a year, outside the package, with its own oversampling and its
-own honeycomb. Importing this module into it would couple a hand-run script to the nightly render
-path for two functions. The values both read now come from `tokens.py`, which is the coupling
-that actually mattered.
+The felt and the voice-card bubble follow `scripts/make_art.py`, which draws the same two things
+on the album art, so the card and the cover are one object. Not imported from there, because that
+is a standalone script and this is the nightly render path.
 """
 
 from __future__ import annotations
 
+from functools import lru_cache
+from pathlib import Path
 from typing import Optional, Sequence, Tuple
 
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
@@ -23,84 +22,113 @@ from . import tokens
 RGB = Tuple[int, int, int]
 
 
-def canvas(size: Tuple[int, int], palette: tokens.Palette) -> Image.Image:
-    """The ground: the page colour with the ambient field washed over it."""
+@lru_cache(maxsize=None)
+def _felt(path: Path, size: Tuple[int, int]) -> Image.Image:
+    """The kit's felt at `size`, cover-cropped and softened. Off-black if the file is missing."""
     w, h = size
-    img = Image.new("RGB", size, palette.ground)
-    field = Image.new("RGB", size, (0, 0, 0))
-    d = ImageDraw.Draw(field)
-    for box, lobe in ((tokens.AMBIENT_WARM_BOX, tokens.AMBIENT_WARM),
-                      (tokens.AMBIENT_COOL_BOX, tokens.AMBIENT_COOL)):
-        left, top, rightf, bottom = box
-        d.ellipse([w * left, h * top, w * rightf, h * bottom], fill=palette.ambient[lobe])
-    field = field.filter(ImageFilter.GaussianBlur(w * tokens.AMBIENT_BLUR))
-    return Image.blend(img, field, tokens.AMBIENT_STRENGTH)
+    try:
+        src = Image.open(path).convert("RGB")
+    except OSError:
+        return Image.new("RGB", size, tokens.palette().ground)
+    scale = max(w / src.width, h / src.height)
+    sw, sh = round(src.width * scale), round(src.height * scale)
+    src = src.resize((sw, sh), Image.LANCZOS)
+    left, top = (sw - w) // 2, (sh - h) // 2
+    src = src.crop((left, top, left + w, top + h))
+    return src.filter(ImageFilter.GaussianBlur(w * tokens.FELT_BLUR))
 
 
-def orb(d: int, shades: Sequence[RGB], glow_rgb: RGB, ground: RGB) -> Image.Image:
-    """One molten orb, `d` pixels across, as RGBA with a transparent surround.
+def _scrim_mask(size: Tuple[int, int]) -> Image.Image:
+    """How much of the scrim lands where: a floor, more at the top, the left and the bottom."""
+    n = tokens.SCRIM_STEPS
+    mask = Image.new("L", (n, n), 0)
+    px = mask.load()
+    for y in range(n):
+        fy = y / n
+        low = max(0.0, (fy - tokens.SCRIM_BOTTOM_FROM) / (1 - tokens.SCRIM_BOTTOM_FROM))
+        high = max(0.0, 1 - fy / tokens.SCRIM_TOP_REACH)
+        for x in range(n):
+            side = max(0.0, 1 - (x / n) / tokens.SCRIM_LEFT_REACH)
+            a = (tokens.SCRIM_BASE + side * tokens.SCRIM_LEFT + low * tokens.SCRIM_BOTTOM
+                 + high * tokens.SCRIM_TOP)
+            px[x, y] = min(255, int(255 * a))
+    return mask.resize(size, Image.BILINEAR)
 
-    THE SHADES ACCUMULATE. The reference composites its lava layers with `lighter`, so an overlap
-    is brighter than either layer. Alpha-blending them instead turns the object into a grey smudge;
-    that is the first mistake anyone makes here and it is why this says so.
 
-    Shades run deep-to-light onto the ellipses, the reverse of the reference's declared order. On
-    screen the reference scales its lava layer down and clips most of the largest, lowest ellipse
-    at the orb's edge, so it gets away with the lightest shade there. Unclipped, that fills the
-    lower half with near-white and the orb reads as a blob.
+def canvas(size: Tuple[int, int], palette: tokens.Palette, episode_id: str = "") -> Image.Image:
+    """The ground: the episode's felt colorway, darkened under a scrim where the type sits."""
+    img = _felt(tokens.felt_path(episode_id), size).copy()
+    img.paste(Image.new("RGB", size, palette.scrim), (0, 0), _scrim_mask(size))
+    return img
+
+
+def bubble(d: int, voice_id: str, palette: tokens.Palette, letter: str = "") -> Image.Image:
+    """One voice card as a round bubble, `d` pixels across, RGBA.
+
+    The voice's official object on its tile when the kit has a card for it; otherwise `letter`
+    (the speaker's initial) on the neutral tile, which is the site's rule for those voices.
     """
-    ss = tokens.ORB_SUPERSAMPLE
+    ss = tokens.CARD_SUPERSAMPLE
     n = d * ss
-    lava = Image.new("RGB", (n, n), (0, 0, 0))
-    for (lx, ty, w, h, blur), shade in zip(tokens.ORB_ELLIPSES, tuple(reversed(tuple(shades)))):
-        layer = Image.new("RGB", (n, n), (0, 0, 0))
-        ImageDraw.Draw(layer).ellipse([lx * n, ty * n, (lx + w) * n, (ty + h) * n], fill=shade)
-        lava = ImageChops.lighter(lava, layer.filter(ImageFilter.GaussianBlur(blur * n)))
-    lava = ImageChops.lighter(lava, Image.new("RGB", (n, n), ground))
-
-    # The glow rides the inside of the top edge, which is what stops the sphere reading as a flat
-    # disc with a stain on it.
-    inset = Image.new("RGB", (n, n), (0, 0, 0))
-    ir = int(n * tokens.ORB_INSET_GLOW_R)
-    ImageDraw.Draw(inset).ellipse(
-        [n / 2 - ir, int(n * tokens.ORB_INSET_GLOW_TOP), n / 2 + ir, 2 * ir],
-        outline=glow_rgb, width=max(1, int(n * tokens.ORB_INSET_GLOW_W)))
-    lava = ImageChops.lighter(
-        lava, inset.filter(ImageFilter.GaussianBlur(int(n * tokens.ORB_INSET_GLOW_BLUR))))
-
+    tile = tokens.voice_tile(voice_id)
+    grad = Image.new("RGB", (n, n), tile)
+    g = ImageDraw.Draw(grad)
+    split = tokens.TILE_SPLIT
+    for y in range(n):
+        t = max(0.0, (y / n - split) / (1 - split))
+        g.line([(0, y), (n, y)], fill=tuple(round(a + (b - a) * t)
+                                            for a, b in zip(tile, palette.tile_fade)))
+    out = grad.convert("RGBA")
+    card = tokens.voice_card(voice_id)
+    drawn = False
+    if card is not None:
+        try:
+            obj = Image.open(card).convert("RGBA")
+            box = int(n * tokens.AVATAR_FILL)
+            obj.thumbnail((box, box), Image.LANCZOS)
+            out.alpha_composite(obj, ((n - obj.width) // 2, (n - obj.height) // 2))
+            drawn = True
+        except OSError:
+            drawn = False
+    if not drawn:
+        initial = (letter or tokens.voice_key(voice_id))[:1].upper() or "?"
+        ImageDraw.Draw(out).text((n / 2, n / 2), initial,
+                                 font=tokens.font("display", int(n * tokens.LETTER_SIZE)),
+                                 fill=palette.ink_on_tile, anchor="mm")
     mask = Image.new("L", (n, n), 0)
     ImageDraw.Draw(mask).ellipse([0, 0, n - 1, n - 1], fill=255)
-    out = Image.new("RGBA", (n, n), (0, 0, 0, 0))
-    out.paste(lava, (0, 0), mask)
+    out.putalpha(mask)
     return out.resize((d, d), Image.LANCZOS)
 
 
-def bleed(img: Image.Image, cx: int, cy: int, d: int, glow_rgb: RGB) -> None:
-    """The voice's glow spilled under and around the orb, in place. The reference's drop shadow.
-
-    ADDITIVE, where `scripts/make_cover.py` blends. The difference matters and it is not taste.
-    A blend against a mostly-black glow layer DARKENS everything it covers: the cover gets away
-    with that because it applies thirty-six of them to the whole canvas before it draws anything,
-    so the dimming is uniform and reads as the deep ground the art wants. Here it dimmed a
-    #fbfbff wordmark to #7a7a7c, and cropping the blend to the glow's own box only traded that
-    for two visible rectangles where the ambient wash stepped darker inside the crop.
-
-    Adding light has neither failure. Outside the ellipse the layer is zero, so the operation is
-    the identity there, and inside it the ground gets brighter, which is what a glow does.
-    """
-    r = int(d * tokens.ORB_GLOW_R)
-    drop = int(d * tokens.ORB_GLOW_DROP)
-    layer = Image.new("RGB", img.size, (0, 0, 0))
-    ImageDraw.Draw(layer).ellipse([cx - r, cy - r + drop, cx + r, cy + r + drop], fill=glow_rgb)
-    layer = layer.filter(ImageFilter.GaussianBlur(max(1, int(d * tokens.ORB_GLOW_BLUR))))
-    layer = layer.point(lambda v: int(v * tokens.ORB_GLOW_STRENGTH))
-    img.paste(ImageChops.add(img, layer), (0, 0))
+def place_bubble(img: Image.Image, cx: int, cy: int, d: int, voice_id: str,
+                 palette: tokens.Palette, letter: str = "") -> None:
+    """Paste one voice card centred on (cx, cy), over a soft shadow so it sits on the felt."""
+    blur = max(1, int(d * tokens.BUBBLE_SHADOW))
+    pad = blur * 3
+    drop = int(d * tokens.BUBBLE_SHADOW_DROP)
+    shadow = Image.new("L", (d + pad * 2, d + pad * 2), 0)
+    ImageDraw.Draw(shadow).ellipse([pad, pad, pad + d, pad + d], fill=tokens.BUBBLE_SHADOW_ALPHA)
+    shadow = shadow.filter(ImageFilter.GaussianBlur(blur))
+    x0, y0 = cx - d // 2 - pad, cy - d // 2 - pad + drop
+    img.paste(Image.new("RGB", shadow.size, palette.scrim), (x0, y0), shadow)
+    b = bubble(d, voice_id, palette, letter)
+    img.paste(b, (cx - d // 2, cy - d // 2), b)
 
 
-def place_orb(img: Image.Image, cx: int, cy: int, d: int, shades, glow_rgb, ground) -> None:
-    """Paste one orb. The caller lays down every `bleed` first; see `layout._paint_cast`."""
-    o = orb(d, shades, glow_rgb, ground)
-    img.paste(o, (cx - d // 2, cy - d // 2), o)
+@lru_cache(maxsize=1)
+def _logo_mask() -> Image.Image:
+    return Image.open(tokens.LOGO_MASK).convert("L")
+
+
+def logo(img: Image.Image, right: int, baseline: int, height: int, colour: RGB) -> int:
+    """The 2026 wordmark, `height` pixels tall, its right edge at `right` and its foot on
+    `baseline`. Painted through its alpha so it takes the card's ink. Returns its width."""
+    src = _logo_mask()
+    width = round(src.width * height / src.height)
+    mask = src.resize((width, height), Image.LANCZOS)
+    img.paste(Image.new("RGB", mask.size, colour), (right - width, baseline - height), mask)
+    return width
 
 
 def rule(img: Image.Image, x0: int, x1: int, y: int, add: RGB, height: int) -> None:
@@ -245,7 +273,7 @@ def bars(img: Image.Image, x0: int, y_mid: int, width: int, height: int, values:
 
 # Enough of a lexer to make a snippet read as code, and no more. Colour here is reinforcement:
 # every one of these lines is legible in one ink, and the highlighting only makes the shape
-# easier to scan (brand.css block 1's standing rule, applied to type instead of orbs).
+# easier to scan (brand.css block 1's standing rule, applied to type).
 _KEYWORDS = frozenset((
     "def", "return", "if", "else", "elif", "for", "while", "in", "not", "and", "or", "import",
     "from", "with", "as", "try", "except", "raise", "lambda", "None", "True", "False", "class",
@@ -286,14 +314,14 @@ def code_spans(line: str, palette) -> list:
             i += 1
             continue
         if buf in _KEYWORDS:
-            out.append((buf, palette.accent_alt))
+            out.append((buf, palette.keyword))
             buf = ""
         flush(palette.ink_secondary)
         buf = ch
         flush(palette.ink_secondary)
         i += 1
     if buf in _KEYWORDS:
-        out.append((buf, palette.accent_alt))
+        out.append((buf, palette.keyword))
     else:
         flush(palette.ink_secondary)
     return out

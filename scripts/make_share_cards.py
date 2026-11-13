@@ -298,14 +298,17 @@ $0.06 and at $0.20 as well as where the archive really sits, which is $0.10 to $
   <li><b>What that rate means</b>, as how many episodes the $200 signup credit covers.</li>
   <li><b>Where to go next</b>, as visible text, because an image is not clickable in every client.</li>
 </ol>
-<p>The two orbs are the episode's actual voices, in their real per-voice palettes. The co-host
-rotates, so the cast on the card changes every episode.</p>
+<p>The two voice cards are the episode's actual voices, as their official 2026 voice-card objects.
+A voice with no official card gets its initial on a neutral tile. The co-host rotates, so the cast
+on the card changes every episode.</p>
 {''.join(sections)}
 <h2>Notes for a designer</h2>
 <ul>
-  <li><b>The type is not the brand face.</b> This repo ships no font binaries, so the cards land on
-      Arial locally and DejaVu in the container, the same way the site lands on system-ui. One
-      line changes when a licensed file can live in the repo.</li>
+  <li><b>The type is the kit's.</b> Work Sans and Azeret Mono ship in <code>web/fonts</code> under
+      the OFL, so the cards set the same faces as the site, locally and in the container.</li>
+  <li><b>The ground is the kit's felt</b>, one colorway per day so both editions of a day match,
+      under a scrim where the type sits. The Deepgram logo stands alone at the right of the URL
+      line, never locked up with the show name.</li>
   <li><b>Every colour, size and spacing value is in one file</b>,
       <code>hn_radio/cards/tokens.py</code>, and the colours in it are read out of
       <code>web/brand.css</code> rather than copied. A restyle is one file, and the cards cannot
@@ -494,7 +497,8 @@ the script assembly calls it.</blockquote>
 <h2>What is shared across all of them</h2>
 <ul>
   <li>The same <code>hn_radio/cards/tokens.py</code> as the share cards, so a restyle moves the
-      strips too, and the orbs are the real per-voice palettes out of <code>web/brand.css</code>.</li>
+      strips too, and the voices are their official 2026 voice cards, on the tiles
+      <code>web/brand.css</code> declares.</li>
   <li>Grouped for scanning, not ranked. The four themes are cost, flexibility, ease of
       development and narrative, and there are three to five of each.</li>
   <li>Static raster only: no web font, no JavaScript, no player. Each one gets alt text carrying
