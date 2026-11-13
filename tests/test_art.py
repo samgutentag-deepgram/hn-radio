@@ -105,3 +105,37 @@ def test_feed_items_carry_their_art_only_when_it_exists(tmp_path, monkeypatch):
     by_id = {("pm" if "2026-11-12-pm/" in i else "am"): i for i in items}
     assert '<itunes:image href="https://example.test/episodes/2026-11-12-pm/art.jpg?v=' in by_id["pm"]
     assert "itunes:image" not in by_id["am"]
+
+
+def test_backfill_draws_missing_art_then_leaves_current_art_alone(tmp_path):
+    ep = _episode(tmp_path)
+    first = art.backfill(tmp_path)
+    assert first["written"] == [ep.name] and (ep / "art.jpg").is_file()
+    assert art.backfill(tmp_path)["skipped"] == [ep.name]
+
+
+def test_backfill_redraws_art_older_than_its_chapters(tmp_path):
+    import os
+    ep = _episode(tmp_path)
+    art.backfill(tmp_path)
+    drawn = (ep / "art.jpg").stat().st_mtime
+    os.utime(ep / "chapters.json", (drawn + 10, drawn + 10))
+    assert art.backfill(tmp_path)["written"] == [ep.name]
+
+
+def test_backfill_reports_a_failure_and_keeps_going(tmp_path, monkeypatch):
+    ep = _episode(tmp_path)
+    monkeypatch.setattr(art, "make_episode_art", lambda d: (_ for _ in ()).throw(OSError("no felt")))
+    assert art.backfill(tmp_path)["failed"] == [ep.name]
+
+
+def test_rebuild_site_draws_art_before_the_feed(tmp_path, monkeypatch):
+    order = []
+    monkeypatch.setattr(art, "backfill", lambda d: order.append("art"))
+    monkeypatch.setattr(publish.feed, "rebuild_feed", lambda d: order.append("feed") or tmp_path)
+    monkeypatch.setattr(publish.manifest, "build_manifest", lambda d: tmp_path)
+    monkeypatch.setattr(publish.manifest, "build_voices_json", lambda d: tmp_path)
+    monkeypatch.setattr(publish.pricing, "backfill", lambda d: None)
+    monkeypatch.setattr(publish.cards, "backfill", lambda d: None)
+    publish.rebuild_site(tmp_path)
+    assert order == ["art", "feed"]

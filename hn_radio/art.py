@@ -569,3 +569,43 @@ def try_make_episode_art(ep_dir: Path, log=print) -> Optional[Path]:
     except Exception as e:   # noqa: BLE001 -- decoration must not fail the show
         log(f"[art] no art for {Path(ep_dir).name}: {type(e).__name__}: {e}")
         return None
+
+
+# Files whose change can change the picture: the cast comes from the segments, the stories from
+# the chapters or the picked items.
+_ART_INPUTS = ("episode.json", "script.json", "chapters.json")
+
+
+def _art_is_current(ep_dir: Path) -> bool:
+    out = ep_dir / ART_FILE
+    if not out.is_file():
+        return False
+    drawn = out.stat().st_mtime
+    return all(not (ep_dir / n).is_file() or (ep_dir / n).stat().st_mtime <= drawn for n in _ART_INPUTS)
+
+
+def backfill(episodes_dir: Path, force: bool = False, log=None) -> dict:
+    """Draw art for every episode on disk that has none, or whose art is older than its inputs.
+
+    Called from `publish.rebuild_site`, next to `cards.backfill` and for the same reason: the
+    archive that aired before the rebrand gets art the first time the new code boots, with no
+    migration to remember. About 0.15 seconds an episode, so a cold boot over the whole archive
+    adds roughly half a minute once, and milliseconds after that.
+
+    Images only: no network, no Deepgram key, no audio touched. Nothing here raises; a failure is
+    one log line per episode, because this runs inside the app's startup hook.
+    """
+    log = log or (lambda *a: None)
+    written, skipped, failed = [], [], []
+    for episode_json in sorted(Path(episodes_dir).glob("*/episode.json")):
+        ep_dir = episode_json.parent
+        if not force and _art_is_current(ep_dir):
+            skipped.append(ep_dir.name)
+            continue
+        if try_make_episode_art(ep_dir, log=log) is None:
+            failed.append(ep_dir.name)
+        else:
+            written.append(ep_dir.name)
+    if written or failed:
+        log(f"[art] drew {len(written)}, {len(failed)} failed, {len(skipped)} already current")
+    return {"written": written, "skipped": skipped, "failed": failed}

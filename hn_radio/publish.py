@@ -120,7 +120,12 @@ def rebuild_site(episodes_dir: Path) -> dict:
     machine, and it has neither on a box with no fonts installed -- in which case it logs one line
     and builds nothing, rather than raising inside the app's startup hook.
 
-    Both results are deliberately DROPPED rather than added to the returned dict. Every key in
+    `art.backfill` goes THIRD, and it must come before `rebuild_feed`, because a feed item only
+    carries its own `itunes:image` when `art.jpg` is already on disk. It draws art for any
+    episode with none or with art older than its inputs: the whole pre-rebrand archive on the
+    first boot (about half a minute), nothing after that. Images only, and it never raises.
+
+    All three results are deliberately DROPPED rather than added to the returned dict. Every key in
     here is a path a caller can open, three characterization tests assert exactly that set, and a
     count of repriced or repictured episodes is neither a path nor something any caller acts on.
     Each backfill reports through its own `log` (silent here, by default);
@@ -129,6 +134,7 @@ def rebuild_site(episodes_dir: Path) -> dict:
     """
     pricing.backfill(episodes_dir)
     cards.backfill(episodes_dir)
+    art.backfill(episodes_dir)
     return {
         "feed_xml": str(feed.rebuild_feed(episodes_dir)),
         "index_json": str(manifest.build_manifest(episodes_dir)),
