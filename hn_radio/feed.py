@@ -22,7 +22,9 @@ import json
 from datetime import datetime, timezone
 from email.utils import format_datetime
 from pathlib import Path
+from typing import Optional
 
+from . import art as episode_art
 from . import config
 from .models import is_recast
 
@@ -100,7 +102,7 @@ def build_show_notes(data: dict, chapters: list) -> str:
 
 
 def _rss_item(data: dict, pub: datetime, audio_name: str, audio_bytes: int, audio_type: str,
-              chapters: list) -> str:
+              chapters: list, image: Optional[str] = None) -> str:
     # Two different URLs, and the distinction is load-bearing.
     #
     # `ep_url` is the ARTIFACT root for this episode. Enclosures, chapters and the transcript all
@@ -119,6 +121,10 @@ def _rss_item(data: dict, pub: datetime, audio_name: str, audio_bytes: int, audi
     # declaration for an opaque id and does not alter the id itself.
     ep_url = f"{config.site_base_url()}/{data['id']}/"
     page_url = f"{config.site_app_url()}/episode.html?id={data['id']}"
+    # Per-episode art when hn_radio.art drew one, content-hashed like the cover so a redrawn image
+    # reaches players. No art.jpg (every episode before the 2026 rebrand) means no tag, and the
+    # player falls back to the channel cover.
+    image_tag = f'\n      <itunes:image href="{html.escape(image)}"/>' if image else ""
     return f"""    <item>
       <title>{html.escape(data['title'])}</title>
       <guid isPermaLink="false">{ep_url}</guid>
@@ -129,7 +135,7 @@ def _rss_item(data: dict, pub: datetime, audio_name: str, audio_bytes: int, audi
       <enclosure url="{ep_url}{audio_name}" length="{audio_bytes}" type="{audio_type}"/>
       <itunes:duration>{int(data.get('duration_seconds', 0))}</itunes:duration>
       <podcast:chapters url="{ep_url}chapters.json" type="application/json+chapters"/>
-      <podcast:transcript url="{ep_url}transcript.vtt" type="text/vtt"/>
+      <podcast:transcript url="{ep_url}transcript.vtt" type="text/vtt"/>{image_tag}
     </item>"""
 
 
@@ -180,7 +186,8 @@ def rebuild_feed(episodes_dir: Path) -> Path:
             pub = datetime.fromisoformat(data["generated_at"].replace("Z", "+00:00"))
         except ValueError:
             pub = datetime.now(timezone.utc)
-        items.append(_rss_item(data, pub, audio_name, audio_bytes, audio_type, chapters))
+        items.append(_rss_item(data, pub, audio_name, audio_bytes, audio_type, chapters,
+                               episode_art.art_url(episodes_dir, data["id"])))
     feed = f"""<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>

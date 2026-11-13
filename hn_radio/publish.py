@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from . import cards, feed, manifest, pricing, transcript
+from . import art, cards, feed, manifest, pricing, transcript
 from .jsonio import write_json
 from .models import Episode
 
@@ -64,6 +64,9 @@ def publish(episode: Episode, out_dir: Path) -> dict:
     # can only see this episode once that file exists.
     write_json(episode_json, episode.to_dict())
     write_json(script_json, [s.to_dict() for s in episode.segments])
+    # The episode's art, before the feed is rebuilt so its item can point at it. Decoration only:
+    # `try_make_episode_art` turns any failure into one log line, and the episode still publishes.
+    art.try_make_episode_art(out_dir)
 
     return {
         "episode_json": str(episode_json),
