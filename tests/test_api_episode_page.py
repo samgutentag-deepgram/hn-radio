@@ -42,11 +42,13 @@ def client(tmp_path, monkeypatch):
         "cost": {"characters": 5426, "usd": 0.24417, "episodes_per_credit": 819,
                  "credit_usd": 200.0, "rate_usd_per_1k": 0.045, "plan": "payg"},
     }))
+    from backend import app as app_module
     from backend.app import app
     # Entering the context runs the startup hook, which is `publish.rebuild_site` -- so this
     # episode arrives priced and pictured, exactly as it would on a Fly boot. That is the state
     # these tests want to describe, rather than one assembled by hand beside it.
     with TestClient(app) as c:
+        app_module.boot_rebuild.join()   # the boot rebuild runs in a thread; wait for it
         yield c, d
 
 

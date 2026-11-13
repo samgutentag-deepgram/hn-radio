@@ -14,6 +14,7 @@ The Deepgram key is read from the environment / .env by hn_radio.config; it neve
 
 from __future__ import annotations
 
+import threading
 import html
 import json as _json
 import re
@@ -42,7 +43,17 @@ def _rebuild_static() -> None:
 
 @app.on_event("startup")
 def _startup() -> None:
-    _rebuild_static()
+    # In a background thread, so the server answers while it runs. The site files from the last
+    # rebuild are already on the volume and serve fine meanwhile. Synchronous, a restyle that
+    # redraws every card and every episode's art held the app off the network for over half an
+    # hour on Fly's shared CPU (2026-11-12): about 16 seconds a card there, against 0.1 locally.
+    global boot_rebuild
+    boot_rebuild = threading.Thread(target=_rebuild_static, name="rebuild-site", daemon=True)
+    boot_rebuild.start()
+
+
+# The boot rebuild's thread, so a test can wait for it with `boot_rebuild.join()`.
+boot_rebuild: Optional[threading.Thread] = None
 
 
 # `POST /api/recast` was deleted 2026-09-16, with the picker that was its only caller. Sam:
