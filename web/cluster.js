@@ -88,7 +88,7 @@
       if (!this.cast.length && host) this.cast = [host]
     }
     this.cast = this.cast.slice(0, 4)
-    if (!this.cast.length) this.cast = ['brooke']
+    if (!this.cast.length) this.cast = ['alexis']
 
     el.classList.add('cluster')
 
@@ -175,8 +175,32 @@
     }
   }
 
+  // One voice's card as a small tile: the object on its tile color, or its initial on a neutral
+  // tile when the voice has no official card. Decorative; callers print the name beside it.
+  function avatar(voice, label, className) {
+    var k = keyOf(voice)
+    var el
+    if (AVATARS.indexOf(k) !== -1) {
+      el = document.createElement('img')
+      el.src = '/brand/avatars/' + k + '.webp'
+      el.alt = ''
+      el.decoding = 'async'
+    } else {
+      el = document.createElement('span')
+      el.className = 'is-initial'
+      el.textContent = String(label || k || '?').charAt(0).toUpperCase()
+    }
+    el.classList.add(className || 'avatar-tile')
+    el.setAttribute('data-tile', k)
+    el.setAttribute('aria-hidden', 'true')
+    return el
+  }
+
   window.DGCluster = {
     envelope: envelope,
+    keyOf: keyOf,
+    hasCard: function (voice) { return AVATARS.indexOf(keyOf(voice)) !== -1 },
+    avatar: avatar,
     // A still group bubble for a list row: no button, no badge, no audio. Decorative.
     render: function (cast, className, opts) {
       var el = document.createElement('span')

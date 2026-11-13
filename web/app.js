@@ -218,6 +218,15 @@ import { mmss, usd, count } from './format.js';
         : (seg.role === 'anchor' || seg.role === 'host' ? (vname[seg.voice_id] || seg.speaker_key || 'Anchor')
           : (vname[seg.voice_id] || seg.speaker_key) + (seg.desk ? ' · ' + seg.desk + ' desk' : ''));
       who.textContent = label + ' ';
+      // The voice card beside the name: the object on its tile, or the initial on a neutral tile
+      // for a voice with no official card. data-tile on the row gives it the card's rule color and
+      // playhead tint (brand.css). Decorative; the name follows in text.
+      if (seg.voice_id && window.DGCluster) {
+        var tileKey = window.DGCluster.keyOf(seg.voice_id);
+        row.setAttribute('data-tile', tileKey);
+        who.insertBefore(window.DGCluster.avatar(seg.voice_id, vname[seg.voice_id] || seg.speaker_key), who.firstChild);
+        who.classList.add('has-avatar');
+      }
       var v = document.createElement('span'); v.className = 'voice'; v.textContent = seg.voice_id || '';
       who.appendChild(v);
       if (seg.role === 'commenter' && seg.source_hn_id) {
@@ -311,31 +320,29 @@ import { mmss, usd, count } from './format.js';
       }
     });
 
-    // --- transport + the orb as the playback visual -----------------------------------------
-    // This used to be a bar canvas beside the play button, drawn from an AnalyserNode. The bars
-    // are gone and the TRANSPORT ORB is the visual now: the same analyser, reduced to an amplitude
-    // envelope, drives the molten lava inside the orb, and the orb crossfades to the palette of
-    // whoever is speaking. See web/orb.js and brand.css block 5.
-    //
-    // What has not changed is why the signal is real. For a text-to-speech demo the point is that
-    // you are watching the speech itself, so a canned animation would be the same class of lie as
-    // a fake progress bar. It follows that the orb goes still while paused: there is genuinely
-    // nothing to show. It holds its molten pose rather than emptying out.
-    //
-    // And the contract this block has always kept is kept harder, because there are now two things
-    // that can fail instead of one: if the AudioContext throws, `analyser` goes null; if the orb
-    // fails to attach, HNOrb.attach returns null. Either way every reference below is guarded and
-    // the audio plays. Visualisation must never break playback.
+    // --- transport + the cast cluster as the playback visual --------------------------------
+    // The play button is the episode's cast as a group bubble (web/cluster.js), host first. The
+    // speaker is read off the active transcript row, so a handoff is visible as well as audible,
+    // and the speaker's bubble swells with the real signal through an amplitude envelope. Paused,
+    // it holds still: there is nothing to show. Visualisation must never break playback, so
+    // every reference below is guarded and the audio plays if the cluster or Web Audio fails.
     (function () {
       var transport = document.getElementById('transport');
       var mark = document.getElementById('transport-mark');
       var timeEl = document.getElementById('transport-time');
       if (!transport) return;
 
-      var analyser = null, env = null;
-      var orb = (window.HNOrb && window.HNOrb.attach)
-        ? window.HNOrb.attach(transport, { observe: false })
-        : null;
+      var analyser = null;
+      var cast = [];
+      segments.forEach(function (sg) {
+        if (sg.voice_id && cast.indexOf(sg.voice_id) === -1) {
+          if (sg.desk === 'anchor' || sg.role === 'anchor' || sg.role === 'host') cast.unshift(sg.voice_id);
+          else cast.push(sg.voice_id);
+        }
+      });
+      // Cards only, like the home page: a voice without an official card is left out of the
+      // bubble (the host always stays) and gets its letter tile in the transcript instead.
+      var cluster = window.DGCluster ? window.DGCluster.attach(transport, { cast: cast, cardsOnly: true }) : null;
 
       function connect() {
         // Built on the first play, because an AudioContext created before a user gesture starts
@@ -343,7 +350,7 @@ import { mmss, usd, count } from './format.js';
         // left suspended the audio would be silent, not merely un-analysed.
         if (analyser) return;
         var AC = window.AudioContext || window.webkitAudioContext;
-        if (!AC) return;                       // no Web Audio: transport works, the orb just drifts
+        if (!AC) return;                       // no Web Audio: transport works, the bubble holds still
         try {
           var ac = new AC();
           var src = ac.createMediaElementSource(player);
@@ -356,44 +363,30 @@ import { mmss, usd, count } from './format.js';
           analyser.fftSize = 1024;
           src.connect(analyser);
           analyser.connect(ac.destination);
-          if (window.HNOrb && orb) {
-            env = window.HNOrb.envelope(analyser);
-            orb.setEnvSource(env);
-          }
+          if (cluster) cluster.setEnvSource(window.DGCluster.envelope(analyser));
           if (ac.state === 'suspended') ac.resume();
         } catch (e) {
           analyser = null;                     // never let visualisation break playback
         }
       }
 
-      // Whose palette the orb is wearing. Read off the ACTIVE TRANSCRIPT ROW rather than from a
-      // second copy of the segment list: the row already carries data-voice and data-desk, the
-      // handler above already marks which row is active, and handlers fire in registration order
-      // so .seg.active is current by the time this one runs. brand.css block 1 resolves those two
-      // attributes; orb.js reads the resulting values straight off the stylesheet.
-      var lastRow = null, snapNext = false;
+      // Who is speaking, read off the ACTIVE TRANSCRIPT ROW: the timeupdate handler above marks it,
+      // and handlers fire in registration order, so .seg.active is current by the time this runs.
+      var lastRow = null;
       function followSpeaker() {
-        if (!orb) return;
+        if (!cluster) return;
         var row = document.querySelector('.seg.active');
         if (!row || row === lastRow) return;
         lastRow = row;
-        orb.setSpeaker(row.getAttribute('data-voice'), row.getAttribute('data-desk'), snapNext);
-        snapNext = false;
+        cluster.setSpeaker(row.getAttribute('data-voice'));
       }
-      // After a seek the next speaker has nothing to do with the last one, so crossfading between
-      // them would be inventing a transition that no audio made.
-      player.addEventListener('seeking', function () { snapNext = true; lastRow = null; });
+      // After a seek, forget the last row so the next active one re-seats the speaker.
+      player.addEventListener('seeking', function () { lastRow = null; });
 
       // ---- the scrub bar -----------------------------------------------------------------
       //
-      // It fills the strip between the orb and the clock, which was empty: the console kept the
-      // orb and the readout when the bar canvas was replaced, and the scrubber that replaced it
-      // on the landing hero was never added here.
-      //
-      // POSITION ONLY. The orb is the signal -- it reads the same AnalyserNode the old bars did,
-      // through an amplitude envelope -- so this answers "where am I" and the orb answers "what
-      // does it sound like". Drawing a waveform here as well would put one question in two
-      // widgets, which is the trade the orb was chosen over.
+      // POSITION ONLY. The cast bubble is the signal, so this answers "where am I" and the bubble
+      // answers "what does it sound like".
       var scrub = document.getElementById('transport-scrub');
       var bar = document.getElementById('transport-bar');
       var ticks = document.getElementById('transport-ticks');
@@ -460,18 +453,18 @@ import { mmss, usd, count } from './format.js';
       });
       player.addEventListener('play', function () {
         // The glyph is a SHAPE swap, not a colour swap, so the icon can never disagree with the
-        // audio. It writes into #transport-mark rather than the button, because the button now also
-        // contains the orb's lava layers and innerHTML on it would delete them.
+        // audio. It writes into #transport-mark rather than the button, because the button also
+        // holds the cast bubble and innerHTML on it would delete it.
         if (mark) mark.innerHTML = '&#10073;&#10073;';
         transport.setAttribute('aria-label', 'Pause');
         connect();
-        if (orb) orb.setLive(true);
+        if (cluster) cluster.setLive(true);
         followSpeaker();
       });
       player.addEventListener('pause', function () {
         if (mark) mark.innerHTML = '&#9654;';
         transport.setAttribute('aria-label', 'Play');
-        if (orb) orb.setLive(false);          // holds its pose; the envelope goes to zero
+        if (cluster) cluster.setLive(false);          // holds still; the envelope goes to zero
       });
       player.addEventListener('timeupdate', function () { syncTime(); followSpeaker(); });
       player.addEventListener('loadedmetadata', function () { syncTime(); placeTicks(); });

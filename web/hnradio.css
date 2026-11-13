@@ -1,0 +1,204 @@
+/* Show-specific rules for HN Radio. brand.css is kept in step with The Deepgram Changelog's copy
+   so it can be re-synced from that repo; anything only this show needs goes here.
+   Same seal as brand.css: tokens only, no literals. */
+
+/* ============================================================================
+   MASTHEAD. The Deepgram 2026 wordmark (kit p9) stands alone at the left, drawn as a mask so it
+   takes the ink token: off-white on dark, off-black on light, the only two colorways the kit
+   allows. The kit says the logo is never locked up with another element, so the show's name
+   lives in the page title below it, not beside it.
+   ========================================================================= */
+.masthead-logo { flex: none; display: block; width: 6.6rem; height: 1.26rem; margin-right: 2.2rem;
+  background: var(--dg-text-primary);
+  -webkit-mask: url("/brand/deepgram-logo-2026-dark.svg") no-repeat left center / contain;
+          mask: url("/brand/deepgram-logo-2026-dark.svg") no-repeat left center / contain; }
+@media (max-width: 640px) { .masthead-logo { width: 5.6rem; height: 1.07rem; margin-right: auto; } }
+
+/* Site nav: the same links on every page, between the logo and the controls. On a phone it drops
+   to its own row under the logo, so nothing truncates. */
+.site-nav { display: flex; gap: 0.1rem; margin-right: auto; margin-left: 0.4rem; min-width: 0;
+  overflow-x: auto; scrollbar-width: none; }
+.site-nav a {
+  display: inline-flex; align-items: center; min-height: 2.25rem; padding: 0 0.45rem;
+  font-size: 0.78rem; color: var(--dg-text-label); text-decoration: none; white-space: nowrap;
+  border-radius: var(--dg-shape-pill);
+}
+.site-nav a:hover { color: var(--dg-text-primary); background: var(--dg-bg-well); }
+.site-nav a[aria-current="page"] { color: var(--dg-text-primary); background: var(--dg-bg-well); }
+@media (max-width: 640px) {
+  .masthead { flex-wrap: wrap; }
+  .site-nav { order: 3; width: 100%; margin: 0.2rem 0 0; }
+  .site-nav a { min-height: 2.75rem; }
+}
+
+/* ============================================================================
+   EPISODE GRID. Each edition's cast as a still group bubble beside its title, voices without an
+   official card left out (the host always stays). Decorative: the title and the transcript
+   carry who is in it in words.
+   ========================================================================= */
+.ep-cell--linked { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 0.9rem; }
+.ep-cell--linked > * { grid-column: 1; }
+.ep-cell--linked > .cell-cluster { grid-column: 2; grid-row: 1 / span 4; align-self: start; }
+.cell-cluster { --cluster-size: 4.2rem; }
+@media (max-width: 40rem) { .cell-cluster { --cluster-size: 3.4rem; } }
+
+/* The hero names the current speaker in words; in the 2026 brand that line stays in plain ink
+   (tile colors like Brass fail as text on the light page), with the speaker's card beside it. */
+.hero-speaker {
+  display: flex; align-items: center;
+  margin: 0.35rem 0 0;
+  font-size: 0.84rem;
+  font-weight: var(--dg-weight-medium);
+  color: var(--dg-text-primary);
+}
+.hero-speaker .avatar-tile { width: 1.5rem; height: 1.5rem; margin-right: 0.45rem; }
+
+/* ============================================================================
+   CAST CARDS (/cast.html). One card per voice in the published Flux catalog. The play target is
+   the voice's official 2026 voice-card object on its tile; a voice with no card gets its initial
+   on a neutral tile, never an invented avatar. The name and the voice id are printed on every
+   card, so the tile is reinforcement and never the only signal.
+
+   The grid breaks out of the prose column: four columns of 36 cards do not fit 46rem.
+   ========================================================================= */
+.cast-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin: 0.8rem 0 1.8rem;
+}
+@media (max-width: 68rem) { .cast-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 52rem) { .cast-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 34rem) { .cast-grid { grid-template-columns: minmax(0, 1fr); } }
+body.page-wide { --dg-col: min(84rem, 100vw - 2rem); }
+
+.cast-toolbar { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; margin: 1.4rem 0 0.2rem; }
+.cast-search { min-width: 0; flex: 0 1 26rem; }
+.cast-count { margin: 0; font-size: 0.78rem; color: var(--dg-text-label); }
+
+.cast-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  text-align: left;
+  font: inherit;
+  color: var(--dg-text-body);
+  cursor: pointer;
+  padding: 0.95rem 1rem;
+  background: var(--dg-bg-panel);
+  border: 1px solid var(--dg-border);
+  border-left: 2px solid var(--tile, var(--dg-border-hover));
+  border-radius: var(--dg-shape-panel);
+  -webkit-backdrop-filter: blur(var(--dg-glass-blur));
+  backdrop-filter: blur(var(--dg-glass-blur));
+  transition: border-color var(--dg-anim-fast) var(--dg-anim-ease),
+              transform var(--dg-anim-fast) var(--dg-anim-ease),
+              box-shadow var(--dg-anim-fast) var(--dg-anim-ease);
+}
+.cast-card:hover {
+  border-color: var(--dg-border-hover);
+  border-left-color: var(--tile, var(--dg-border-hover));
+  box-shadow: var(--dg-elevation-soft);
+  transform: translateY(-1px);
+}
+.cast-card:focus-visible { outline: 2px solid var(--dg-focus-ring); outline-offset: 2px; }
+.cast-top { display: flex; align-items: center; gap: 0.8rem; min-width: 0; }
+
+/* The voice card object on its tile, the same treatment as the transcript's .avatar-tile, bigger.
+   The play glyph rides in a badge on the corner, like the cluster's. */
+.cast-avatar {
+  --avatar-size: 3.6rem;
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  border-radius: var(--dg-radius-md);
+  background: linear-gradient(to bottom, var(--tile, var(--dg-tile-neutral)) 0%,
+    var(--tile, var(--dg-tile-neutral)) 42%, var(--dg-tile-fade) 100%);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--dg-surface-deep) 35%, transparent);
+  transition: box-shadow var(--dg-anim-base) var(--dg-anim-ease), transform var(--dg-anim-base) var(--dg-anim-ease);
+}
+.cast-avatar img { width: 82%; height: 82%; object-fit: contain; }
+.cast-avatar.is-initial {
+  font-family: var(--dg-font-display);
+  font-weight: var(--dg-weight-bold);
+  font-size: calc(var(--avatar-size) * 0.42);
+  color: var(--dg-ink-on-accent);
+}
+.cast-badge {
+  position: absolute;
+  right: -0.35rem;
+  bottom: -0.35rem;
+  display: grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: var(--dg-radius-round);
+  background: var(--dg-accent);
+  color: var(--dg-ink-on-accent);
+  box-shadow: 0 0 0 2px var(--dg-surface-page);
+}
+.cast-badge svg { width: 0.7rem; height: 0.7rem; fill: currentColor; }
+.cast-badge .ico-pause { display: none; }
+.cast-card.is-playing .cast-badge .ico-play { display: none; }
+.cast-card.is-playing .cast-badge .ico-pause { display: block; }
+.cast-card.is-playing .cast-avatar {
+  box-shadow: 0 0 0 2px var(--dg-accent), 0 6px 18px color-mix(in srgb, var(--dg-surface-deep) 45%, transparent);
+  animation: dg-float var(--dg-anim-breathe) var(--dg-anim-ease) infinite alternate;
+}
+
+.cast-name {
+  font-family: var(--dg-font-display);
+  font-weight: var(--dg-weight-medium);
+  font-size: 1.05rem;
+  line-height: 1.1;
+  color: var(--dg-text-primary);
+}
+/* The seat, in words. Plain label ink: the tile carries the identity, and tile hues like Brass
+   fail as text on the light page. */
+.cast-role { color: var(--dg-text-label); margin-top: 0.2rem; font-size: 0.8rem; }
+.cast-note { font-size: 0.82rem; color: var(--dg-text-body); margin: 0.2rem 0 0; }
+.cast-id {
+  align-self: flex-start;
+  max-width: 100%;
+  margin-top: 0.2rem;
+  padding: 0.1em 0.45em;
+  font-family: var(--dg-font-mono);
+  font-size: 0.66rem;
+  color: var(--dg-text-label);
+  background: var(--dg-bg-well);
+  border-radius: var(--dg-shape-control);
+  overflow-wrap: anywhere;
+}
+/* The hosts lead, double width, and their tile grows. A thicker left rule is the shape that marks
+   them before any color does, and .cast-role says "Host, Morning Edition" in words. */
+.cast-card.is-host {
+  grid-column: span 2;
+  flex-direction: row;
+  align-items: center;
+  gap: 1.2rem;
+  border-left-width: 5px;
+}
+.cast-card.is-host .cast-top { flex: 0 0 auto; }
+.cast-card.is-host .cast-avatar { --avatar-size: 4.8rem; }
+.cast-card.is-host .cast-body { display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
+@media (max-width: 68rem) { .cast-card.is-host { grid-column: 1 / -1; } }
+@media (max-width: 34rem) {
+  .cast-card.is-host { grid-column: auto; flex-direction: column; align-items: stretch; gap: 0.35rem; }
+}
+
+/* A voice whose sample never rendered. The strikethrough on the id says which file is missing. */
+.cast-card.is-silent .cast-id { text-decoration: line-through; }
+.cast-err { margin: 0.3rem 0 0; font-size: 0.74rem; color: var(--dg-state-error); font-family: var(--dg-font-mono); }
+
+/* ============================================================================
+   BUILD PAGE. The sample cell is the selected voice's card, the same object as the cast page.
+   ========================================================================= */
+.build-avatar { --avatar-size: 2.6rem; cursor: pointer; border: none; padding: 0; }
+.build-avatar:focus-visible { outline: 2px solid var(--dg-focus-ring); outline-offset: 3px; }
+.build-avatar.is-playing {
+  box-shadow: 0 0 0 2px var(--dg-accent), 0 6px 18px color-mix(in srgb, var(--dg-surface-deep) 45%, transparent);
+}

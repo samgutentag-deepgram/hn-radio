@@ -1,7 +1,7 @@
 /* Play instrumentation, browser side. Publishes window.HNPlays.
  *
  * Classic script, not a module, because three pages need it and only one of them (episode.html)
- * loads a module. Same reason orb.js is a classic script.
+ * loads a module. Same reason cluster.js is a classic script.
  *
  * WHAT IT COUNTS. Plays that happen on this site. A podcast client that pulled feed.xml and
  * played the MP3 never runs this file, so every number it feeds is "on the dashboard" and never

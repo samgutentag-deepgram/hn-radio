@@ -7,7 +7,10 @@
 <link rel="icon" href="/favicon.ico" sizes="32x32">
 <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<!-- felt.js sets the day's felt colorway on <html> before first paint, so it loads first. -->
+<script src="/felt.js"></script>
 <link rel="stylesheet" href="brand.css">
+<link rel="stylesheet" href="hnradio.css">
 </head>
 <body>
 <!-- Masthead: same sticky bar as every other page. This page had NO #theme-toggle at all while
@@ -16,7 +19,12 @@
      whole page rendered as unstyled prose. .wrap is gone (body is already the column) and the
      eyebrow is the shared one. -->
 <header class="masthead">
-  <p class="eyebrow"><span class="dg">deepgram</span> &middot; <a href="index.html">HN Radio</a></p>
+  <a class="masthead-logo" href="https://deepgram.com" target="_blank" rel="noopener" aria-label="Deepgram"></a>
+  <nav class="site-nav" aria-label="Site">
+    <a href="/">Episodes</a>
+    <a href="/cast.html">Cast</a>
+    <a href="/stats.html">Stats</a>
+  </nav>
   <div class="masthead-chrome">
     <button id="theme-toggle" type="button" aria-label="Toggle dark mode"></button>
   </div>
@@ -84,9 +92,9 @@
 </div>
 
 <script src="theme.js"></script>
-<!-- Classic script, before the module below: it publishes window.HNOrb, and a module is
-     deferred so it always runs after this. Same orb object the cast page and the hero use. -->
-<script src="orb.js"></script>
+<!-- Classic script, before the module below: it publishes window.DGCluster, and a module is
+     deferred so it always runs after this. Its avatar() draws the same voice card the cast page uses. -->
+<script src="cluster.js"></script>
 <script type="module">
   import { esc } from './format.js';
 
@@ -198,7 +206,7 @@
    *
    * 2. MOVING A SELECT IN CODE DOES NOT FIRE `change`. `setVoice` is a plain `sel.value = id`, and
    *    `change` is the only thing that calls `tint()` or `onChange()`. So after pressing the preset
-   *    the row's data-voice, its ink and the orb's aria-label all still described the PREVIOUS
+   *    the row's data-voice, its ink and the sample button's aria-label all still described the PREVIOUS
    *    voice, which breaks the one invariant the tint comment states outright, and the cost line
    *    kept pricing the old cast. Dispatched below, and only when the value actually moved, so a
    *    no-op press does not churn. `refreshPlan` is debounced through `planTimer`, so five row
@@ -256,20 +264,13 @@
       setVoice(sel, DEFAULT_VOICE[d.role]);
       tdVoice.appendChild(sel);
 
-      // The sample cell is a real molten orb in the SELECTED voice's shades, not a glyph button.
-      // Two reasons it is worth the code. The cast page and the hero already depict a voice this
-      // way, so a picker that used a bare triangle was the one place in the app where choosing a
-      // voice showed you nothing about it. And the orb re-tints on `change`, so the palette is
-      // feedback on the selection itself, before anything is rendered.
-      //
-      // No AnalyserNode. These are one-line samples off a plain <audio>, and a
-      // MediaElementSource graph per row to drive an envelope costs more than the motion is
-      // worth, so the orb churns without the vertical stretch the episode pages get.
+      // The sample cell is the SELECTED voice's card (or its letter tile), the same object the
+      // cast page and the transcript use, so choosing a voice shows you who you picked before
+      // anything is rendered. It is redrawn on `change`.
       var tdSample = document.createElement('td');
       var play = document.createElement('button');
-      play.className = 'build-orb orb orb-glyph';
+      play.className = 'cast-avatar build-avatar';
       play.type = 'button';
-      play.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>';
       tdSample.appendChild(play);
 
       var tdBeat = document.createElement('td');
@@ -279,19 +280,23 @@
       tr.appendChild(tdName); tr.appendChild(tdInc); tr.appendChild(tdVoice);
       tr.appendChild(tdSample); tr.appendChild(tdBeat);
       desksEl.appendChild(tr);
-      rows[d.role] = { box: box, sel: sel, tr: tr, orb: play };
+      rows[d.role] = { box: box, sel: sel, tr: tr, play: play };
 
-      // The ROW carries data-voice, not just the orb, so brand.css block 1 resolves --v-on for
-      // everything in it: the row's ink and the orb's shades come from one declaration and cannot
-      // disagree. tint() is what keeps it honest when the select changes.
+      // The ROW carries data-voice so brand.css block 1 still resolves --v-on for its ink, and the
+      // button carries the card. tint() keeps both on the current selection.
       function tint() {
         tr.setAttribute('data-voice', sel.value);
         play.setAttribute('aria-label', 'Hear ' + voiceName(doc, sel.value)
           + ' as the ' + d.label);
-        // setSpeaker reads the shades off the stylesheet through orb.js's probe, so there is no
-        // second copy of the palette here. Before the orb is molten this is a no-op and the CSS
-        // fallback shows through, which is why it is also called after attachAll below.
-        if (play._hnOrb) play._hnOrb.setSpeaker(sel.value, d.role, true);
+        var key = window.DGCluster ? window.DGCluster.keyOf(sel.value) : '';
+        play.setAttribute('data-tile', key);
+        play.textContent = '';
+        play.classList.toggle('is-initial', !(window.DGCluster && window.DGCluster.hasCard(sel.value)));
+        if (window.DGCluster) {
+          var face = window.DGCluster.avatar(sel.value, voiceName(doc, sel.value), 'build-face');
+          if (face.tagName === 'IMG') play.appendChild(face);
+          else play.textContent = face.textContent;
+        }
       }
       tint();
 
@@ -300,7 +305,7 @@
         preview.src = '/episodes/samples/' + sel.value + '.wav';
         currentPreview = sel.value;
         var started = preview.play();
-        // A missing sample must not leave an orb looking stuck mid-press.
+        // A missing sample must not leave a card looking stuck mid-press.
         if (started && started.catch) started.catch(function () {
           buildStatus.textContent = 'No sample rendered for ' + sel.value
             + '. Run scripts/make_cast_samples.py.';
@@ -311,35 +316,26 @@
       if (box) box.addEventListener('change', onChange);
     });
 
-    // One pass, after every row exists, same as the cast page. Then re-tint, because an orb that
-    // was not molten when tint() first ran could not take a palette.
-    if (window.HNOrb) window.HNOrb.attachAll('.build-table .build-orb');
-    DESKS.forEach(function (d) {
-      var r = rows[d.role];
-      if (r && r.orb && r.orb._hnOrb) r.orb._hnOrb.setSpeaker(r.sel.value, d.role, true);
-    });
   }
 
-  /** A voice's display name, for the orb's accessible label. Falls back to the id. */
+  /** A voice's display name, for the sample button's accessible label. Falls back to the id. */
   function voiceName(doc, id) {
     var hit = (doc.catalog || doc.voices || []).filter(function (v) { return v.id === id; })[0];
     return hit ? hit.name : id;
   }
 
-  // Which sample the shared <audio> is playing, so pressing the same orb twice pauses it rather
+  // Which sample the shared <audio> is playing, so pressing the same card twice pauses it rather
   // than restarting. One element for the whole table, so two rows can never talk over each other.
   var currentPreview = null;
 
-  // The orb that is sounding gets the ticker; the rest keep the CSS idle swirl. Five orbs is a
-  // small budget compared to the cast page's 36, but the rule is the same one and it is cheaper
-  // to keep than to special-case.
+  // The card that is sounding takes the accent ring.
   ['play', 'pause', 'ended'].forEach(function (e) {
     preview.addEventListener(e, function () {
       Object.keys(rows).forEach(function (role) {
         var r = rows[role];
-        if (!r || !r.orb || !r.orb._hnOrb) return;
+        if (!r || !r.play) return;
         var on = currentPreview === r.sel.value && !preview.paused;
-        r.orb._hnOrb.setLive(!!on);
+        r.play.classList.toggle('is-playing', !!on);
       });
     });
   });

@@ -7,17 +7,21 @@
 <link rel="icon" href="/favicon.ico" sizes="32x32">
 <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<!-- No font <link> here on purpose. This repo ships no font files and hosts none, so the
-     three families brand.css names all resolve to system-ui for most readers. There used to be
-     a Google Fonts stylesheet for Inter at this spot; it was a third-party request on every page
-     load and it is the one thing the "no CDN, no external font hosting" rule names outright. -->
+<!-- felt.js sets the day's felt colorway on <html> before first paint, so it loads first. -->
+<script src="/felt.js"></script>
 <link rel="stylesheet" href="brand.css">
+<link rel="stylesheet" href="hnradio.css">
 </head>
 <body>
-<!-- Masthead: brand lockup left, theme toggle right, sticky and in the flow. Same bar on every
+<!-- Masthead: the Deepgram logo alone at the left (2026 kit), site nav, theme toggle right, sticky and in the flow. Same bar on every
      page. See the longer note in index.html for why the toggle stopped being `position: fixed`. -->
 <header class="masthead">
-  <p class="eyebrow"><span class="dg">deepgram</span> &middot; <a href="/">HN Radio</a></p>
+  <a class="masthead-logo" href="https://deepgram.com" target="_blank" rel="noopener" aria-label="Deepgram"></a>
+  <nav class="site-nav" aria-label="Site">
+    <a href="/">Episodes</a>
+    <a href="/cast.html">Cast</a>
+    <a href="/stats.html">Stats</a>
+  </nav>
   <div class="masthead-chrome">
     <button id="theme-toggle" type="button" aria-label="Toggle dark mode"></button>
   </div>
@@ -33,23 +37,13 @@
      rather than between the player and the chapters. -->
 <div class="console">
   <div class="console-player">
-    <!-- The transport IS the playback visual. It used to be a play button beside a bar canvas
-         reading an AnalyserNode; the canvas is gone and the orb reads that same analyser through
-         an amplitude envelope instead (brand.css block 5, web/orb.js). One object, one signal.
-
-         The glyph lives in its own span because app.js swaps it between the play and pause
-         CHARACTERS, and it used to do that by writing the BUTTON's innerHTML -- which would now
-         delete the orb's lava layers along with the old glyph. -->
-    <button class="transport orb orb-glyph" id="transport" type="button" aria-label="Play"
+    <!-- The transport is the episode's cast as a group bubble (web/cluster.js), host in the biggest
+         seat. The speaker grows and takes the ring on each handoff, read off the active transcript
+         row, and swells with the audio envelope. The glyph lives in its own span because app.js
+         swaps it between play and pause; cluster.js moves it into the badge on the rim. -->
+    <button class="transport" id="transport" type="button" aria-label="Play"
             ><span id="transport-mark">&#9654;</span></button>
-    <!-- The scrub bar, and the gap it fills was a real one: the console had the orb on the left
-         and the clock pushed to the right with `margin-left: auto`, and nothing in between. The
-         hero on the landing page has had this scrubber the whole time; the console never got it
-         when the bar canvas was replaced by the orb, so an episode page showed a wide empty strip
-         exactly where a progress bar belongs.
-
-         Ticks are the CHAPTER boundaries, which is why this is more useful here than on the hero:
-         the episode page is the one that knows them. -->
+    <!-- The scrub bar. Ticks are the CHAPTER boundaries, which the episode page is the one to know. -->
     <div class="transport-scrub" id="transport-scrub" role="slider" tabindex="0"
          aria-label="Seek" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
       <div class="transport-bar" id="transport-bar"></div>
@@ -87,10 +81,10 @@
 
 
 <script src="theme.js"></script>
-<!-- Classic script, before app.js, because three callers need it and one of them is a module:
-     app.js here, and the inline scripts in index.html and cast.html. It publishes window.HNOrb. -->
-<script src="orb.js"></script>
-<!-- Classic script, like orb.js and for the same reason: index.html and stats.html need it too
+<!-- Classic script, before app.js, because several callers need it and one of them is a module.
+     It publishes window.DGCluster. -->
+<script src="cluster.js"></script>
+<!-- Classic script, like cluster.js and for the same reason: index.html and stats.html need it too
      and neither of them loads a module. It publishes window.HNPlays. -->
 <script src="plays.js"></script>
 <script type="module" src="app.js"></script>

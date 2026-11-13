@@ -7,17 +7,21 @@
 <link rel="icon" href="/favicon.ico" sizes="32x32">
 <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<!-- No font <link> here on purpose. This repo ships no font files and hosts none, so the
-     three families brand.css names all resolve to system-ui for most readers. There used to be
-     a Google Fonts stylesheet for Inter at this spot; it was a third-party request on every page
-     load and it is the one thing the "no CDN, no external font hosting" rule names outright. -->
+<!-- felt.js sets the day's felt colorway on <html> before first paint, so it loads first. -->
+<script src="/felt.js"></script>
 <link rel="stylesheet" href="brand.css">
+<link rel="stylesheet" href="hnradio.css">
 </head>
-<body>
-<!-- Masthead: brand lockup left, theme toggle right, sticky and in the flow. Same bar on every
+<body class="page-wide">
+<!-- Masthead: the Deepgram logo alone at the left (2026 kit), site nav, theme toggle right, sticky and in the flow. Same bar on every
      page. See the longer note in index.html for why the toggle stopped being `position: fixed`. -->
 <header class="masthead">
-  <p class="eyebrow"><span class="dg">deepgram</span> &middot; <a href="index.html">HN Radio</a></p>
+  <a class="masthead-logo" href="https://deepgram.com" target="_blank" rel="noopener" aria-label="Deepgram"></a>
+  <nav class="site-nav" aria-label="Site">
+    <a href="/">Episodes</a>
+    <a href="/cast.html" aria-current="page">Cast</a>
+    <a href="/stats.html">Stats</a>
+  </nav>
   <div class="masthead-chrome">
     <button id="theme-toggle" type="button" aria-label="Toggle dark mode"></button>
   </div>
@@ -25,8 +29,9 @@
 <h1>The Cast</h1>
 <p class="lede">Every voice in the published Flux TTS catalog, on one grid. HN Radio is two people,
 twice a day: Alexis hosts the Morning Edition, Cole hosts the Afternoon Edition, and each of them has
-a co-host drawn from this page. Hover over a card, or press it, to hear that voice introduce itself. Each carries its own palette, and it is the same palette you see beside that
-speaker in an episode script.</p>
+a co-host drawn from this page. Hover over a card, or press it, to hear that voice introduce itself.
+Each voice with an official Deepgram voice card wears it here, the same card you see beside that
+speaker in an episode script; the rest are shown by their initial.</p>
 
 <!--
   ONE GRID, NO SECTIONS, as of 2026-08-21.
@@ -46,9 +51,10 @@ speaker in an episode script.</p>
   a handful of ids this show cannot seat, and this page rendering a few mostly-dead cards is
   exactly the bug that moved the catalog into its own key.
 
-  ROLE IS TEXT, NEVER COLOUR. The host badge and the retired badge are words in a pill. Every card
-  already prints a name and a voice id. The orb's palette is decoration that narrows the field; it
-  is never the answer to who or what a card is, which is the rule at the top of brand.css block 1.
+  ROLE IS TEXT, NEVER COLOR. The host badge is words. Every card prints a name and a voice id. The
+  voice card is reinforcement, never the answer to who a card is, which is the rule at the top of
+  brand.css block 1. 17 of the catalog's voices have an official 2026 voice card; the others get a
+  letter tile. Avatars are never invented for them.
 -->
 
 <p class="note" id="host-note"></p>
@@ -67,10 +73,9 @@ speaker in an episode script.</p>
 <audio id="sample" preload="none"></audio>
 
 <script src="theme.js"></script>
-<!-- Classic script, before the page script: it publishes window.HNOrb. This page is the reason
-     orb.js has one shared animation loop and an IntersectionObserver -- it puts 36 orbs on one
-     page, and 36 rAF loops driving 108 blurred layers is not a thing to ship. -->
-<script src="orb.js"></script>
+<!-- Classic script, before the page script: it publishes window.DGCluster, whose avatar() draws
+     each voice card (or letter tile) the same way the transcript does. -->
+<script src="cluster.js"></script>
 <script>
 (function () {
   // One shared <audio> so two samples can never talk over each other, same rule as the
@@ -92,17 +97,28 @@ speaker in an episode script.</p>
     var el = document.createElement('button');
     el.className = 'cast-card';
     el.type = 'button';
-    // The voice's own palette from brand.css block 1, so a card and that speaker's rows in an
-    // episode script are visibly the same character.
-    el.setAttribute('data-voice', v.id);
+    // The voice card's tile color (hnradio.css, brand.css [data-tile]), so a card and that
+    // speaker's rows in an episode script are visibly the same character.
+    el.setAttribute('data-tile', window.DGCluster ? window.DGCluster.keyOf(v.id) : '');
     el.setAttribute('data-id', v.id);
     el.setAttribute('aria-label', 'Play ' + v.name + ' reading the show open');
 
     var top = document.createElement('div'); top.className = 'cast-top';
-    // A real molten orb in this voice's shades, which is how talk.deepgram.com depicts a voice.
-    // The play triangle rides on top; the button's aria-label is what names the action.
-    var ico = document.createElement('span'); ico.className = 'cast-play orb orb-glyph';
-    ico.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>';
+    // The official voice card on its tile, or the initial on a neutral tile when there is no card.
+    // The play glyph rides in a badge on the corner; the button's aria-label names the action.
+    var ico = window.DGCluster ? window.DGCluster.avatar(v.id, v.name, 'cast-avatar')
+                               : document.createElement('span');
+    var badge = document.createElement('span'); badge.className = 'cast-badge';
+    badge.innerHTML = '<svg class="ico-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>'
+      + '<svg class="ico-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.2v14H7zm6.8 0H17v14h-3.2z"/></svg>';
+    if (ico.tagName === 'IMG') {
+      // An <img> cannot hold the badge, so it gets a tile wrapper of its own.
+      var wrap = document.createElement('span'); wrap.className = 'cast-avatar';
+      wrap.setAttribute('data-tile', ico.getAttribute('data-tile'));
+      ico.className = ''; wrap.appendChild(ico); ico = wrap;
+    }
+    ico.setAttribute('aria-hidden', 'true');
+    ico.appendChild(badge);
 
     var nm = document.createElement('div');
     var n = document.createElement('div'); n.className = 'cast-name'; n.textContent = v.name;
@@ -209,14 +225,6 @@ speaker in an episode script.</p>
     cards.forEach(function (c) {
       var on = playing && !audio.paused && c.el.getAttribute('data-id') === playing;
       c.el.classList.toggle('is-playing', !!on);
-      // The card that is sounding gets a ticker-driven orb; the rest keep the CSS idle swirl.
-      // This page has 36 orbs and three blurred layers each, so "the ticker, on all of them, all
-      // the time" is 108 layers restyled and repainted per frame for no reason -- traced at 2.3ms
-      // of main thread and 8.5ms of GPU per frame against 0.25ms and 0.78ms for the swirl. One
-      // ticker-driven orb at a time, plus whichever one the pointer is over (orb.js wakes that
-      // itself), is the whole rAF budget this page spends.
-      var o = c.el.querySelector('.orb') && c.el.querySelector('.orb')._hnOrb;
-      if (o) o.setLive(!!on);
     });
   }
   ['play', 'pause', 'ended'].forEach(function (e) { audio.addEventListener(e, paint); });
@@ -279,11 +287,6 @@ speaker in an episode script.</p>
       + 'fair comparison rather than ' + list.length + ' different scripts. '
       + 'Rendered against the Flux TTS catalog.';
 
-    // Upgrade every card's orb to the real molten object, once the cards exist. No analyser here:
-    // these are one-line samples off a plain <audio>, and building a MediaElementSource graph per
-    // card to drive an envelope would cost more than the motion is worth. env stays 0, so the
-    // playing orb churns without the vertical stretch the episode pages get.
-    if (window.HNOrb) window.HNOrb.attachAll('.cast-card .orb');
   }).catch(function () {
     document.getElementById('host-note').textContent = 'Could not load the voice catalog.';
   });
