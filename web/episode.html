@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HN Radio: Episode</title>
+<title>Hacker News Radio: Episode</title>
 <link rel="icon" href="/favicon.ico" sizes="32x32">
 <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -26,11 +26,18 @@
     <button id="theme-toggle" type="button" aria-label="Toggle dark mode"></button>
   </div>
 </header>
-<h1 id="title">Loading&hellip;</h1>
-<p class="muted" id="meta"></p>
-<!-- Hidden until there is a number to show. A "0 plays" line on a fresh episode is worse than no
-     line: it draws the eye to the one fact nobody wants stated. -->
-<p class="muted play-count" id="play-count" hidden></p>
+<!-- The episode's art beside its title, as on The Deepgram Changelog. Hidden until the image
+     loads, so an episode without art keeps the plain title. -->
+<div class="ep-head">
+  <a class="ep-head-art-link" id="ep-art-link" hidden><img class="ep-head-art" id="ep-art" alt="" width="1400" height="1400"></a>
+  <div class="ep-head-text">
+    <h1 id="title">Loading&hellip;</h1>
+    <p class="muted" id="meta"></p>
+    <!-- Hidden until there is a number to show. A "0 plays" line on a fresh episode is worse than no
+         line: it draws the eye to the one fact nobody wants stated. -->
+    <p class="muted play-count" id="play-count" hidden></p>
+  </div>
+</div>
 
 <!-- Sticky console: the two controls you reach for while reading, plus the transport. It has to be
      one contiguous block to stick as a unit, which is why the disclaimer and summary sit below it

@@ -149,8 +149,16 @@ import { mmss, usd, count } from './format.js';
   }
 
   function render(ep, segments, voicesDoc, chaptersDoc) {
-    document.title = 'HN Radio: ' + ep.title;
+    document.title = 'Hacker News Radio: ' + ep.title;
     document.getElementById('title').textContent = ep.title;
+    // The episode's own art. Shown only once it loads; click for the full-size image.
+    var art = document.getElementById('ep-art'), artLink = document.getElementById('ep-art-link');
+    if (art && artLink) {
+      art.addEventListener('load', function () { artLink.hidden = false; });
+      art.alt = 'Episode art for ' + ep.title;
+      artLink.href = base + 'art.jpg';
+      art.src = base + 'art.jpg';
+    }
     document.getElementById('meta').textContent =
       (ep.edition ? ep.edition + ' · ' : '') + Math.round(ep.duration_seconds) + 's · ' + (ep.generated_at || '');
 

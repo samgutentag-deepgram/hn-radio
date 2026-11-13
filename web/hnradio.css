@@ -206,3 +206,13 @@ body.page-wide { --dg-col: min(84rem, 100vw - 2rem); }
 /* Five columns do not fit a phone. The table scrolls inside itself rather than pushing the page
    sideways. */
 @media (max-width: 40rem) { .build-table { display: block; overflow-x: auto; } }
+
+/* ============================================================================
+   EPISODE HEAD. The episode's art beside its title, the same treatment as the changelog show.
+   ========================================================================= */
+.ep-head { display: flex; gap: 1.1rem; align-items: center; }
+.ep-head-text { min-width: 0; }
+.ep-head-art-link { flex: none; }
+.ep-head-art { display: block; width: 7.5rem; height: 7.5rem; border-radius: var(--dg-shape-panel);
+  border: 1px solid var(--dg-border); }
+@media (max-width: 640px) { .ep-head-art { width: 5rem; height: 5rem; } }
